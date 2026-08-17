@@ -2,3 +2,4 @@ OMS_Backend/.vs/OMS_Backend/config/applicationhost.config
 /OMS_Backend/.vs
 /OMS_Backend/OMS_Backend/bin
 /OMS_Backend/OMS_Backend/obj
+/OMS_Frontend/.vscode

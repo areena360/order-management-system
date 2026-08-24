@@ -1,194 +1,163 @@
-<div class="min-h-screen w-full flex items-center justify-center bg-gray-100 px-4 py-10">
-  <div class="w-full max-w-lg">
+<div class="h-screen w-full flex items-center justify-center bg-gray-100 px-4 py-3 overflow-hidden">
+  <div class="w-full max-w-md sm:max-w-2xl lg:max-w-4xl xl:max-w-5xl max-h-full overflow-y-auto">
 
     <!-- Brand -->
     <div class="flex flex-col items-center mb-6">
-      <div class="h-12 w-12 rounded-xl bg-gray-800 flex items-center justify-center shadow-sm">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-        </svg>
+      <div class="h-15 w-15 rounded-xl bg-gray-100 flex items-center justify-center shadow-md">
+        <img src="/assets/images/oms-logo.png" alt="OMS Logo" class="h-10 w-10 object-contain" />
       </div>
       <h1 class="mt-4 text-2xl font-semibold text-gray-900">Create your account</h1>
       <p class="mt-1 text-sm text-gray-500">Sign up for Order Management System</p>
     </div>
 
     <!-- Card -->
-    <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-6 sm:p-8">
+    <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-4 sm:p-6 lg:p-7">
 
       <!-- Server error -->
       <div *ngIf="errorMessage()"
-        class="mb-5 flex items-start gap-2 rounded-lg bg-red-50 border border-red-200 px-3 py-2.5 text-sm text-red-700">
+        class="mb-3 flex items-start gap-2 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0 3.75h.008v.008H12v-.008zM21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
         <span>{{ errorMessage() }}</span>
       </div>
 
-      <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" novalidate class="space-y-5">
+      <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" novalidate class="space-y-3">
 
-        <!-- Name -->
-        <div class="grid grid-cols-2 gap-4">
+        <!-- All fields: 3-column grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <div>
-            <label for="firstName" class="block text-sm font-medium text-gray-700 mb-1.5">First name</label>
+            <label for="firstName" class="block text-sm font-medium text-gray-700 mb-1">First name <span class="text-red-500">*</span></label>
             <input id="firstName" type="text" formControlName="firstName" placeholder="Jane"
-              class="w-full rounded-lg border bg-gray-50 px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400
+              class="w-full rounded-lg border bg-gray-50 px-3 py-2 text-sm text-gray-900 placeholder-gray-400
                      focus:outline-none focus:ring-2 focus:ring-gray-800 focus:border-gray-800 transition"
               [class.border-gray-300]="!(f['firstName'].invalid && f['firstName'].touched)"
               [class.border-red-400]="f['firstName'].invalid && f['firstName'].touched" />
-            <p *ngIf="f['firstName'].invalid && f['firstName'].touched" class="mt-1.5 text-xs text-red-600">
+            <p *ngIf="f['firstName'].invalid && f['firstName'].touched" class="mt-1 text-xs text-red-600">
               {{ fieldError('firstName') }}
             </p>
           </div>
           <div>
-            <label for="lastName" class="block text-sm font-medium text-gray-700 mb-1.5">Last name</label>
+            <label for="lastName" class="block text-sm font-medium text-gray-700 mb-1">Last name <span class="text-red-500">*</span></label>
             <input id="lastName" type="text" formControlName="lastName" placeholder="Doe"
-              class="w-full rounded-lg border bg-gray-50 px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400
+              class="w-full rounded-lg border bg-gray-50 px-3 py-2 text-sm text-gray-900 placeholder-gray-400
                      focus:outline-none focus:ring-2 focus:ring-gray-800 focus:border-gray-800 transition"
               [class.border-gray-300]="!(f['lastName'].invalid && f['lastName'].touched)"
               [class.border-red-400]="f['lastName'].invalid && f['lastName'].touched" />
-            <p *ngIf="f['lastName'].invalid && f['lastName'].touched" class="mt-1.5 text-xs text-red-600">
+            <p *ngIf="f['lastName'].invalid && f['lastName'].touched" class="mt-1 text-xs text-red-600">
               {{ fieldError('lastName') }}
             </p>
           </div>
-        </div>
 
-        <!-- Email -->
-        <div>
-          <label for="email" class="block text-sm font-medium text-gray-700 mb-1.5">Email address</label>
-          <input id="email" type="email" formControlName="email" autocomplete="email" placeholder="you@example.com"
-            class="w-full rounded-lg border bg-gray-50 px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400
-                   focus:outline-none focus:ring-2 focus:ring-gray-800 focus:border-gray-800 transition"
-            [class.border-gray-300]="!(f['email'].invalid && f['email'].touched)"
-            [class.border-red-400]="f['email'].invalid && f['email'].touched" />
-          <p *ngIf="f['email'].invalid && f['email'].touched" class="mt-1.5 text-xs text-red-600">
-            {{ fieldError('email') }}
-          </p>
-        </div>
-
-        <!-- Contacts -->
-        <div class="grid grid-cols-2 gap-4">
           <div>
-            <label for="firstContact" class="block text-sm font-medium text-gray-700 mb-1.5">First contact</label>
+            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email address <span class="text-red-500">*</span></label>
+            <input id="email" type="email" formControlName="email" autocomplete="email" placeholder="you@example.com"
+              class="w-full rounded-lg border bg-gray-50 px-3 py-2 text-sm text-gray-900 placeholder-gray-400
+                     focus:outline-none focus:ring-2 focus:ring-gray-800 focus:border-gray-800 transition"
+              [class.border-gray-300]="!(f['email'].invalid && f['email'].touched)"
+              [class.border-red-400]="f['email'].invalid && f['email'].touched" />
+            <p *ngIf="f['email'].invalid && f['email'].touched" class="mt-1 text-xs text-red-600">
+              {{ fieldError('email') }}
+            </p>
+          </div>
+
+          <div>
+            <label for="firstContact" class="block text-sm font-medium text-gray-700 mb-1">WhatsApp <span class="text-red-500">*</span></label>
             <input id="firstContact" type="text" formControlName="firstContact" placeholder="+1 555 000 1234"
-              class="w-full rounded-lg border bg-gray-50 px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400
+              class="w-full rounded-lg border bg-gray-50 px-3 py-2 text-sm text-gray-900 placeholder-gray-400
                      focus:outline-none focus:ring-2 focus:ring-gray-800 focus:border-gray-800 transition"
               [class.border-gray-300]="!(f['firstContact'].invalid && f['firstContact'].touched)"
               [class.border-red-400]="f['firstContact'].invalid && f['firstContact'].touched" />
-            <p *ngIf="f['firstContact'].invalid && f['firstContact'].touched" class="mt-1.5 text-xs text-red-600">
+            <p *ngIf="f['firstContact'].invalid && f['firstContact'].touched" class="mt-1 text-xs text-red-600">
               {{ fieldError('firstContact') }}
             </p>
           </div>
+
           <div>
-            <label for="secondContact" class="block text-sm font-medium text-gray-700 mb-1.5">Second contact <span class="text-gray-400">(optional)</span></label>
+            <label for="secondContact" class="block text-sm font-medium text-gray-700 mb-1">Call <span class="text-gray-400">(optional)</span></label>
             <input id="secondContact" type="text" formControlName="secondContact" placeholder="+1 555 000 5678"
-              class="w-full rounded-lg border bg-gray-50 px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400
+              class="w-full rounded-lg border bg-gray-50 px-3 py-2 text-sm text-gray-900 placeholder-gray-400
                      focus:outline-none focus:ring-2 focus:ring-gray-800 focus:border-gray-800 transition"
               [class.border-gray-300]="!(f['secondContact'].invalid && f['secondContact'].touched)"
               [class.border-red-400]="f['secondContact'].invalid && f['secondContact'].touched" />
-            <p *ngIf="f['secondContact'].invalid && f['secondContact'].touched" class="mt-1.5 text-xs text-red-600">
+            <p *ngIf="f['secondContact'].invalid && f['secondContact'].touched" class="mt-1 text-xs text-red-600">
               {{ fieldError('secondContact') }}
             </p>
           </div>
-        </div>
 
-        <!-- Addresses -->
-        <div>
-          <label for="homeAddress" class="block text-sm font-medium text-gray-700 mb-1.5">Home address <span class="text-gray-400">(optional)</span></label>
-          <input id="homeAddress" type="text" formControlName="homeAddress" placeholder="Street, city, postal code"
-            class="w-full rounded-lg border bg-gray-50 px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400
-                   focus:outline-none focus:ring-2 focus:ring-gray-800 focus:border-gray-800 transition"
-            [class.border-gray-300]="!(f['homeAddress'].invalid && f['homeAddress'].touched)"
-            [class.border-red-400]="f['homeAddress'].invalid && f['homeAddress'].touched" />
-          <p *ngIf="f['homeAddress'].invalid && f['homeAddress'].touched" class="mt-1.5 text-xs text-red-600">
-            {{ fieldError('homeAddress') }}
-          </p>
-        </div>
+          <div>
+            <label for="homeAddress" class="block text-sm font-medium text-gray-700 mb-1">Home address <span class="text-gray-400">(optional)</span></label>
+            <input id="homeAddress" type="text" formControlName="homeAddress" placeholder="Street, city, postal code"
+              class="w-full rounded-lg border bg-gray-50 px-3 py-2 text-sm text-gray-900 placeholder-gray-400
+                     focus:outline-none focus:ring-2 focus:ring-gray-800 focus:border-gray-800 transition"
+              [class.border-gray-300]="!(f['homeAddress'].invalid && f['homeAddress'].touched)"
+              [class.border-red-400]="f['homeAddress'].invalid && f['homeAddress'].touched" />
+            <p *ngIf="f['homeAddress'].invalid && f['homeAddress'].touched" class="mt-1 text-xs text-red-600">
+              {{ fieldError('homeAddress') }}
+            </p>
+          </div>
 
-        <div>
-          <label for="officeAddress" class="block text-sm font-medium text-gray-700 mb-1.5">Office address <span class="text-gray-400">(optional)</span></label>
-          <input id="officeAddress" type="text" formControlName="officeAddress" placeholder="Street, city, postal code"
-            class="w-full rounded-lg border bg-gray-50 px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400
-                   focus:outline-none focus:ring-2 focus:ring-gray-800 focus:border-gray-800 transition"
-            [class.border-gray-300]="!(f['officeAddress'].invalid && f['officeAddress'].touched)"
-            [class.border-red-400]="f['officeAddress'].invalid && f['officeAddress'].touched" />
-          <p *ngIf="f['officeAddress'].invalid && f['officeAddress'].touched" class="mt-1.5 text-xs text-red-600">
-            {{ fieldError('officeAddress') }}
-          </p>
-        </div>
+          <div>
+            <label for="officeAddress" class="block text-sm font-medium text-gray-700 mb-1">Office address <span class="text-gray-400">(optional)</span></label>
+            <input id="officeAddress" type="text" formControlName="officeAddress" placeholder="Street, city, postal code"
+              class="w-full rounded-lg border bg-gray-50 px-3 py-2 text-sm text-gray-900 placeholder-gray-400
+                     focus:outline-none focus:ring-2 focus:ring-gray-800 focus:border-gray-800 transition"
+              [class.border-gray-300]="!(f['officeAddress'].invalid && f['officeAddress'].touched)"
+              [class.border-red-400]="f['officeAddress'].invalid && f['officeAddress'].touched" />
+            <p *ngIf="f['officeAddress'].invalid && f['officeAddress'].touched" class="mt-1 text-xs text-red-600">
+              {{ fieldError('officeAddress') }}
+            </p>
+          </div>
 
-        <!-- Role -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1.5">Role</label>
-          <div class="relative" data-role-menu>
-            <button type="button" (click)="toggleRoleMenu()"
-              class="w-full flex items-center justify-between rounded-lg border border-gray-300 bg-gray-50 px-3 py-2.5 text-sm text-left text-gray-900
-                     focus:outline-none focus:ring-2 focus:ring-gray-800 focus:border-gray-800 hover:bg-gray-100 transition">
-              {{ formRoleName() }}
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-gray-400 transition-transform"
-                [class.rotate-180]="showRoleMenu()" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-              </svg>
-            </button>
-            <div *ngIf="showRoleMenu()"
-              class="absolute left-0 z-20 mt-2 w-full rounded-lg bg-white shadow-lg ring-1 ring-gray-200 p-1.5">
-              <button *ngFor="let r of roleOptions" type="button" (click)="selectRole(r.id)"
-                class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors"
-                [class.bg-gray-100]="f['roleId'].value === r.id" [class.font-medium]="f['roleId'].value === r.id">
-                {{ r.name }}
+          <div>
+            <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password <span class="text-red-500">*</span></label>
+            <div class="relative">
+              <input id="password" [type]="showPassword() ? 'text' : 'password'" formControlName="password"
+                autocomplete="new-password" placeholder="Create a password"
+                class="w-full rounded-lg border bg-gray-50 px-3 pr-10 py-2 text-sm text-gray-900 placeholder-gray-400
+                       focus:outline-none focus:ring-2 focus:ring-gray-800 focus:border-gray-800 transition"
+                [class.border-gray-300]="!(f['password'].invalid && f['password'].touched)"
+                [class.border-red-400]="f['password'].invalid && f['password'].touched" />
+              <button type="button" (click)="togglePassword()" class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-700">
+                <svg *ngIf="!showPassword()" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <svg *ngIf="showPassword()" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12c1.292 4.338 5.31 7.5 10.066 7.5a10.45 10.45 0 004.294-.916m3.51-2.877A10.49 10.49 0 0022.066 12c-1.292-4.338-5.31-7.5-10.066-7.5a10.523 10.523 0 00-3.07.443" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 3l18 18M9.88 9.88a3 3 0 104.24 4.24" />
+                </svg>
               </button>
             </div>
+            <p *ngIf="f['password'].invalid && f['password'].touched" class="mt-1 text-xs text-red-600">
+              {{ fieldError('password') }}
+            </p>
+            <p class="mt-0.5 text-xs text-gray-400 hidden sm:block">Min 8 chars, upper, lower, number & symbol.</p>
           </div>
-        </div>
 
-        <!-- Password -->
-        <div>
-          <label for="password" class="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
-          <div class="relative">
-            <input id="password" [type]="showPassword() ? 'text' : 'password'" formControlName="password"
-              autocomplete="new-password" placeholder="Create a password"
-              class="w-full rounded-lg border bg-gray-50 px-3 pr-10 py-2.5 text-sm text-gray-900 placeholder-gray-400
-                     focus:outline-none focus:ring-2 focus:ring-gray-800 focus:border-gray-800 transition"
-              [class.border-gray-300]="!(f['password'].invalid && f['password'].touched)"
-              [class.border-red-400]="f['password'].invalid && f['password'].touched" />
-            <button type="button" (click)="togglePassword()" class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-700">
-              <svg *ngIf="!showPassword()" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              <svg *ngIf="showPassword()" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12c1.292 4.338 5.31 7.5 10.066 7.5a10.45 10.45 0 004.294-.916m3.51-2.877A10.49 10.49 0 0022.066 12c-1.292-4.338-5.31-7.5-10.066-7.5a10.523 10.523 0 00-3.07.443" />
-                <path stroke-linecap="round" stroke-linejoin="round" d="M3 3l18 18M9.88 9.88a3 3 0 104.24 4.24" />
-              </svg>
-            </button>
+          <!-- Confirm password -->
+          <div>
+            <label for="confirmPassword" class="block text-sm font-medium text-gray-700 mb-1">Confirm password <span class="text-red-500">*</span></label>
+            <div class="relative">
+              <input id="confirmPassword" [type]="showConfirmPassword() ? 'text' : 'password'" formControlName="confirmPassword"
+                autocomplete="new-password" placeholder="Re-enter your password"
+                class="w-full rounded-lg border bg-gray-50 px-3 pr-10 py-2 text-sm text-gray-900 placeholder-gray-400
+                       focus:outline-none focus:ring-2 focus:ring-gray-800 focus:border-gray-800 transition"
+                [class.border-gray-300]="!showPasswordMismatch()"
+                [class.border-red-400]="showPasswordMismatch()" />
+              <button type="button" (click)="toggleConfirmPassword()" class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-700">
+                <svg *ngIf="!showConfirmPassword()" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <svg *ngIf="showConfirmPassword()" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12c1.292 4.338 5.31 7.5 10.066 7.5a10.45 10.45 0 004.294-.916m3.51-2.877A10.49 10.49 0 0022.066 12c-1.292-4.338-5.31-7.5-10.066-7.5a10.523 10.523 0 00-3.07.443" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 3l18 18M9.88 9.88a3 3 0 104.24 4.24" />
+                </svg>
+              </button>
+            </div>
+            <p *ngIf="showPasswordMismatch()" class="mt-1 text-xs text-red-600">Passwords do not match.</p>
           </div>
-          <p *ngIf="f['password'].invalid && f['password'].touched" class="mt-1.5 text-xs text-red-600">
-            {{ fieldError('password') }}
-          </p>
-          <p class="mt-1 text-xs text-gray-400">Min 8 characters, with uppercase, lowercase, number & symbol.</p>
-        </div>
-
-        <!-- Confirm password -->
-        <div>
-          <label for="confirmPassword" class="block text-sm font-medium text-gray-700 mb-1.5">Confirm password</label>
-          <div class="relative">
-            <input id="confirmPassword" [type]="showConfirmPassword() ? 'text' : 'password'" formControlName="confirmPassword"
-              autocomplete="new-password" placeholder="Re-enter your password"
-              class="w-full rounded-lg border bg-gray-50 px-3 pr-10 py-2.5 text-sm text-gray-900 placeholder-gray-400
-                     focus:outline-none focus:ring-2 focus:ring-gray-800 focus:border-gray-800 transition"
-              [class.border-gray-300]="!showPasswordMismatch()"
-              [class.border-red-400]="showPasswordMismatch()" />
-            <button type="button" (click)="toggleConfirmPassword()" class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-700">
-              <svg *ngIf="!showConfirmPassword()" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              <svg *ngIf="showConfirmPassword()" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12c1.292 4.338 5.31 7.5 10.066 7.5a10.45 10.45 0 004.294-.916m3.51-2.877A10.49 10.49 0 0022.066 12c-1.292-4.338-5.31-7.5-10.066-7.5a10.523 10.523 0 00-3.07.443" />
-                <path stroke-linecap="round" stroke-linejoin="round" d="M3 3l18 18M9.88 9.88a3 3 0 104.24 4.24" />
-              </svg>
-            </button>
-          </div>
-          <p *ngIf="showPasswordMismatch()" class="mt-1.5 text-xs text-red-600">Passwords do not match.</p>
         </div>
 
         <!-- Terms -->
@@ -198,14 +167,14 @@
               class="mt-0.5 h-4 w-4 rounded border-gray-300 text-gray-800 focus:ring-gray-800 accent-gray-800" />
             <span class="text-sm text-gray-600">I agree to the Terms of Service and Privacy Policy</span>
           </label>
-          <p *ngIf="f['agreeTerms'].invalid && f['agreeTerms'].touched" class="mt-1.5 text-xs text-red-600">
+          <p *ngIf="f['agreeTerms'].invalid && f['agreeTerms'].touched" class="mt-1 text-xs text-red-600">
             You must accept the terms to continue.
           </p>
         </div>
 
         <!-- Submit -->
         <button type="submit" [disabled]="isSubmitting() || registerForm.invalid"
-          class="w-full flex items-center justify-center gap-2 rounded-lg bg-gray-800 py-2.5 text-sm font-semibold text-white
+          class="w-full flex items-center justify-center gap-2 rounded-lg bg-gray-800 py-2 text-sm font-semibold text-white
                  hover:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-800 focus:ring-offset-2
                  disabled:opacity-60 disabled:cursor-not-allowed transition">
           <svg *ngIf="isSubmitting()" class="h-4 w-4 animate-spin text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -217,7 +186,7 @@
       </form>
 
       <!-- Divider -->
-      <div class="flex items-center gap-3 my-6">
+      <div class="flex items-center gap-3 my-3">
         <div class="h-px flex-1 bg-gray-200"></div>
         <span class="text-xs text-gray-400">or</span>
         <div class="h-px flex-1 bg-gray-200"></div>
@@ -229,6 +198,8 @@
       </p>
     </div>
 
-    <p class="mt-6 text-center text-xs text-gray-400">© 2026 Areena Design OMS. All rights reserved.</p>
+    <p class="mt-6 text-center text-xs text-gray-400">
+      © {{ 2026 }} Areena Design OMS. All rights reserved.
+    </p>
   </div>
 </div>

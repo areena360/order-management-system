@@ -2,14 +2,18 @@
 // Add these alongside your existing DbContext registration from the earlier setup.
 
 using Microsoft.AspNetCore.Authentication.JwtBearer; // built-in package
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using OMS_Backend.Data;
-using OMS_Backend.Services;
-using System.Text;
 using OMS_Backend.Data;
+using OMS_Backend.Services;
+using System.Security.Claims;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 
 // ---- Existing DbContext (from previous step) ----
 builder.Services.AddDbContext<OMSDbContext>(options =>
@@ -41,6 +45,7 @@ builder.Services.AddAuthentication(options =>
         ValidIssuer = jwtSettings["Issuer"],
         ValidAudience = jwtSettings["Audience"],
         IssuerSigningKey = new SymmetricSecurityKey(secretKey),
+        RoleClaimType = ClaimTypes.Role,
         ClockSkew = TimeSpan.Zero,
     };
 });
@@ -60,10 +65,15 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+builder.Services.AddControllers()
+    .AddJsonOptions(o =>
+        o.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles);
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
+    app.UseDeveloperExceptionPage();
     app.UseSwagger();
     app.UseSwaggerUI();
 }

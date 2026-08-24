@@ -20,6 +20,7 @@ namespace OMS_Backend.Data
         public DbSet<LookupItem> LookupItems { get; set; }
         public DbSet<PasswordResetToken> PasswordResetTokens { get; set; }
 
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);

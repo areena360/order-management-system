@@ -16,11 +16,21 @@ namespace OMS_Backend.DTOs
         [Required, Phone]
         public string FirstContact { get; set; }
 
-        // Built-in RegularExpression validator: min 8 chars, upper, lower, digit, special char
+        [Phone]
+        public string? SecondContact { get; set; }
+
+        [StringLength(250)]
+        public string? HomeAddress { get; set; }
+
+        [StringLength(250)]
+        public string? OfficeAddress { get; set; }
+
         [Required]
         [StringLength(32, MinimumLength = 8)]
-        [RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?"":{}|<>_\-]).+$",
-            ErrorMessage = "Password must contain uppercase, lowercase, a number, and a special character.")]
+        [RegularExpression(
+            @"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?"":{}|<>_\-]).+$",
+            ErrorMessage = "Password must contain uppercase, lowercase, a number, and a special character."
+        )]
         public string Password { get; set; }
 
         [Required, Compare(nameof(Password), ErrorMessage = "Passwords do not match.")]

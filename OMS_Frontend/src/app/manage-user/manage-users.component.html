@@ -1,0 +1,590 @@
+<div class="min-h-screen bg-gray-50 p-6">
+  <div class="max-w-7xl mx-auto">
+
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900">Manage Users</h1>
+        <p class="text-sm text-gray-500 mt-1">View, filter, and manage all users across roles</p>
+      </div>
+      <button (click)="openAddModal()"
+        class="mt-4 sm:mt-0 inline-flex items-center gap-2 rounded-lg bg-gray-800 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-gray-900 transition-colors cursor-pointer">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2"
+          stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+        </svg>
+        Add User
+      </button>
+    </div>
+
+    <!-- Toolbar -->
+    <div
+      class="bg-white rounded-xl shadow-sm ring-1 ring-gray-200 p-4 mb-4 flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
+      <div class="relative w-full md:w-72">
+        <svg class="absolute left-3 top-2.5 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="2"
+          stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="m21 21-5.2-5.2m1.7-5.3a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" />
+        </svg>
+        <input type="text" [(ngModel)]="searchTerm" (ngModelChange)="applyFilters()"
+          placeholder="Search by name or email..."
+          class="w-full rounded-lg border border-gray-300 pl-9 pr-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500" />
+      </div>
+
+      <div class="flex flex-wrap gap-3">
+        <div class="relative" data-role-menu>
+          <button (click)="toggleRoleMenu()" type="button"
+            class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer">
+            {{ roleFilter }}
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-gray-400 transition-transform"
+              [class.rotate-180]="showRoleMenu" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+            </svg>
+          </button>
+          <div *ngIf="showRoleMenu"
+            class="absolute left-0 z-20 mt-2 w-44 rounded-lg bg-white shadow-lg ring-1 ring-gray-200 p-1.5">
+            <button *ngFor="let r of roles" (click)="selectRole(r)"
+              class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors"
+              [class.bg-gray-100]="roleFilter === r" [class.font-medium]="roleFilter === r">
+              {{ r }}
+            </button>
+          </div>
+        </div>
+
+        <div class="inline-flex rounded-lg bg-gray-100 p-1 text-sm font-medium">
+          <button (click)="statusFilter='active'; applyFilters()" [class.bg-white]="statusFilter==='active'"
+            [class.shadow]="statusFilter==='active'"
+            class="px-3 py-1.5 rounded-md text-gray-700 transition-all cursor-pointer">Active</button>
+          <button (click)="statusFilter='deleted'; applyFilters()" [class.bg-white]="statusFilter==='deleted'"
+            [class.shadow]="statusFilter==='deleted'"
+            class="px-3 py-1.5 rounded-md text-gray-700 transition-all cursor-pointer">Deleted</button>
+          <button (click)="statusFilter='all'; applyFilters()" [class.bg-white]="statusFilter==='all'"
+            [class.shadow]="statusFilter==='all'"
+            class="px-3 py-1.5 rounded-md text-gray-700 transition-all cursor-pointer">All</button>
+        </div>
+
+        <!-- Column visibility toggle -->
+        <div class="relative" data-column-menu>
+          <button (click)="toggleColumnMenu()" type="button"
+            class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24"
+              stroke-width="1.8" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+            </svg>
+            Columns
+            <span class="text-xs text-gray-400">({{ visibleColumnCount() }}/{{ columnOptions.length }})</span>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-gray-400 transition-transform"
+              [class.rotate-180]="showColumnMenu" fill="none" viewBox="0 0 24 24" stroke-width="2"
+              stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+            </svg>
+          </button>
+
+          <div *ngIf="showColumnMenu"
+            class="absolute right-0 z-20 mt-2 w-60 rounded-lg bg-white shadow-lg ring-1 ring-gray-200 p-3">
+            <div class="flex items-center justify-between mb-2 pb-2 border-b border-gray-100">
+              <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Show columns</span>
+              <div class="flex gap-2">
+                <button type="button" (click)="resetColumns()"
+                  class="text-xs text-blue-600 hover:text-blue-800 cursor-pointer">All</button>
+                <button type="button" (click)="hideAllOptionalColumns()"
+                  class="text-xs text-gray-500 hover:text-gray-700 cursor-pointer">None</button>
+              </div>
+            </div>
+            <div class="max-h-64 overflow-y-auto space-y-1">
+              <label *ngFor="let col of columnOptions"
+                class="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer select-none">
+                <input type="checkbox" [checked]="isColumnVisible(col.key)" (change)="toggleColumn(col.key)"
+                  class="h-4 w-4 rounded border-gray-300 text-gray-800 focus:ring-gray-800 accent-gray-800 cursor-pointer" />
+                {{ col.label }}
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Table Card -->
+    <div class="bg-white rounded-xl shadow-sm ring-1 ring-gray-200 overflow-hidden">
+
+      <div *ngIf="loading" class="p-10 text-center text-gray-500 text-sm">Loading users...</div>
+      <div *ngIf="errorMsg" class="p-10 text-center text-gray-500 text-sm">{{ errorMsg }}</div>
+
+      <div *ngIf="!loading && !errorMsg" class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200 text-sm">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Full Name
+              </th>
+              <th *ngIf="isColumnVisible('firstContact')"
+                class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">First Contact
+              </th>
+              <th *ngIf="isColumnVisible('secondContact')"
+                class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Second Contact
+              </th>
+              <th *ngIf="isColumnVisible('email')"
+                class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Email</th>
+              <th *ngIf="isColumnVisible('homeAddress')"
+                class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Home Address
+              </th>
+              <th *ngIf="isColumnVisible('officeAddress')"
+                class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Office Address
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Role</th>
+              <th *ngIf="statusFilter !== 'deleted'"
+                class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Active</th>
+              <th *ngIf="statusFilter !== 'active'"
+                class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Deleted</th>
+              <th *ngIf="isColumnVisible('createdDate')"
+                class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Created Date
+              </th>
+              <th *ngIf="isColumnVisible('createdBy')"
+                class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Created By</th>
+              <th *ngIf="isColumnVisible('updatedDate')"
+                class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Updated Date
+              </th>
+              <th *ngIf="isColumnVisible('updatedBy')"
+                class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Updated By</th>
+              <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            <tr *ngFor="let user of paginatedUsers" class="bg-gray-50 transition-colors"
+              [class.opacity-70]="user.isDeleted" [class.bg-gray-200]="user.isDeleted">
+              <td class="px-4 py-4 whitespace-nowrap font-medium text-gray-900">{{ fullName(user) }}</td>
+              <td *ngIf="isColumnVisible('firstContact')" class="px-4 py-4 whitespace-nowrap text-gray-500">{{
+                user.firstContact }}</td>
+              <td *ngIf="isColumnVisible('secondContact')" class="px-4 py-4 whitespace-nowrap text-gray-500">{{
+                user.secondContact }}</td>
+              <td *ngIf="isColumnVisible('email')" class="px-4 py-4 whitespace-nowrap text-gray-500">{{ user.email }}
+              </td>
+              <td *ngIf="isColumnVisible('homeAddress')"
+                class="px-4 py-4 whitespace-nowrap text-gray-500 max-w-[160px] truncate" [title]="user.homeAddress">{{
+                user.homeAddress }}</td>
+              <td *ngIf="isColumnVisible('officeAddress')"
+                class="px-4 py-4 whitespace-nowrap text-gray-500 max-w-[160px] truncate" [title]="user.officeAddress">{{
+                user.officeAddress }}</td>
+              <td class="px-4 py-4 whitespace-nowrap">
+                <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset"
+                  [ngClass]="roleBadgeClass(user.role)">
+                  {{ user.role }}
+                </span>
+              </td>
+              <td *ngIf="statusFilter !== 'deleted'" class="px-4 py-4 whitespace-nowrap">
+                <span *ngIf="user.isActive"
+                  class="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
+                  <span class="h-1.5 w-1.5 rounded-full bg-green-500"></span> Active
+                </span>
+                <span *ngIf="!user.isActive"
+                  class="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-500/20">
+                  <span class="h-1.5 w-1.5 rounded-full bg-gray-400"></span> Inactive
+                </span>
+              </td>
+              <td *ngIf="statusFilter !== 'active'" class="px-4 py-4 whitespace-nowrap">
+                <span *ngIf="user.isDeleted"
+                  class="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/20">
+                  <span class="h-1.5 w-1.5 rounded-full bg-red-500"></span> Deleted
+                </span>
+                <span *ngIf="!user.isDeleted" class="text-gray-400">—</span>
+              </td>
+              <td *ngIf="isColumnVisible('createdDate')" class="px-4 py-4 whitespace-nowrap text-gray-500">{{
+                user.createdDate | date:'MMM d, y' }}</td>
+              <td *ngIf="isColumnVisible('createdBy')" class="px-4 py-4 whitespace-nowrap text-gray-500">{{
+                user.createdBy }}</td>
+              <td *ngIf="isColumnVisible('updatedDate')" class="px-4 py-4 whitespace-nowrap text-gray-500">{{
+                user.updatedDate ? (user.updatedDate | date:'MMM d,
+                y') : '—' }}</td>
+              <td *ngIf="isColumnVisible('updatedBy')" class="px-4 py-4 whitespace-nowrap text-gray-500">{{
+                user.updatedBy || '—' }}</td>
+              <td class="px-4 py-4 whitespace-nowrap text-right">
+                <div class="flex items-center justify-end gap-2">
+                  <button *ngIf="!user.isDeleted" (click)="openToggleActiveModal(user)"
+                    [class.border-emerald-200]="!user.isActive" [class.bg-emerald-50]="!user.isActive"
+                    [class.text-emerald-700]="!user.isActive" [class.border-gray-200]="user.isActive"
+                    [class.bg-gray-50]="user.isActive" [class.text-gray-600]="user.isActive"
+                    class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium hover:opacity-80 transition-colors cursor-pointer">
+                    {{ user.isActive ? 'Deactivate' : 'Activate' }}
+                  </button>
+
+                  <button (click)="openEditModal(user)"
+                    class="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100 hover:border-blue-300 transition-colors cursor-pointer">
+                    Edit
+                  </button>
+                  <button *ngIf="!user.isDeleted" (click)="openDeleteModal(user)"
+                    class="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-100 hover:border-red-300 transition-colors cursor-pointer">
+                    Delete
+                  </button>
+                  <button *ngIf="user.isDeleted" (click)="restoreUser(user)"
+                    class="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 transition-colors cursor-pointer">
+                    Restore
+                  </button>
+                </div>
+              </td>
+            </tr>
+
+            <tr *ngIf="paginatedUsers.length === 0">
+              <td colspan="14" class="px-6 py-10 text-center text-sm text-gray-400">No users found.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div *ngIf="!loading && !errorMsg" class="flex items-center justify-between border-t border-gray-100 px-6 py-3">
+        <p class="text-sm text-gray-500">
+          Showing <span class="font-medium text-gray-700">{{ paginatedUsers.length }}</span> of
+          <span class="font-medium text-gray-700">{{ filteredUsers.length }}</span> users
+        </p>
+        <div class="flex gap-1">
+          <button (click)="goToPage(currentPage - 1)" [disabled]="currentPage === 1"
+            class="px-3 py-1.5 text-sm rounded-md border border-gray-300 text-gray-600 disabled:opacity-40 hover:bg-gray-50 cursor-pointer disabled:cursor-not-allowed">Prev</button>
+          <button *ngFor="let p of [].constructor(totalPages); let i = index" (click)="goToPage(i + 1)"
+            [class.bg-gray-600]="currentPage === i + 1" [class.text-white]="currentPage === i + 1"
+            class="px-3 py-1.5 text-sm rounded-md border border-gray-300 text-gray-600 cursor-pointer">
+            {{ i + 1 }}
+          </button>
+          <button (click)="goToPage(currentPage + 1)" [disabled]="currentPage === totalPages"
+            class="px-3 py-1.5 text-sm rounded-md border border-gray-300 text-gray-600 disabled:opacity-40 hover:bg-gray-50 cursor-pointer disabled:cursor-not-allowed">Next</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Add User Modal ===== -->
+<div *ngIf="showAddModal" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 p-4">
+  <div class="bg-white rounded-xl shadow-xl ring-1 ring-gray-200 w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
+    <h2 class="text-lg font-semibold text-gray-900 mb-4">Add User</h2>
+    <form #addForm="ngForm" (ngSubmit)="submitAdd(addForm)" novalidate class="space-y-3">
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <input [(ngModel)]="form.firstName" #firstName="ngModel" name="firstName" placeholder="First name"
+            required minlength="2" maxlength="50"
+            class="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"
+            [class.border-gray-300]="!(firstName.invalid && firstName.touched)"
+            [class.border-red-400]="firstName.invalid && firstName.touched" />
+          <p *ngIf="firstName.invalid && firstName.touched" class="mt-1 text-xs text-red-600">
+            <span *ngIf="firstName.errors?.['required']">First name is required.</span>
+            <span *ngIf="firstName.errors?.['minlength']">Minimum 2 characters required.</span>
+            <span *ngIf="firstName.errors?.['maxlength']">Maximum 50 characters allowed.</span>
+          </p>
+        </div>
+        <div>
+          <input [(ngModel)]="form.lastName" #lastName="ngModel" name="lastName" placeholder="Last name"
+            required minlength="2" maxlength="50"
+            class="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"
+            [class.border-gray-300]="!(lastName.invalid && lastName.touched)"
+            [class.border-red-400]="lastName.invalid && lastName.touched" />
+          <p *ngIf="lastName.invalid && lastName.touched" class="mt-1 text-xs text-red-600">
+            <span *ngIf="lastName.errors?.['required']">Last name is required.</span>
+            <span *ngIf="lastName.errors?.['minlength']">Minimum 2 characters required.</span>
+            <span *ngIf="lastName.errors?.['maxlength']">Maximum 50 characters allowed.</span>
+          </p>
+        </div>
+      </div>
+
+      <div>
+        <input [(ngModel)]="form.email" #email="ngModel" name="email" type="email" placeholder="Email"
+          required pattern="^[^\s@]+@[^\s@]+\.[^\s@]{2,}$"
+          class="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"
+          [class.border-gray-300]="!(email.invalid && email.touched)"
+          [class.border-red-400]="email.invalid && email.touched" />
+        <p *ngIf="email.invalid && email.touched" class="mt-1 text-xs text-red-600">
+          <span *ngIf="email.errors?.['required']">Email is required.</span>
+          <span *ngIf="email.errors?.['pattern']">Enter a valid email address.</span>
+        </p>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <input [(ngModel)]="form.firstContact" #firstContact="ngModel" name="firstContact" placeholder="First contact"
+            required pattern="^[0-9+\-\s()]{7,15}$"
+            class="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"
+            [class.border-gray-300]="!(firstContact.invalid && firstContact.touched)"
+            [class.border-red-400]="firstContact.invalid && firstContact.touched" />
+          <p *ngIf="firstContact.invalid && firstContact.touched" class="mt-1 text-xs text-red-600">
+            <span *ngIf="firstContact.errors?.['required']">First contact is required.</span>
+            <span *ngIf="firstContact.errors?.['pattern']">Enter a valid phone number.</span>
+          </p>
+        </div>
+        <div>
+          <input [(ngModel)]="form.secondContact" #secondContact="ngModel" name="secondContact" placeholder="Second contact"
+            pattern="^[0-9+\-\s()]{7,15}$"
+            class="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"
+            [class.border-gray-300]="!(secondContact.invalid && secondContact.touched)"
+            [class.border-red-400]="secondContact.invalid && secondContact.touched" />
+          <p *ngIf="secondContact.invalid && secondContact.touched" class="mt-1 text-xs text-red-600">
+            <span *ngIf="secondContact.errors?.['pattern']">Enter a valid phone number.</span>
+          </p>
+        </div>
+      </div>
+
+      <div>
+        <input [(ngModel)]="form.homeAddress" #homeAddress="ngModel" name="homeAddress" placeholder="Home address"
+          maxlength="250"
+          class="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"
+          [class.border-gray-300]="!(homeAddress.invalid && homeAddress.touched)"
+          [class.border-red-400]="homeAddress.invalid && homeAddress.touched" />
+        <p *ngIf="homeAddress.invalid && homeAddress.touched" class="mt-1 text-xs text-red-600">
+          <span *ngIf="homeAddress.errors?.['maxlength']">Maximum 250 characters allowed.</span>
+        </p>
+      </div>
+
+      <div>
+        <input [(ngModel)]="form.officeAddress" #officeAddress="ngModel" name="officeAddress" placeholder="Office address"
+          maxlength="250"
+          class="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"
+          [class.border-gray-300]="!(officeAddress.invalid && officeAddress.touched)"
+          [class.border-red-400]="officeAddress.invalid && officeAddress.touched" />
+        <p *ngIf="officeAddress.invalid && officeAddress.touched" class="mt-1 text-xs text-red-600">
+          <span *ngIf="officeAddress.errors?.['maxlength']">Maximum 250 characters allowed.</span>
+        </p>
+      </div>
+
+      <div>
+        <div class="relative">
+          <input [(ngModel)]="form.password" #password="ngModel" name="password" [type]="showAddPassword ? 'text' : 'password'" placeholder="Password"
+            required minlength="8" maxlength="32" pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&amp;*(),.?&quot;:{}|&lt;&gt;_\-]).+$"
+            class="w-full rounded-lg border px-3 pr-10 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"
+            [class.border-gray-300]="!(password.invalid && password.touched)"
+            [class.border-red-400]="password.invalid && password.touched" />
+          <button type="button" (click)="toggleAddPassword()" class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-700">
+            <svg *ngIf="!showAddPassword" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <svg *ngIf="showAddPassword" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12c1.292 4.338 5.31 7.5 10.066 7.5a10.45 10.45 0 004.294-.916m3.51-2.877A10.49 10.49 0 0022.066 12c-1.292-4.338-5.31-7.5-10.066-7.5a10.523 10.523 0 00-3.07.443" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 3l18 18M9.88 9.88a3 3 0 104.24 4.24" />
+            </svg>
+          </button>
+        </div>
+        <p *ngIf="password.invalid && password.touched" class="mt-1 text-xs text-red-600">
+          <span *ngIf="password.errors?.['required']">Password is required.</span>
+          <span *ngIf="password.errors?.['minlength']">Minimum 8 characters required.</span>
+          <span *ngIf="password.errors?.['maxlength']">Maximum 32 characters allowed.</span>
+          <span *ngIf="!password.errors?.['minlength'] && !password.errors?.['maxlength'] && password.errors?.['pattern']">Must include uppercase, lowercase, a number, and a special character.</span>
+        </p>
+      </div>
+
+      <div class="relative" data-form-role-menu>
+        <button type="button" (click)="toggleFormRoleMenu()"
+          class="w-full flex items-center justify-between rounded-lg border border-gray-300 px-3 py-2 text-sm text-left focus:outline-none focus:ring-2 focus:ring-gray-500 hover:bg-gray-50 cursor-pointer">
+          {{ formRoleName() }}
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-gray-400 transition-transform"
+            [class.rotate-180]="showFormRoleMenu" fill="none" viewBox="0 0 24 24" stroke-width="2"
+            stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+          </svg>
+        </button>
+        <div *ngIf="showFormRoleMenu"
+          class="absolute left-0 z-20 mt-2 w-full rounded-lg bg-white shadow-lg ring-1 ring-gray-200 p-1.5">
+          <button *ngFor="let r of roleOptions" type="button" (click)="selectFormRole(r.id)"
+            class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors"
+            [class.bg-gray-100]="form.roleId === r.id" [class.font-medium]="form.roleId === r.id">
+            {{ r.name }}
+          </button>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2">
+        <button type="button" (click)="closeModals()"
+          class="px-4 py-2 text-sm rounded-lg border border-gray-300 cursor-pointer text-gray-700 hover:bg-gray-50">Cancel</button>
+        <button type="submit" [disabled]="saving"
+          class="px-4 py-2 text-sm rounded-lg bg-gray-600 cursor-pointer text-white hover:bg-gray-900 disabled:opacity-50">
+          {{ saving ? 'Saving...' : 'Add User' }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ===== Edit User Modal ===== -->
+<div *ngIf="showEditModal" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 p-4">
+  <div class="bg-white rounded-xl shadow-xl ring-1 ring-gray-200 w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
+    <h2 class="text-lg font-semibold text-gray-900 mb-4">Edit User</h2>
+    <form #editForm="ngForm" (ngSubmit)="submitEdit(editForm)" novalidate class="space-y-3">
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <input [(ngModel)]="form.firstName" #editFirstName="ngModel" name="editFirstName" placeholder="First name"
+            required minlength="2" maxlength="50"
+            class="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"
+            [class.border-gray-300]="!(editFirstName.invalid && editFirstName.touched)"
+            [class.border-red-400]="editFirstName.invalid && editFirstName.touched" />
+          <p *ngIf="editFirstName.invalid && editFirstName.touched" class="mt-1 text-xs text-red-600">
+            <span *ngIf="editFirstName.errors?.['required']">First name is required.</span>
+            <span *ngIf="editFirstName.errors?.['minlength']">Minimum 2 characters required.</span>
+            <span *ngIf="editFirstName.errors?.['maxlength']">Maximum 50 characters allowed.</span>
+          </p>
+        </div>
+        <div>
+          <input [(ngModel)]="form.lastName" #editLastName="ngModel" name="editLastName" placeholder="Last name"
+            required minlength="2" maxlength="50"
+            class="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"
+            [class.border-gray-300]="!(editLastName.invalid && editLastName.touched)"
+            [class.border-red-400]="editLastName.invalid && editLastName.touched" />
+          <p *ngIf="editLastName.invalid && editLastName.touched" class="mt-1 text-xs text-red-600">
+            <span *ngIf="editLastName.errors?.['required']">Last name is required.</span>
+            <span *ngIf="editLastName.errors?.['minlength']">Minimum 2 characters required.</span>
+            <span *ngIf="editLastName.errors?.['maxlength']">Maximum 50 characters allowed.</span>
+          </p>
+        </div>
+      </div>
+
+      <div>
+        <input [(ngModel)]="form.email" #editEmail="ngModel" name="editEmail" type="email" placeholder="Email"
+          required pattern="^[^\s@]+@[^\s@]+\.[^\s@]{2,}$"
+          class="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"
+          [class.border-gray-300]="!(editEmail.invalid && editEmail.touched)"
+          [class.border-red-400]="editEmail.invalid && editEmail.touched" />
+        <p *ngIf="editEmail.invalid && editEmail.touched" class="mt-1 text-xs text-red-600">
+          <span *ngIf="editEmail.errors?.['required']">Email is required.</span>
+          <span *ngIf="editEmail.errors?.['pattern']">Enter a valid email address.</span>
+        </p>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <input [(ngModel)]="form.firstContact" #editFirstContact="ngModel" name="editFirstContact" placeholder="First contact"
+            required pattern="^[0-9+\-\s()]{7,15}$"
+            class="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"
+            [class.border-gray-300]="!(editFirstContact.invalid && editFirstContact.touched)"
+            [class.border-red-400]="editFirstContact.invalid && editFirstContact.touched" />
+          <p *ngIf="editFirstContact.invalid && editFirstContact.touched" class="mt-1 text-xs text-red-600">
+            <span *ngIf="editFirstContact.errors?.['required']">First contact is required.</span>
+            <span *ngIf="editFirstContact.errors?.['pattern']">Enter a valid phone number.</span>
+          </p>
+        </div>
+        <div>
+          <input [(ngModel)]="form.secondContact" #editSecondContact="ngModel" name="editSecondContact" placeholder="Second contact"
+            pattern="^[0-9+\-\s()]{7,15}$"
+            class="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"
+            [class.border-gray-300]="!(editSecondContact.invalid && editSecondContact.touched)"
+            [class.border-red-400]="editSecondContact.invalid && editSecondContact.touched" />
+          <p *ngIf="editSecondContact.invalid && editSecondContact.touched" class="mt-1 text-xs text-red-600">
+            <span *ngIf="editSecondContact.errors?.['pattern']">Enter a valid phone number.</span>
+          </p>
+        </div>
+      </div>
+
+      <div>
+        <input [(ngModel)]="form.homeAddress" #editHomeAddress="ngModel" name="editHomeAddress" placeholder="Home address"
+          maxlength="250"
+          class="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"
+          [class.border-gray-300]="!(editHomeAddress.invalid && editHomeAddress.touched)"
+          [class.border-red-400]="editHomeAddress.invalid && editHomeAddress.touched" />
+        <p *ngIf="editHomeAddress.invalid && editHomeAddress.touched" class="mt-1 text-xs text-red-600">
+          <span *ngIf="editHomeAddress.errors?.['maxlength']">Maximum 250 characters allowed.</span>
+        </p>
+      </div>
+
+      <div>
+        <input [(ngModel)]="form.officeAddress" #editOfficeAddress="ngModel" name="editOfficeAddress" placeholder="Office address"
+          maxlength="250"
+          class="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"
+          [class.border-gray-300]="!(editOfficeAddress.invalid && editOfficeAddress.touched)"
+          [class.border-red-400]="editOfficeAddress.invalid && editOfficeAddress.touched" />
+        <p *ngIf="editOfficeAddress.invalid && editOfficeAddress.touched" class="mt-1 text-xs text-red-600">
+          <span *ngIf="editOfficeAddress.errors?.['maxlength']">Maximum 250 characters allowed.</span>
+        </p>
+      </div>
+
+      <div class="relative" data-form-role-menu-edit>
+        <button type="button" (click)="toggleFormRoleMenu()"
+          class="w-full flex items-center justify-between rounded-lg border border-gray-300 px-3 py-2 text-sm text-left focus:outline-none focus:ring-2 focus:ring-gray-500 hover:bg-gray-50 cursor-pointer">
+          {{ formRoleName() }}
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-gray-400 transition-transform"
+            [class.rotate-180]="showFormRoleMenu" fill="none" viewBox="0 0 24 24" stroke-width="2"
+            stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+          </svg>
+        </button>
+        <div *ngIf="showFormRoleMenu"
+          class="absolute left-0 z-20 mt-2 w-full rounded-lg bg-white shadow-lg ring-1 ring-gray-200 p-1.5">
+          <button *ngFor="let r of roleOptions" type="button" (click)="selectFormRole(r.id)"
+            class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors"
+            [class.bg-gray-100]="form.roleId === r.id" [class.font-medium]="form.roleId === r.id">
+            {{ r.name }}
+          </button>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2">
+        <button type="button" (click)="closeModals()"
+          class="px-4 py-2 text-sm rounded-lg border border-gray-300 cursor-pointer text-gray-700 hover:bg-gray-50">Cancel</button>
+        <button type="submit" [disabled]="saving"
+          class="px-4 py-2 text-sm rounded-lg bg-gray-600 cursor-pointer text-white hover:bg-gray-900 disabled:opacity-50">
+          {{ saving ? 'Saving...' : 'Save Changes' }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ===== Delete Confirm Modal ===== -->
+<div *ngIf="showDeleteModal" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 p-4">
+  <div class="bg-white rounded-xl shadow-xl ring-1 ring-gray-200 w-full max-w-sm p-6">
+    <h2 class="text-lg font-semibold text-gray-900 mb-2">Delete User</h2>
+    <p class="text-sm text-gray-500 mb-6">
+      Are you sure you want to delete <span class="font-medium text-gray-700">{{ selectedUser ? fullName(selectedUser) :
+        '' }}</span>?
+      This can be undone later from the Deleted tab.
+    </p>
+    <div class="flex justify-end gap-2">
+      <button (click)="closeModals()"
+        class="px-4 py-2 text-sm rounded-lg border border-gray-300 cursor-pointer text-gray-700 hover:bg-gray-50">Cancel</button>
+      <button (click)="confirmDelete()" [disabled]="saving"
+        class="px-4 py-2 text-sm rounded-lg bg-red-500 cursor-pointer text-white hover:bg-red-800 disabled:opacity-50">
+        {{ saving ? 'Deleting...' : 'Delete' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Toggle Active/Deactivate Confirm Modal ===== -->
+<div *ngIf="showToggleActiveModal" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 p-4">
+  <div class="bg-white rounded-xl shadow-xl ring-1 ring-gray-200 w-full max-w-sm p-6">
+    <div class="flex items-center gap-3 mb-3">
+      <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
+           [class.bg-amber-100]="selectedUser?.isActive"
+           [class.bg-emerald-100]="!selectedUser?.isActive">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5"
+             [class.text-amber-600]="selectedUser?.isActive"
+             [class.text-emerald-600]="!selectedUser?.isActive"
+             fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M12 3v9m6.364-6.364a9 9 0 11-12.728 0" />
+        </svg>
+      </div>
+      <h2 class="text-lg font-semibold text-gray-900">
+        {{ selectedUser?.isActive ? 'Deactivate User' : 'Activate User' }}
+      </h2>
+    </div>
+
+    <p class="text-sm text-gray-500 mb-6">
+      Are you sure you want to
+      <span class="font-medium mr-1">{{ selectedUser?.isActive ? 'deactivate' : 'activate' }}</span>
+      <span class="font-medium text-gray-700">{{ selectedUser ? fullName(selectedUser) : '' }}</span>?
+      <ng-container *ngIf="selectedUser?.isActive">
+        They won't be able to log in or access the system until reactivated.
+      </ng-container>
+      <ng-container *ngIf="!selectedUser?.isActive">
+        They will regain full access immediately.
+      </ng-container>
+    </p>
+
+    <div class="flex justify-end gap-2">
+      <button (click)="closeModals()"
+        class="px-4 py-2 text-sm rounded-lg border border-gray-300 cursor-pointer text-gray-700 hover:bg-gray-50">Cancel</button>
+      <button (click)="confirmToggleActive()" [disabled]="saving"
+        [class.bg-amber-500]="selectedUser?.isActive" [class.hover:bg-amber-700]="selectedUser?.isActive"
+        [class.bg-emerald-500]="!selectedUser?.isActive" [class.hover:bg-emerald-700]="!selectedUser?.isActive"
+        class="px-4 py-2 text-sm rounded-lg cursor-pointer text-white disabled:opacity-50">
+        {{ saving ? 'Updating...' : (selectedUser?.isActive ? 'Deactivate' : 'Activate') }}
+      </button>
+    </div>
+  </div>
+</div>

@@ -42,7 +42,6 @@ namespace OMS_Backend.Controllers
             if (emailExists)
                 return Conflict(new { message = "An account with this email already exists." });
 
-            // Default role: Customer (Id = 4, seeded)
             var customerRole = await _db.Roles.FirstOrDefaultAsync(r => r.Name == "Customer");
             if (customerRole == null)
                 return StatusCode(500, new { message = "Default role not configured." });
@@ -53,30 +52,22 @@ namespace OMS_Backend.Controllers
                 LastName = dto.LastName,
                 Email = dto.Email,
                 FirstContact = dto.FirstContact,
+                SecondContact = dto.SecondContact,
+                HomeAddress = dto.HomeAddress,
+                OfficeAddress = dto.OfficeAddress,
                 RoleId = customerRole.Id,
-                IsActive = true,
+                IsActive = false,     // pending admin verification
                 IsDeleted = false,
                 CreatedDate = DateTime.UtcNow,
-                CreatedBy = 0, // self-registered
+                CreatedBy = 0,
             };
 
-            // Built-in Identity hasher — PBKDF2-HMAC-SHA256, 100k+ iterations, random salt
             user.Password = _passwordHasher.HashPassword(user, dto.Password);
 
             _db.Users.Add(user);
             await _db.SaveChangesAsync();
 
-            var (token, expiresAt) = _jwtService.GenerateToken(user, customerRole.Name);
-
-            return Ok(new AuthResponseDto
-            {
-                Token = token,
-                ExpiresAt = expiresAt,
-                FirstName = user.FirstName,
-                LastName = user.LastName,
-                Email = user.Email,
-                Role = customerRole.Name,
-            });
+            return Ok(new { message = "Registration successful. Your account is pending verification." });
         }
 
         [HttpPost("login")]
@@ -88,14 +79,15 @@ namespace OMS_Backend.Controllers
                 .Include(u => u.Role)
                 .FirstOrDefaultAsync(u => u.Email.ToLower() == dto.Email.ToLower() && !u.IsDeleted);
 
-            if (user == null || !user.IsActive)
+            if (user == null)
                 return Unauthorized(new { message = "Invalid email or password." });
 
-            // Built-in Identity verification — handles PBKDF2 comparison + rehash-needed check
             var result = _passwordHasher.VerifyHashedPassword(user, user.Password, dto.Password);
-
             if (result == PasswordVerificationResult.Failed)
                 return Unauthorized(new { message = "Invalid email or password." });
+
+            if (!user.IsActive)
+                return Unauthorized(new { message = "Your account is pending verification. Please wait for admin approval." });
 
             if (result == PasswordVerificationResult.SuccessRehashNeeded)
             {

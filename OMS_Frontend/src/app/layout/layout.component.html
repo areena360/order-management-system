@@ -1,0 +1,85 @@
+<div class="h-screen bg-gray-100 flex overflow-hidden">
+
+  <!-- Sidebar -->
+  <aside
+  class="h-screen bg-gray-900 text-gray-100 flex flex-col overflow-hidden shrink-0 transition-all duration-200" [class.w-64]="sidebarOpen()"
+    [class.w-[72px]]="!sidebarOpen()">
+    <!-- Brand -->
+    <div class="h-16 flex items-center gap-3 px-4 border-b border-gray-800">
+      <div class="h-10 w-10 shrink-0 flex rounded-lg bg-gray-100 items-center justify-center">
+        <img src="/assets/images/oms-logo.png" alt="OMS Logo" class="h-8 w-8 object-contain" />
+      </div>
+
+      <span *ngIf="sidebarOpen()" class="font-semibold text-sm whitespace-nowrap">
+        OMS Panel
+      </span>
+    </div>
+
+    <!-- Nav -->
+    <nav class="flex-1 px-2 py-4 space-y-1">
+      <a routerLink="/dashboard" routerLinkActive="bg-gray-800 text-white" [routerLinkActiveOptions]="{exact: true}"
+        class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24"
+          stroke-width="1.7" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+        </svg>
+        <span *ngIf="sidebarOpen()" class="whitespace-nowrap">Dashboard</span>
+      </a>
+
+      <ng-container *ngIf="isAdminOrSuperAdmin">
+        <a routerLink="/dashboard/manage-users" routerLinkActive="bg-gray-800 text-white"
+          class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24"
+            stroke-width="1.7" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+          </svg>
+          <span *ngIf="sidebarOpen()" class="whitespace-nowrap">Manage Users</span>
+        </a>
+      </ng-container>
+    </nav>
+
+    <!-- Collapse toggle -->
+    <button (click)="toggleSidebar()"
+      class="flex items-center gap-3 px-3 py-3 m-2 cursor-w-resize rounded-lg text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 transition-transform"
+        [class.rotate-180]="!sidebarOpen()" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+      </svg>
+      <span *ngIf="sidebarOpen()">Collapse</span>
+    </button>
+  </aside>
+
+  <!-- Main content -->
+  <div class="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
+
+    <!-- Topbar -->
+    <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6">
+      <div></div>
+      <div class="flex items-center gap-3">
+        <div class="text-right hidden sm:block">
+          <p class="text-sm font-medium text-gray-800">{{ user?.firstName }} {{ user?.lastName }}</p>
+          <p class="text-xs text-gray-400">{{ user?.role }}</p>
+        </div>
+        <div class="h-9 w-9 rounded-full bg-gray-800 text-white flex items-center justify-center text-xs font-semibold">
+          {{ initials() }}
+        </div>
+        <button (click)="logout()"
+          class="ml-2 text-sm cursor-pointer text-gray-500 hover:text-red-600 transition flex items-center gap-1.5">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.7"
+            stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
+          </svg>
+          <span class="hidden sm:inline">Logout</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Page outlet -->
+    <main class="flex-1 p-6 min-h-0 overflow-y-auto">
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+</div>

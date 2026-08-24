@@ -1,5 +1,172 @@
-OMS_Backend/.vs/OMS_Backend/config/applicationhost.config
-/OMS_Backend/.vs
-/OMS_Backend/OMS_Backend/bin
-/OMS_Backend/OMS_Backend/obj
-/OMS_Frontend/.vscode
+# =========================================================
+# Angular
+# =========================================================
+
+# Dependencies
+**/node_modules/
+
+# Angular build output
+**/dist/
+**/out-tsc/
+
+# Angular cache
+**/.angular/cache/
+
+# Coverage
+**/coverage/
+
+# Environment files
+**/src/environments/environment*.local.ts
+
+# Angular temporary files
+**/.angular/
+
+
+# =========================================================
+# Node / NPM
+# =========================================================
+
+**/.npm/
+**/.eslintcache
+**/.stylelintcache
+
+# npm logs
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*
+**/pnpm-debug.log*
+
+# Optional package manager files
+# Keep package-lock.json normally, so DON'T ignore it.
+
+
+# =========================================================
+# ASP.NET Core / .NET
+# =========================================================
+
+# Build output
+**/bin/
+**/obj/
+
+# .NET generated files
+**/TestResults/
+**/BenchmarkDotNet.Artifacts/
+
+# User-specific files
+**/*.user
+**/*.rsuser
+**/*.suo
+**/*.userosscache
+**/*.sln.docstates
+
+# Visual Studio cache
+.vs/
+
+# Rider
+**/.idea/
+
+# VS Code
+.vscode/
+
+
+# =========================================================
+# .NET Development Certificates
+# =========================================================
+
+**/https/
+**/*.pfx
+
+
+# =========================================================
+# Logs
+# =========================================================
+
+**/*.log
+**/logs/
+
+
+# =========================================================
+# Database / Local Development
+# =========================================================
+
+# SQLite databases
+**/*.db
+**/*.db-shm
+**/*.db-wal
+**/*.sqlite
+**/*.sqlite3
+
+# Local SQL Server database files
+**/*.mdf
+**/*.ldf
+
+
+# =========================================================
+# Environment / Secrets
+# =========================================================
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# ASP.NET local settings
+**/appsettings.Development.json
+**/appsettings.Local.json
+**/appsettings.*.local.json
+
+# User secrets
+**/secrets.json
+
+
+# =========================================================
+# OS generated files
+# =========================================================
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Linux
+*~
+
+
+# =========================================================
+# Temporary files
+# =========================================================
+
+**/*.tmp
+**/*.temp
+**/*.swp
+**/*.swo
+**/*.bak
+
+
+# =========================================================
+# Publish output
+# =========================================================
+
+**/publish/
+**/wwwroot/dist/
+
+
+# =========================================================
+# Docker
+# =========================================================
+
+# Local Docker override
+docker-compose.override.yml
+
+
+# =========================================================
+# Azure / Local tooling
+# =========================================================
+
+**/azureCredentials.json
+**/local.settings.json

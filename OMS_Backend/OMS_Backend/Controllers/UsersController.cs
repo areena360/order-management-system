@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OMS_Backend.Data;
-using System;
+using OMS_Backend.Services;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -12,11 +12,16 @@ public class UsersController : ControllerBase
 {
     private readonly OMSDbContext _db;
     private readonly IPasswordHasher<User> _passwordHasher;
+    private readonly IEmailService _emailService;
 
-    public UsersController(OMSDbContext db, IPasswordHasher<User> passwordHasher)
+    public UsersController(
+        OMSDbContext db,
+        IPasswordHasher<User> passwordHasher,
+        IEmailService emailService)
     {
         _db = db;
         _passwordHasher = passwordHasher;
+        _emailService = emailService;
     }
 
     [HttpGet]
@@ -33,6 +38,7 @@ public class UsersController : ControllerBase
                 u.SecondContact,
                 u.HomeAddress,
                 u.OfficeAddress,
+                u.WebsiteUrl,
                 u.RoleId,
                 Role = u.Role != null ? u.Role.Name : "No Role",
                 u.IsActive,
@@ -40,7 +46,9 @@ public class UsersController : ControllerBase
                 u.CreatedDate,
                 CreatedBy = u.CreatedBy.ToString(),
                 u.UpdatedDate,
-                UpdatedBy = u.UpdatedBy != null ? u.UpdatedBy.ToString() : null
+                UpdatedBy = u.UpdatedBy != null
+                    ? u.UpdatedBy.ToString()
+                    : null
             })
             .ToListAsync();
 
@@ -56,31 +64,54 @@ public class UsersController : ControllerBase
             LastName = dto.LastName,
             Email = dto.Email,
             FirstContact = dto.FirstContact,
+            SecondContact = dto.SecondContact,
+            HomeAddress = dto.HomeAddress,
+            OfficeAddress = dto.OfficeAddress,
+            WebsiteUrl = dto.WebsiteUrl,
             RoleId = dto.RoleId,
-            IsActive = true // admin-created users are active immediately
+            IsActive = true
         };
-        user.Password = _passwordHasher.HashPassword(user, dto.Password);
+
+        user.Password = _passwordHasher.HashPassword(
+            user,
+            dto.Password);
+
         _db.Users.Add(user);
+
         await _db.SaveChangesAsync();
+
         return Ok(new { user.Id });
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> Update(int id, [FromBody] UserDto dto)
+    public async Task<IActionResult> Update(
+        int id,
+        [FromBody] UserDto dto)
     {
         var user = await _db.Users.FindAsync(id);
-        if (user == null) return NotFound();
+
+        if (user == null)
+            return NotFound();
 
         user.FirstName = dto.FirstName;
         user.LastName = dto.LastName;
         user.Email = dto.Email;
         user.FirstContact = dto.FirstContact;
+        user.SecondContact = dto.SecondContact;
+        user.HomeAddress = dto.HomeAddress;
+        user.OfficeAddress = dto.OfficeAddress;
+        user.WebsiteUrl = dto.WebsiteUrl;
         user.RoleId = dto.RoleId;
 
         if (!string.IsNullOrWhiteSpace(dto.Password))
-            user.Password = _passwordHasher.HashPassword(user, dto.Password);
+        {
+            user.Password = _passwordHasher.HashPassword(
+                user,
+                dto.Password);
+        }
 
         await _db.SaveChangesAsync();
+
         return NoContent();
     }
 
@@ -88,9 +119,14 @@ public class UsersController : ControllerBase
     public async Task<IActionResult> SoftDelete(int id)
     {
         var user = await _db.Users.FindAsync(id);
-        if (user == null) return NotFound();
+
+        if (user == null)
+            return NotFound();
+
         user.IsDeleted = true;
+
         await _db.SaveChangesAsync();
+
         return NoContent();
     }
 
@@ -98,22 +134,61 @@ public class UsersController : ControllerBase
     public async Task<IActionResult> Restore(int id)
     {
         var user = await _db.Users.FindAsync(id);
-        if (user == null) return NotFound();
+
+        if (user == null)
+            return NotFound();
+
         user.IsDeleted = false;
+
         await _db.SaveChangesAsync();
+
         return NoContent();
     }
 
-    // Admin/Super Admin verifies (or revokes) a user's account
     [HttpPatch("{id}/toggle-active")]
     public async Task<IActionResult> ToggleActive(int id)
     {
         var user = await _db.Users.FindAsync(id);
-        if (user == null) return NotFound();
 
+        if (user == null)
+        {
+            return NotFound(new
+            {
+                message = "User not found."
+            });
+        }
+
+        // Check the previous state
+        bool wasInactive = !user.IsActive;
+
+        // Toggle active status
         user.IsActive = !user.IsActive;
+
         await _db.SaveChangesAsync();
-        return Ok(new { user.IsActive });
+
+        // Send activation email only when:
+        // Inactive -> Active
+        if (wasInactive && user.IsActive)
+        {
+            try
+            {
+                await _emailService.SendAccountActivationEmailAsync(
+                    user.Email,
+                    user.FirstName);
+            }
+            catch (Exception ex)
+            {
+                // Account is already activated.
+                // Email failure should not undo activation.
+                Console.WriteLine(
+                    $"Activation email failed for {user.Email}: {ex.Message}");
+            }
+        }
+
+        return Ok(new
+        {
+            user.IsActive
+        });
     }
 }
 
@@ -123,6 +198,10 @@ public class UserDto
     public string LastName { get; set; }
     public string Email { get; set; }
     public string FirstContact { get; set; }
+    public string? SecondContact { get; set; }
+    public string? HomeAddress { get; set; }
+    public string? OfficeAddress { get; set; }
+    public string? WebsiteUrl { get; set; }
     public int RoleId { get; set; }
     public string? Password { get; set; }
 }

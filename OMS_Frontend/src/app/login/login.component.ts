@@ -99,9 +99,14 @@ export class LoginComponent {
     }
 
     this.authService.login(email, password, this.rememberMe()).subscribe({
-      next: () => {
+      next: (response) => {
         this.isSubmitting.set(false);
-        this.router.navigate(['/dashboard']);
+
+        if (response.role === 'Super Admin') {
+          this.router.navigate(['/dashboard']);
+        } else {
+          this.router.navigate(['/dashboard/profile']);
+        }
       },
       error: (err) => {
         this.isSubmitting.set(false);

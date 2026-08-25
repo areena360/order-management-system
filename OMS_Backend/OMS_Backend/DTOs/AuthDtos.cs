@@ -1,30 +1,24 @@
 ﻿using System.ComponentModel.DataAnnotations;
-
 namespace OMS_Backend.DTOs
 {
     public class RegisterDto
     {
         [Required, StringLength(50, MinimumLength = 2)]
         public string FirstName { get; set; }
-
         [Required, StringLength(50, MinimumLength = 2)]
         public string LastName { get; set; }
-
         [Required, EmailAddress]
         public string Email { get; set; }
-
         [Required, Phone]
         public string FirstContact { get; set; }
-
         [Phone]
         public string? SecondContact { get; set; }
-
         [StringLength(250)]
         public string? HomeAddress { get; set; }
-
         [StringLength(250)]
         public string? OfficeAddress { get; set; }
-
+        [Url]
+        public string? WebsiteUrl { get; set; }
         [Required]
         [StringLength(32, MinimumLength = 8)]
         [RegularExpression(
@@ -32,46 +26,36 @@ namespace OMS_Backend.DTOs
             ErrorMessage = "Password must contain uppercase, lowercase, a number, and a special character."
         )]
         public string Password { get; set; }
-
         [Required, Compare(nameof(Password), ErrorMessage = "Passwords do not match.")]
         public string ConfirmPassword { get; set; }
     }
-
     public class LoginDto
     {
         [Required, EmailAddress]
         public string Email { get; set; }
-
         [Required]
         public string Password { get; set; }
-
         public bool RememberMe { get; set; }
     }
-
     public class ForgotPasswordDto
     {
         [Required, EmailAddress]
         public string Email { get; set; }
     }
-
     public class ResetPasswordDto
     {
         [Required]
         public string Token { get; set; }
-
         [Required, EmailAddress]
         public string Email { get; set; }
-
         [Required]
         [StringLength(32, MinimumLength = 8)]
         [RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?"":{}|<>_\-]).+$",
             ErrorMessage = "Password must contain uppercase, lowercase, a number, and a special character.")]
         public string NewPassword { get; set; }
-
         [Required, Compare(nameof(NewPassword), ErrorMessage = "Passwords do not match.")]
         public string ConfirmPassword { get; set; }
     }
-
     public class AuthResponseDto
     {
         public string Token { get; set; }
@@ -80,5 +64,6 @@ namespace OMS_Backend.DTOs
         public string LastName { get; set; }
         public string Email { get; set; }
         public string Role { get; set; }
+        public bool IsActive { get; set; }
     }
 }

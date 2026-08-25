@@ -13,6 +13,7 @@ export class LayoutComponent {
   sidebarOpen = signal(true);
   user: any;
   isAdminOrSuperAdmin = false;
+  profileMenuOpen = false;
 
   constructor(private authService: AuthService, private router: Router) {
     this.user = this.authService.getCurrentUser();

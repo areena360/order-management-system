@@ -1,0 +1,204 @@
+<div class="min-h-screen w-full bg-gray-50 px-4 py-8 sm:py-12">
+  <div class="w-full max-w-5xl mx-auto">
+
+    <!-- Loading -->
+    <div *ngIf="isLoading()"
+      class="bg-white border border-gray-200 rounded-xl shadow-sm p-10 text-center text-sm text-gray-500">
+      <div class="inline-block h-5 w-5 rounded-full border-2 border-gray-300 border-t-indigo-600 animate-spin mb-2">
+      </div>
+      <p>Loading profile…</p>
+    </div>
+
+    <!-- Error -->
+    <div *ngIf="!isLoading() && errorMessage()"
+      class="flex items-start gap-2 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="1.8">
+        <path stroke-linecap="round" stroke-linejoin="round"
+          d="M12 9v3.75m0 3.75h.008v.008H12v-.008zM21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <span>{{ errorMessage() }}</span>
+    </div>
+
+    <ng-container *ngIf="!isLoading() && !errorMessage() && user() as u">
+
+      <!-- Page header -->
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h1 class="text-lg font-semibold text-gray-900">Account profile</h1>
+          <p class="text-xs text-gray-500 mt-0.5">User ID #{{ u.id }}</p>
+        </div>
+        <span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium"
+          [class.bg-emerald-50]="u.isActive" [class.text-emerald-700]="u.isActive" [class.bg-amber-50]="!u.isActive"
+          [class.text-amber-700]="!u.isActive">
+          <span class="h-1.5 w-1.5 rounded-full" [class.bg-emerald-500]="u.isActive"
+            [class.bg-amber-500]="!u.isActive"></span>
+          {{ u.isActive ? 'Active' : 'Pending approval' }}
+        </span>
+      </div>
+
+      <!-- Verification banner -->
+      <div *ngIf="!u.isActive" class="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-5 py-5">
+        <div class="flex items-start gap-3">
+          <div
+            class="h-9 w-9 shrink-0 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4.5 w-4.5 text-amber-600" fill="none" viewBox="0 0 24 24"
+              stroke-width="1.8" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l4 2" />
+              <circle cx="12" cy="12" r="9" />
+            </svg>
+          </div>
+          <div>
+            <h2 class="text-sm font-semibold text-amber-800">Your account is under review</h2>
+            <p class="mt-1 text-xs text-amber-700 max-w-lg">
+              Thanks for registering. Our team is verifying your details — once your account is activated, we'll send
+              you a confirmation email.
+            </p>
+          </div>
+        </div>
+
+        <div class="mt-5 flex items-center justify-center gap-1 sm:gap-2">
+          <div class="flex flex-col items-center">
+            <div class="h-7 w-7 rounded-full bg-gray-800 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24"
+                stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+              </svg>
+            </div>
+            <span class="mt-1.5 text-[11px] font-medium text-gray-700">Registered</span>
+          </div>
+          <div class="h-px w-10 sm:w-24 bg-amber-300"></div>
+          <div class="flex flex-col items-center">
+            <div class="h-7 w-7 rounded-full bg-amber-100 border-2 border-amber-400 flex items-center justify-center">
+              <span class="h-2 w-2 rounded-full bg-amber-500 animate-pulse"></span>
+            </div>
+            <span class="mt-1.5 text-[11px] font-medium text-amber-600">Under review</span>
+          </div>
+          <div class="h-px w-10 sm:w-24 bg-gray-200"></div>
+          <div class="flex flex-col items-center">
+            <div class="h-7 w-7 rounded-full bg-gray-100 border-2 border-gray-200 flex items-center justify-center">
+              <span class="h-2 w-2 rounded-full bg-gray-300"></span>
+            </div>
+            <span class="mt-1.5 text-[11px] font-medium text-gray-400">Activated</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Left: identity card -->
+        <div class="lg:col-span-1">
+          <div
+            class="bg-white border-2 border-gray-200 rounded-xl shadow-[0_8px_24px_-4px_rgba(0,0,0,0.15),0_2px_6px_-2px_rgba(0,0,0,0.1)] p-6 flex flex-col items-center text-center lg:sticky lg:top-6">
+            <div class="h-16 w-16 rounded-full bg-gray-900 flex items-center justify-center ring-4 ring-gray-100">
+              <span class="text-lg font-semibold text-white tracking-wide">{{ initials() }}</span>
+            </div>
+            <h2 class="mt-3 text-base font-semibold text-gray-900">{{ u.firstName }} {{ u.lastName }}</h2>
+            <p class="text-xs text-gray-500">{{ u.role }}</p>
+            <p class="mt-1 text-xs text-gray-400 truncate max-w-full">{{ u.email }}</p>
+
+            <div class="w-full h-px bg-gray-100 my-5"></div>
+
+            <div class="w-full space-y-3 text-left">
+              <div class="flex justify-between text-xs">
+                <span class="text-gray-500">Created</span>
+                <span class="text-gray-700 font-medium">{{ u.createdDate | date:'mediumDate' }}</span>
+              </div>
+              <div class="flex justify-between text-xs">
+                <span class="text-gray-500">Last updated</span>
+                <span class="text-gray-700 font-medium">{{ u.updatedDate ? (u.updatedDate | date:'mediumDate') : '—'
+                  }}</span>
+              </div>
+            </div>
+
+            <div class="w-full flex flex-col gap-2 mt-6">
+              <button type="button" (click)="onEdit()"
+                class="w-full cursor-pointer flex items-center justify-center gap-2 rounded-lg bg-indigo-600 py-2 px-4 text-sm font-semibold text-white
+                       hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 transition">
+                Edit profile
+              </button>
+              <button type="button" (click)="onChangePassword()"
+                class="w-full cursor-pointer flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white py-2 px-4 text-sm font-semibold text-gray-700
+                       hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transition">
+                Change password
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: details -->
+        <div class="lg:col-span-2 space-y-6">
+
+          <!-- Personal information -->
+          <div class="bg-white border-2 border-gray-200 rounded-xl shadow-[0_8px_24px_-4px_rgba(0,0,0,0.15),0_2px_6px_-2px_rgba(0,0,0,0.1)] p-5 sm:p-6">
+            <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-4">Personal information</h2>
+            <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+              <div>
+                <dt class="text-xs text-gray-500 mb-1">First name</dt>
+                <dd class="text-sm text-gray-900 font-medium">{{ u.firstName }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-gray-500 mb-1">Last name</dt>
+                <dd class="text-sm text-gray-900 font-medium">{{ u.lastName }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-gray-500 mb-1">Role</dt>
+                <dd class="text-sm text-gray-900 font-medium">{{ u.role }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-gray-500 mb-1">Email address</dt>
+                <dd class="text-sm text-gray-900 font-medium truncate">{{ u.email }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-gray-500 mb-1">Website URL</dt>
+                <dd class="text-sm text-gray-900 font-medium truncate">{{ u.websiteUrl || '—' }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-gray-500 mb-1">WhatsApp number</dt>
+                <dd class="text-sm text-gray-900 font-medium">{{ u.firstContact }}</dd>
+              </div>
+            </dl>
+          </div>
+
+          <!-- Contact & address -->
+          <div class="bg-white border-2 border-gray-200 rounded-xl shadow-[0_8px_24px_-4px_rgba(0,0,0,0.15),0_2px_6px_-2px_rgba(0,0,0,0.1)] p-5 sm:p-6">
+            <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-4">Contact &amp; address</h2>
+            <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+              <div>
+                <dt class="text-xs text-gray-500 mb-1">Call number</dt>
+                <dd class="text-sm text-gray-900 font-medium">{{ u.secondContact || '—' }}</dd>
+              </div>
+              <div></div>
+              <div>
+                <dt class="text-xs text-gray-500 mb-1">Home address</dt>
+                <dd class="text-sm text-gray-900 font-medium">{{ u.homeAddress || '—' }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-gray-500 mb-1">Office address</dt>
+                <dd class="text-sm text-gray-900 font-medium">{{ u.officeAddress || '—' }}</dd>
+              </div>
+            </dl>
+          </div>
+
+          <!-- Account information -->
+          <div class="bg-white border-2 border-gray-200 rounded-xl shadow-[0_8px_24px_-4px_rgba(0,0,0,0.15),0_2px_6px_-2px_rgba(0,0,0,0.1)] p-5 sm:p-6">
+            <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-4">Account information</h2>
+            <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+              <div>
+                <dt class="text-xs text-gray-500 mb-1">Created on</dt>
+                <dd class="text-sm text-gray-900 font-medium">{{ u.createdDate | date:'medium' }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-gray-500 mb-1">Last updated</dt>
+                <dd class="text-sm text-gray-900 font-medium">{{ u.updatedDate ? (u.updatedDate | date:'medium') : '—'
+                  }}</dd>
+              </div>
+            </dl>
+          </div>
+
+        </div>
+      </div>
+    </ng-container>
+  </div>
+</div>
+<app-footer></app-footer>

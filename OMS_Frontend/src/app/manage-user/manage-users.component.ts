@@ -2,6 +2,8 @@ import { Component, OnInit, HostListener } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { FormsModule, NgForm } from '@angular/forms';
+import { FooterComponent } from "../footer/footer.component";
+import { AuthService } from '../auth/auth.service';
 
 export interface AppUser {
   id: number;
@@ -12,6 +14,7 @@ export interface AppUser {
   email: string;
   homeAddress: string;
   officeAddress: string;
+  websiteUrl: string; 
   roleId: number;
   role: string;         // display name, derived from roleId
   isActive: boolean;
@@ -31,6 +34,7 @@ export interface UserForm {
   secondContact: string;
   homeAddress: string;
   officeAddress: string;
+  websiteUrl: string; 
   roleId: number;
   isActive?: boolean;
   password?: string;
@@ -45,7 +49,7 @@ interface ColumnOption {
 @Component({
   selector: 'app-manage-users',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, FooterComponent],
   templateUrl: './manage-users.component.html'
 })
 export class ManageUsersComponent implements OnInit {
@@ -78,6 +82,7 @@ export class ManageUsersComponent implements OnInit {
     { key: 'email', label: 'Email' },
     { key: 'homeAddress', label: 'Home Address' },
     { key: 'officeAddress', label: 'Office Address' },
+    { key: 'websiteUrl', label: 'Website' },
     { key: 'createdDate', label: 'Created Date' },
     { key: 'createdBy', label: 'Created By' },
     { key: 'updatedDate', label: 'Updated Date' },
@@ -91,6 +96,7 @@ export class ManageUsersComponent implements OnInit {
     email: true,
     homeAddress: false,
     officeAddress: false,
+    websiteUrl: false,
     createdDate: false,
     createdBy: false,
     updatedDate: false,
@@ -174,7 +180,7 @@ export class ManageUsersComponent implements OnInit {
 
   private apiUrl = 'https://localhost:44370/api/users';
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient, public auth: AuthService) {}
 
   ngOnInit(): void {
     this.fetchUsers();
@@ -189,6 +195,7 @@ export class ManageUsersComponent implements OnInit {
       secondContact: '',
       homeAddress: '',
       officeAddress: '',
+      websiteUrl: '',
       roleId: 4,
       isActive: true,
       password: ''
@@ -302,6 +309,7 @@ export class ManageUsersComponent implements OnInit {
       secondContact: user.secondContact,
       homeAddress: user.homeAddress,
       officeAddress: user.officeAddress,
+      websiteUrl: user.websiteUrl,
       roleId: user.roleId,
       isActive: user.isActive
     };
@@ -388,5 +396,13 @@ openToggleActiveModal(user: AppUser): void {
   this.showDeleteModal = false;
   this.showToggleActiveModal = false;
   this.selectedUser = null;
+}
+
+isSuperAdmin(user: AppUser): boolean {
+  return user.roleId === 1;
+}
+
+isRowSuperAdmin(user: AppUser): boolean {
+  return user.role === 'Super Admin';
 }
 }

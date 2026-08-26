@@ -96,7 +96,7 @@ namespace OMS_Backend.Services
 
                         <p style='margin-top:30px'>
                             Regards,<br/>
-                            <strong>Order Management System</strong>
+                            <strong>Areena Design OMS</strong>
                         </p>
                     </div>"
             };
@@ -184,7 +184,7 @@ namespace OMS_Backend.Services
 
                             <p style='margin-top:28px'>
                                 Regards,<br/>
-                                <strong>Order Management System</strong>
+                                <strong>Areena Design OMS</strong>
                             </p>
                         </div>
                     </div>"

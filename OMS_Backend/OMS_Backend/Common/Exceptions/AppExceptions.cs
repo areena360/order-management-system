@@ -59,4 +59,10 @@
         public BadRequestAppException(string message)
             : base(message, StatusCodes.Status400BadRequest, "BAD_REQUEST") { }
     }
+
+    public class AppConfigurationException : AppException
+    {
+        public AppConfigurationException(string message)
+            : base(message, StatusCodes.Status500InternalServerError, "CONFIGURATION_ERROR") { }
+    }
 }

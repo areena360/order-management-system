@@ -1,29 +1,28 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using OMS_Backend.Common.Exceptions;
 using OMS_Backend.Data;
 
 namespace OMS_Backend.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize] // any authenticated user — NOT restricted to Admin/Super Admin
+    [Authorize]
     public class ProfileController : ControllerBase
     {
         private readonly OMSDbContext _db;
-
         public ProfileController(OMSDbContext db)
         {
             _db = db;
         }
 
-        // GET api/profile/me
         [HttpGet("me")]
         public async Task<IActionResult> GetMe()
         {
             var userIdClaim = User.FindFirst("userId")?.Value;
             if (userIdClaim == null || !int.TryParse(userIdClaim, out var userId))
-                return Unauthorized(new { message = "Invalid token." });
+                throw new UnauthorizedAppException("Invalid token.");
 
             var user = await _db.Users
                 .Include(u => u.Role)
@@ -46,7 +45,8 @@ namespace OMS_Backend.Controllers
                 })
                 .FirstOrDefaultAsync();
 
-            if (user == null) return NotFound(new { message = "User not found." });
+            if (user == null)
+                throw new NotFoundException("User", userId);
 
             return Ok(user);
         }

@@ -13,6 +13,8 @@ import { FooterComponent } from "../footer/footer.component";
 export class ProfileComponent implements OnInit {
   user = signal<UserProfile | null>(null);
   isLoading = signal(true);
+
+  // kept for template binding; interceptor shows the toast now
   errorMessage = signal<string | null>(null);
 
   initials = computed(() => {
@@ -28,16 +30,15 @@ export class ProfileComponent implements OnInit {
 
   private loadProfile(): void {
     this.isLoading.set(true);
-    this.errorMessage.set(null);
 
     this.authService.getProfile().subscribe({
       next: (profile) => {
         this.user.set(profile);
         this.isLoading.set(false);
       },
-      error: (err) => {
+      error: () => {
+        // Toast already shown by error interceptor.
         this.isLoading.set(false);
-        this.errorMessage.set(err.error?.message || 'Failed to load profile.');
       },
     });
   }

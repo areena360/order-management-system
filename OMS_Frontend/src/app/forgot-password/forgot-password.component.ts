@@ -14,6 +14,8 @@ export class ForgotPasswordComponent {
   forgotForm: FormGroup;
   isSubmitting = signal(false);
   emailSent = signal(false);
+
+  // kept for template binding; interceptor shows the toast now
   errorMessage = signal<string | null>(null);
 
   constructor(private fb: FormBuilder, private authService: AuthService) {
@@ -33,8 +35,6 @@ export class ForgotPasswordComponent {
   }
 
   onSubmit(): void {
-    this.errorMessage.set(null);
-
     if (this.forgotForm.invalid) {
       this.forgotForm.markAllAsTouched();
       return;
@@ -49,10 +49,9 @@ export class ForgotPasswordComponent {
         this.emailSent.set(true);
       },
       error: () => {
+        // Toast already shown by error interceptor (real network/server errors only —
+        // backend always returns 200 for unknown emails, so this won't leak existence).
         this.isSubmitting.set(false);
-        // Still show generic success to avoid leaking whether email exists,
-        // real network/server errors can show this instead:
-        this.errorMessage.set('Something went wrong. Please try again.');
       },
     });
   }

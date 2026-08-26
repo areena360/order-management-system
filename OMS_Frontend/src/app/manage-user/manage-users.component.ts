@@ -16,7 +16,7 @@ export interface AppUser {
   officeAddress: string;
   websiteUrl: string; 
   roleId: number;
-  role: string;         // display name, derived from roleId
+  role: string;
   isActive: boolean;
   isDeleted: boolean;
   createdDate: string;
@@ -40,7 +40,6 @@ export interface UserForm {
   password?: string;
 }
 
-// A column that can be hidden. key must match the *ngIf flag used in the template.
 interface ColumnOption {
   key: string;
   label: string;
@@ -73,9 +72,6 @@ export class ManageUsersComponent implements OnInit {
   currentPage = 1;
   pageSize = 8;
 
-  // ---- Column visibility ----
-  // Full Name, Role, Actions are always shown (core columns) and are not toggleable.
-  // Everything else can be hidden to keep the table from getting too wide.
   columnOptions: ColumnOption[] = [
     { key: 'firstContact', label: 'First Contact' },
     { key: 'secondContact', label: 'Second Contact' },
@@ -89,7 +85,6 @@ export class ManageUsersComponent implements OnInit {
     { key: 'updatedBy', label: 'Updated By' },
   ];
 
-  // Sensible default: keep the essentials visible, hide the audit-trail noise.
   visibleColumns: Record<string, boolean> = {
     firstContact: true,
     secondContact: false,
@@ -124,8 +119,8 @@ export class ManageUsersComponent implements OnInit {
   }
 
   toggleAddPassword(): void {
-  this.showAddPassword = !this.showAddPassword;
-}
+    this.showAddPassword = !this.showAddPassword;
+  }
 
   selectFormRole(id: number): void {
     this.form.roleId = id;
@@ -160,7 +155,6 @@ export class ManageUsersComponent implements OnInit {
     return Object.values(this.visibleColumns).filter(Boolean).length;
   }
 
-  // Close the column menu when clicking outside of it
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent): void {
     const target = event.target as HTMLElement;
@@ -169,7 +163,6 @@ export class ManageUsersComponent implements OnInit {
     if (!target.closest('[data-form-role-menu]') && !target.closest('[data-form-role-menu-edit]')) this.showFormRoleMenu = false;
   }
 
-  // modal state
   showAddModal = false;
   showEditModal = false;
   showDeleteModal = false;
@@ -213,7 +206,7 @@ export class ManageUsersComponent implements OnInit {
         this.loading = false;
       },
       error: () => {
-        this.errorMsg = 'Failed to load users. Please try again.';
+        // Toast already shown by error interceptor.
         this.loading = false;
       }
     });
@@ -269,10 +262,9 @@ export class ManageUsersComponent implements OnInit {
   }
 
   fullName(user: AppUser): string {
-  return `${user.firstName} ${user.lastName}`.trim();
-}
+    return `${user.firstName} ${user.lastName}`.trim();
+  }
 
-  // ---- Add ----
   openAddModal(): void {
     this.form = this.emptyForm();
     this.showAddModal = true;
@@ -292,12 +284,10 @@ export class ManageUsersComponent implements OnInit {
       },
       error: () => {
         this.saving = false;
-        alert('Failed to add user.');
       }
     });
   }
 
-  // ---- Edit ----
   openEditModal(user: AppUser): void {
     this.selectedUser = user;
     this.form = {
@@ -331,12 +321,10 @@ export class ManageUsersComponent implements OnInit {
       },
       error: () => {
         this.saving = false;
-        alert('Failed to update user.');
       }
     });
   }
 
-  // ---- Delete ----
   openDeleteModal(user: AppUser): void {
     this.selectedUser = user;
     this.showDeleteModal = true;
@@ -353,7 +341,6 @@ export class ManageUsersComponent implements OnInit {
       },
       error: () => {
         this.saving = false;
-        alert('Failed to delete user.');
       }
     });
   }
@@ -364,45 +351,44 @@ export class ManageUsersComponent implements OnInit {
         user.isDeleted = false;
         this.applyFilters();
       },
-      error: () => alert('Failed to restore user.')
+      error: () => {}
     });
   }
 
- confirmToggleActive(): void {
-  if (!this.selectedUser) return;
-  this.saving = true;
-  this.http.patch<{ isActive: boolean }>(`${this.apiUrl}/${this.selectedUser.id}/toggle-active`, {}).subscribe({
-    next: (res) => {
-      if (this.selectedUser) this.selectedUser.isActive = res.isActive;
-      this.saving = false;
-      this.showToggleActiveModal = false;
-      this.selectedUser = null;
-    },
-    error: () => {
-      this.saving = false;
-      alert('Failed to update status.');
-    }
-  });
-}
+  confirmToggleActive(): void {
+    if (!this.selectedUser) return;
+    this.saving = true;
+    this.http.patch<{ isActive: boolean }>(`${this.apiUrl}/${this.selectedUser.id}/toggle-active`, {}).subscribe({
+      next: (res) => {
+        if (this.selectedUser) this.selectedUser.isActive = res.isActive;
+        this.saving = false;
+        this.showToggleActiveModal = false;
+        this.selectedUser = null;
+      },
+      error: () => {
+        this.saving = false;
+      }
+    });
+  }
 
-openToggleActiveModal(user: AppUser): void {
-  this.selectedUser = user;
-  this.showToggleActiveModal = true;
-}
+  openToggleActiveModal(user: AppUser): void {
+    this.selectedUser = user;
+    this.showToggleActiveModal = true;
+  }
 
   closeModals(): void {
-  this.showAddModal = false;
-  this.showEditModal = false;
-  this.showDeleteModal = false;
-  this.showToggleActiveModal = false;
-  this.selectedUser = null;
-}
+    this.showAddModal = false;
+    this.showEditModal = false;
+    this.showDeleteModal = false;
+    this.showToggleActiveModal = false;
+    this.selectedUser = null;
+  }
 
-isSuperAdmin(user: AppUser): boolean {
-  return user.roleId === 1;
-}
+  isSuperAdmin(user: AppUser): boolean {
+    return user.roleId === 1;
+  }
 
-isRowSuperAdmin(user: AppUser): boolean {
-  return user.role === 'Super Admin';
-}
+  isRowSuperAdmin(user: AppUser): boolean {
+    return user.role === 'Super Admin';
+  }
 }

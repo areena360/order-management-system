@@ -1,11 +1,8 @@
-// ==== Program.cs additions ====
-// Add these alongside your existing DbContext registration from the earlier setup.
-
-using Microsoft.AspNetCore.Authentication.JwtBearer; // built-in package
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using OMS_Backend.Data;
+using OMS_Backend.Common.ExceptionHandling;   // NEW
 using OMS_Backend.Data;
 using OMS_Backend.Services;
 using System.Security.Claims;
@@ -15,7 +12,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 
-// ---- Existing DbContext (from previous step) ----
+// ---- DbContext ----
 builder.Services.AddDbContext<OMSDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
@@ -23,10 +20,9 @@ builder.Services.AddDbContext<OMSDbContext>(options =>
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 
-// ---- JWT Bearer authentication (built-in Microsoft.AspNetCore.Authentication.JwtBearer) ----
+// ---- JWT Bearer authentication ----
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secretKey = Encoding.UTF8.GetBytes(jwtSettings["Secret"]);
-
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -49,7 +45,6 @@ builder.Services.AddAuthentication(options =>
         ClockSkew = TimeSpan.Zero,
     };
 });
-
 builder.Services.AddAuthorization();
 
 // ---- CORS for Angular dev server ----
@@ -61,28 +56,32 @@ builder.Services.AddCors(options =>
               .AllowAnyMethod());
 });
 
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+// ---- Global exception handling (NEW) ----
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
 
 builder.Services.AddControllers()
     .AddJsonOptions(o =>
         o.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles);
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
-    app.UseDeveloperExceptionPage();
     app.UseSwagger();
     app.UseSwaggerUI();
+    // NOTE: UseDeveloperExceptionPage() removed — GlobalExceptionHandler now
+    // handles all exceptions (dev + prod) via ProblemDetails.
 }
+
+// Global exception handler MUST be first in the pipeline
+app.UseExceptionHandler();   // NEW
 
 app.UseHttpsRedirection();
 app.UseCors("AngularClient");
-
-app.UseAuthentication();   // built-in middleware — must come before UseAuthorization
+app.UseAuthentication();
 app.UseAuthorization();
-
 app.MapControllers();
 app.Run();

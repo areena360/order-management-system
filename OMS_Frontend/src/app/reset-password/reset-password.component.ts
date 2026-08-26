@@ -21,6 +21,8 @@ export class ResetPasswordComponent implements OnInit {
   showConfirmPassword = signal(false);
   isSubmitting = signal(false);
   resetSuccess = signal(false);
+
+  // kept for template binding; interceptor shows the toast now
   errorMessage = signal<string | null>(null);
 
   constructor(
@@ -31,10 +33,7 @@ export class ResetPasswordComponent implements OnInit {
   ) {
     this.resetForm = this.fb.group(
       {
-        newPassword: [
-          '',
-          [Validators.required, Validators.minLength(8), Validators.maxLength(32), this.passwordFormatValidator],
-        ],
+        newPassword: ['', [Validators.required, Validators.minLength(8), Validators.maxLength(32), this.passwordFormatValidator]],
         confirmPassword: ['', [Validators.required]],
       },
       { validators: this.passwordsMatchValidator }
@@ -95,8 +94,6 @@ export class ResetPasswordComponent implements OnInit {
   }
 
   onSubmit(): void {
-    this.errorMessage.set(null);
-
     if (this.resetForm.invalid) {
       this.resetForm.markAllAsTouched();
       return;
@@ -113,9 +110,9 @@ export class ResetPasswordComponent implements OnInit {
           this.resetSuccess.set(true);
           setTimeout(() => this.router.navigate(['/login']), 2000);
         },
-        error: (err) => {
+        error: () => {
+          // Toast already shown by error interceptor.
           this.isSubmitting.set(false);
-          this.errorMessage.set(err?.error?.message || 'This reset link is invalid or has expired.');
         },
       });
   }

@@ -23,7 +23,7 @@ export class LoginComponent {
   showPassword = signal(false);
   rememberMe = signal(false);
   isSubmitting = signal(false);
-  loginError = signal<string | null>(null);
+  loginError = signal<string | null>(null); // kept for template binding; interceptor shows the toast now
 
   constructor(private fb: FormBuilder, private authService: AuthService, private router: Router) {
     this.loginForm = this.fb.group({
@@ -82,8 +82,6 @@ export class LoginComponent {
   }
 
   onSubmit(): void {
-    this.loginError.set(null);
-
     if (this.loginForm.invalid) {
       this.loginForm.markAllAsTouched();
       return;
@@ -108,9 +106,9 @@ export class LoginComponent {
           this.router.navigate(['/dashboard/profile']);
         }
       },
-      error: (err) => {
+      error: () => {
+        // Toast already shown by error interceptor.
         this.isSubmitting.set(false);
-        this.loginError.set(err?.error?.message || 'Invalid email or password.');
       },
     });
   }

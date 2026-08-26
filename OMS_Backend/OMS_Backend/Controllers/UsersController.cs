@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using OMS_Backend.Common.Exceptions;
 using OMS_Backend.Data;
 using OMS_Backend.Services;
 
@@ -58,6 +59,10 @@ public class UsersController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] UserDto dto)
     {
+        var emailExists = await _db.Users.AnyAsync(u => u.Email == dto.Email);
+        if (emailExists)
+            throw new ConflictException($"A user with email '{dto.Email}' already exists.");
+
         var user = new User
         {
             FirstName = dto.FirstName,
@@ -88,10 +93,8 @@ public class UsersController : ControllerBase
         int id,
         [FromBody] UserDto dto)
     {
-        var user = await _db.Users.FindAsync(id);
-
-        if (user == null)
-            return NotFound();
+        var user = await _db.Users.FindAsync(id)
+            ?? throw new NotFoundException(nameof(User), id);
 
         user.FirstName = dto.FirstName;
         user.LastName = dto.LastName;
@@ -118,10 +121,8 @@ public class UsersController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> SoftDelete(int id)
     {
-        var user = await _db.Users.FindAsync(id);
-
-        if (user == null)
-            return NotFound();
+        var user = await _db.Users.FindAsync(id)
+            ?? throw new NotFoundException(nameof(User), id);
 
         user.IsDeleted = true;
 
@@ -133,10 +134,8 @@ public class UsersController : ControllerBase
     [HttpPost("{id}/restore")]
     public async Task<IActionResult> Restore(int id)
     {
-        var user = await _db.Users.FindAsync(id);
-
-        if (user == null)
-            return NotFound();
+        var user = await _db.Users.FindAsync(id)
+            ?? throw new NotFoundException(nameof(User), id);
 
         user.IsDeleted = false;
 
@@ -148,15 +147,8 @@ public class UsersController : ControllerBase
     [HttpPatch("{id}/toggle-active")]
     public async Task<IActionResult> ToggleActive(int id)
     {
-        var user = await _db.Users.FindAsync(id);
-
-        if (user == null)
-        {
-            return NotFound(new
-            {
-                message = "User not found."
-            });
-        }
+        var user = await _db.Users.FindAsync(id)
+            ?? throw new NotFoundException(nameof(User), id);
 
         // Check the previous state
         bool wasInactive = !user.IsActive;
@@ -180,6 +172,9 @@ public class UsersController : ControllerBase
             {
                 // Account is already activated.
                 // Email failure should not undo activation.
+                // Intentional swallow — logging via ILogger recommended here
+                // instead of Console.WriteLine, but scope kept out of this
+                // controller since it's not part of global handling.
                 Console.WriteLine(
                     $"Activation email failed for {user.Email}: {ex.Message}");
             }

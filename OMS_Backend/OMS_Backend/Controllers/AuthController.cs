@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using OMS_Backend.Common.Exceptions;
 using OMS_Backend.Data;
 using OMS_Backend.DTOs;
 using OMS_Backend.Models;
@@ -18,7 +19,6 @@ namespace OMS_Backend.Controllers
         private readonly IEmailService _emailService;
         private readonly IConfiguration _config;
 
-        // Built-in ASP.NET Core Identity password hasher (PBKDF2 + salt)
         private readonly PasswordHasher<User> _passwordHasher =
             new PasswordHasher<User>();
 
@@ -41,35 +41,19 @@ namespace OMS_Backend.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterDto dto)
         {
-            if (!ModelState.IsValid)
-                return ValidationProblem(ModelState);
-
-            // Check if email already exists
             var emailExists = await _db.Users.AnyAsync(
                 u => u.Email.ToLower() == dto.Email.ToLower()
                      && !u.IsDeleted);
 
             if (emailExists)
-            {
-                return Conflict(new
-                {
-                    message = "An account with this email already exists."
-                });
-            }
+                throw new ConflictException("An account with this email already exists.");
 
-            // Public registration always gets Customer role
             var customerRole = await _db.Roles
                 .FirstOrDefaultAsync(r => r.Name == "Customer");
 
             if (customerRole == null)
-            {
-                return StatusCode(500, new
-                {
-                    message = "Default Customer role is not configured."
-                });
-            }
+                throw new AppConfigurationException("Default Customer role is not configured.");
 
-            // Create user
             var user = new User
             {
                 FirstName = dto.FirstName,
@@ -80,35 +64,20 @@ namespace OMS_Backend.Controllers
                 HomeAddress = dto.HomeAddress,
                 OfficeAddress = dto.OfficeAddress,
                 WebsiteUrl = dto.WebsiteUrl,
-
-                // Always Customer for public registration
                 RoleId = customerRole.Id,
-
-                // New registrations require admin verification
                 IsActive = false,
-
                 IsDeleted = false,
                 CreatedDate = DateTime.UtcNow,
                 CreatedBy = 0
             };
 
-            // Hash password
-            user.Password = _passwordHasher.HashPassword(
-                user,
-                dto.Password
-            );
+            user.Password = _passwordHasher.HashPassword(user, dto.Password);
 
             _db.Users.Add(user);
-
             await _db.SaveChangesAsync();
 
-            // Generate JWT immediately after registration
-            var (token, expiresAt) = _jwtService.GenerateToken(
-                user,
-                customerRole.Name
-            );
+            var (token, expiresAt) = _jwtService.GenerateToken(user, customerRole.Name);
 
-            // Return same response structure used by Login
             return Ok(new AuthResponseDto
             {
                 Token = token,
@@ -128,9 +97,6 @@ namespace OMS_Backend.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginDto dto)
         {
-            if (!ModelState.IsValid)
-                return ValidationProblem(ModelState);
-
             var user = await _db.Users
                 .Include(u => u.Role)
                 .FirstOrDefaultAsync(
@@ -139,26 +105,13 @@ namespace OMS_Backend.Controllers
                 );
 
             if (user == null)
-            {
-                return Unauthorized(new
-                {
-                    message = "Invalid email or password."
-                });
-            }
+                throw new UnauthorizedAppException("Invalid email or password.");
 
             var result = _passwordHasher.VerifyHashedPassword(
-                user,
-                user.Password,
-                dto.Password
-            );
+                user, user.Password, dto.Password);
 
             if (result == PasswordVerificationResult.Failed)
-            {
-                return Unauthorized(new
-                {
-                    message = "Invalid email or password."
-                });
-            }
+                throw new UnauthorizedAppException("Invalid email or password.");
 
             // Pending users are allowed to login.
             // Their IsActive status is returned to frontend
@@ -166,27 +119,18 @@ namespace OMS_Backend.Controllers
 
             if (result == PasswordVerificationResult.SuccessRehashNeeded)
             {
-                user.Password = _passwordHasher.HashPassword(
-                    user,
-                    dto.Password
-                );
-
+                user.Password = _passwordHasher.HashPassword(user, dto.Password);
                 await _db.SaveChangesAsync();
             }
 
-            var (token, expiresAt) = _jwtService.GenerateToken(
-                user,
-                user.Role.Name
-            );
+            var (token, expiresAt) = _jwtService.GenerateToken(user, user.Role.Name);
 
             return Ok(new AuthResponseDto
             {
                 Token = token,
-
                 ExpiresAt = dto.RememberMe
                     ? DateTime.UtcNow.AddDays(30)
                     : expiresAt,
-
                 FirstName = user.FirstName,
                 LastName = user.LastName,
                 Email = user.Email,
@@ -203,16 +147,12 @@ namespace OMS_Backend.Controllers
         public async Task<IActionResult> ForgotPassword(
             [FromBody] ForgotPasswordDto dto)
         {
-            if (!ModelState.IsValid)
-                return ValidationProblem(ModelState);
-
             var user = await _db.Users.FirstOrDefaultAsync(
                 u => u.Email.ToLower() == dto.Email.ToLower()
                      && !u.IsDeleted
             );
 
-            // Always return 200.
-            // Do not reveal whether email exists.
+            // Always return 200. Do not reveal whether email exists.
             if (user == null)
             {
                 return Ok(new
@@ -221,7 +161,6 @@ namespace OMS_Backend.Controllers
                 });
             }
 
-            // Generate secure random token
             var tokenBytes = RandomNumberGenerator.GetBytes(32);
 
             var token = Convert.ToBase64String(tokenBytes)
@@ -242,7 +181,6 @@ namespace OMS_Backend.Controllers
             };
 
             _db.PasswordResetTokens.Add(resetToken);
-
             await _db.SaveChangesAsync();
 
             var frontendUrl = _config["FrontendSettings:BaseUrl"];
@@ -253,10 +191,7 @@ namespace OMS_Backend.Controllers
                 $"&email={Uri.EscapeDataString(user.Email)}";
 
             await _emailService.SendPasswordResetEmailAsync(
-                user.Email,
-                user.FirstName,
-                resetLink
-            );
+                user.Email, user.FirstName, resetLink);
 
             return Ok(new
             {
@@ -272,21 +207,13 @@ namespace OMS_Backend.Controllers
         public async Task<IActionResult> ResetPassword(
             [FromBody] ResetPasswordDto dto)
         {
-            if (!ModelState.IsValid)
-                return ValidationProblem(ModelState);
-
             var user = await _db.Users.FirstOrDefaultAsync(
                 u => u.Email.ToLower() == dto.Email.ToLower()
                      && !u.IsDeleted
             );
 
             if (user == null)
-            {
-                return BadRequest(new
-                {
-                    message = "Invalid or expired reset link."
-                });
-            }
+                throw new BadRequestAppException("Invalid or expired reset link.");
 
             var resetToken = await _db.PasswordResetTokens
                 .Where(t =>
@@ -297,20 +224,10 @@ namespace OMS_Backend.Controllers
                 .OrderByDescending(t => t.CreatedDate)
                 .FirstOrDefaultAsync();
 
-            if (resetToken == null ||
-                resetToken.ExpiryDate < DateTime.UtcNow)
-            {
-                return BadRequest(new
-                {
-                    message = "Invalid or expired reset link."
-                });
-            }
+            if (resetToken == null || resetToken.ExpiryDate < DateTime.UtcNow)
+                throw new BadRequestAppException("Invalid or expired reset link.");
 
-            user.Password = _passwordHasher.HashPassword(
-                user,
-                dto.NewPassword
-            );
-
+            user.Password = _passwordHasher.HashPassword(user, dto.NewPassword);
             user.UpdatedDate = DateTime.UtcNow;
             user.UpdatedBy = user.Id;
 

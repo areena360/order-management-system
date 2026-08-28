@@ -2,6 +2,7 @@ import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, RouterLinkActive, RouterOutlet, Router } from '@angular/router';
 import { AuthService } from '../auth/auth.service';
+import { PermissionService } from '../auth/permission.service';
 
 @Component({
   selector: 'app-layout',
@@ -12,12 +13,27 @@ import { AuthService } from '../auth/auth.service';
 export class LayoutComponent {
   sidebarOpen = signal(true);
   user: any;
+<<<<<<< Updated upstream
   isAdminOrSuperAdmin = false;
+=======
+  profileMenuOpen = false;
+>>>>>>> Stashed changes
 
-  constructor(private authService: AuthService, private router: Router) {
+  constructor(
+    private authService: AuthService,
+    private router: Router,
+    public perm: PermissionService
+  ) {
     this.user = this.authService.getCurrentUser();
-    const role = this.authService.currentRole();
-    this.isAdminOrSuperAdmin = role === 'Super Admin' || role === 'Admin';
+    this.perm.load().subscribe();
+  }
+
+  get isSuperAdmin(): boolean {
+    return this.authService.currentRole() === 'Super Admin';
+  }
+
+  canView(key: string): boolean {
+    return this.isSuperAdmin || this.perm.canView(key);
   }
 
   toggleSidebar(): void {
@@ -25,6 +41,7 @@ export class LayoutComponent {
   }
 
   logout(): void {
+    this.perm.reset();
     this.authService.logout();
     this.router.navigate(['/login']);
   }

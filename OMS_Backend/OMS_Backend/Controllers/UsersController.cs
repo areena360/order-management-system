@@ -7,7 +7,7 @@ using System;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "Super Admin,Admin")]
+[Authorize]
 public class UsersController : ControllerBase
 {
     private readonly OMSDbContext _db;
@@ -50,6 +50,15 @@ public class UsersController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] UserDto dto)
     {
+<<<<<<< Updated upstream
+=======
+        if (!await HasPermissionAsync("add"))
+            return Forbid();
+        var emailExists = await _db.Users.AnyAsync(u => u.Email == dto.Email);
+        if (emailExists)
+            throw new ConflictException($"A user with email '{dto.Email}' already exists.");
+
+>>>>>>> Stashed changes
         var user = new User
         {
             FirstName = dto.FirstName,
@@ -68,8 +77,15 @@ public class UsersController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(int id, [FromBody] UserDto dto)
     {
+<<<<<<< Updated upstream
         var user = await _db.Users.FindAsync(id);
         if (user == null) return NotFound();
+=======
+        if (!await HasPermissionAsync("edit"))
+            return Forbid();
+        var user = await _db.Users.FindAsync(id)
+            ?? throw new NotFoundException(nameof(User), id);
+>>>>>>> Stashed changes
 
         user.FirstName = dto.FirstName;
         user.LastName = dto.LastName;
@@ -87,8 +103,16 @@ public class UsersController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> SoftDelete(int id)
     {
+<<<<<<< Updated upstream
         var user = await _db.Users.FindAsync(id);
         if (user == null) return NotFound();
+=======
+        if (!await HasPermissionAsync("delete"))
+            return Forbid();
+        var user = await _db.Users.FindAsync(id)
+            ?? throw new NotFoundException(nameof(User), id);
+
+>>>>>>> Stashed changes
         user.IsDeleted = true;
         await _db.SaveChangesAsync();
         return NoContent();
@@ -97,8 +121,16 @@ public class UsersController : ControllerBase
     [HttpPost("{id}/restore")]
     public async Task<IActionResult> Restore(int id)
     {
+<<<<<<< Updated upstream
         var user = await _db.Users.FindAsync(id);
         if (user == null) return NotFound();
+=======
+        if (!await HasPermissionAsync("delete"))
+            return Forbid();
+        var user = await _db.Users.FindAsync(id)
+            ?? throw new NotFoundException(nameof(User), id);
+
+>>>>>>> Stashed changes
         user.IsDeleted = false;
         await _db.SaveChangesAsync();
         return NoContent();
@@ -115,8 +147,8 @@ public class UsersController : ControllerBase
         await _db.SaveChangesAsync();
         return Ok(new { user.IsActive });
     }
-}
 
+<<<<<<< Updated upstream
 public class UserDto
 {
     public string FirstName { get; set; }
@@ -125,4 +157,42 @@ public class UserDto
     public string FirstContact { get; set; }
     public int RoleId { get; set; }
     public string? Password { get; set; }
+=======
+    private async Task<bool> HasPermissionAsync(string action)
+    {
+        var roleName = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+        if (roleName == "Super Admin") return true;
+
+        var role = await _db.Roles.FirstOrDefaultAsync(r => r.Name == roleName);
+        if (role == null) return false;
+
+        var perm = await _db.RolePermissions
+            .FirstOrDefaultAsync(p => p.RoleId == role.Id && p.ScreenKey == "Manage Users" && !p.IsDeleted);
+
+        if (perm == null) return false;
+
+        return action switch
+        {
+            "view" => perm.CanView,
+            "add" => perm.CanAdd,
+            "edit" => perm.CanEdit,
+            "delete" => perm.CanDelete,
+            _ => false
+        };
+    }
+
+    public class UserDto
+    {
+        public string FirstName { get; set; }
+        public string LastName { get; set; }
+        public string Email { get; set; }
+        public string FirstContact { get; set; }
+        public string? SecondContact { get; set; }
+        public string? HomeAddress { get; set; }
+        public string? OfficeAddress { get; set; }
+        public string? WebsiteUrl { get; set; }
+        public int RoleId { get; set; }
+        public string? Password { get; set; }
+    }
+>>>>>>> Stashed changes
 }

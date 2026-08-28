@@ -2,8 +2,14 @@ import { Component, OnInit, HostListener } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { FormsModule, NgForm } from '@angular/forms';
+
 import { FooterComponent } from "../footer/footer.component";
 import { AuthService } from '../auth/auth.service';
+import { PermissionService } from '../auth/permission.service';
+
+import { FooterComponent } from "../footer/footer.component";
+import { AuthService } from '../auth/auth.service';
+import { PermissionService } from '../auth/permission.service';
 
 export interface AppUser {
   id: number;
@@ -173,10 +179,23 @@ export class ManageUsersComponent implements OnInit {
 
   private apiUrl = 'https://localhost:44370/api/users';
 
-  constructor(private http: HttpClient, public auth: AuthService) {}
+  constructor(private http: HttpClient, public auth: AuthService,  public perm: PermissionService) {}
+
 
   ngOnInit(): void {
     this.fetchUsers();
+  }
+
+   get canAdd(): boolean {
+    return this.auth.isSuperAdmin() || this.perm.canAdd('Manage Users');
+  }
+
+  get canEdit(): boolean {
+    return this.auth.isSuperAdmin() || this.perm.canEdit('Manage Users');
+  }
+
+  get canDelete(): boolean {
+    return this.auth.isSuperAdmin() || this.perm.canDelete('Manage Users');
   }
 
   emptyForm(): UserForm {

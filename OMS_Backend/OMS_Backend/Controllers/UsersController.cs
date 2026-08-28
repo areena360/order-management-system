@@ -8,7 +8,7 @@ using OMS_Backend.Services;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "Super Admin,Admin")]
+[Authorize]
 public class UsersController : ControllerBase
 {
     private readonly OMSDbContext _db;
@@ -59,9 +59,14 @@ public class UsersController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] UserDto dto)
     {
+
+        if (!await HasPermissionAsync("add"))
+            return Forbid();
+
         var emailExists = await _db.Users.AnyAsync(u => u.Email == dto.Email);
         if (emailExists)
             throw new ConflictException($"A user with email '{dto.Email}' already exists.");
+
 
         var user = new User
         {
@@ -93,8 +98,18 @@ public class UsersController : ControllerBase
         int id,
         [FromBody] UserDto dto)
     {
+
         var user = await _db.Users.FindAsync(id)
             ?? throw new NotFoundException(nameof(User), id);
+
+        var user = await _db.Users.FindAsync(id);
+        if (user == null) return NotFound();
+
+        if (!await HasPermissionAsync("edit"))
+            return Forbid();
+        var user = await _db.Users.FindAsync(id)
+            ?? throw new NotFoundException(nameof(User), id);
+
 
         user.FirstName = dto.FirstName;
         user.LastName = dto.LastName;
@@ -121,8 +136,19 @@ public class UsersController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> SoftDelete(int id)
     {
+
         var user = await _db.Users.FindAsync(id)
             ?? throw new NotFoundException(nameof(User), id);
+
+
+        var user = await _db.Users.FindAsync(id);
+        if (user == null) return NotFound();
+
+        if (!await HasPermissionAsync("delete"))
+            return Forbid();
+        var user = await _db.Users.FindAsync(id)
+            ?? throw new NotFoundException(nameof(User), id);
+
 
         user.IsDeleted = true;
 
@@ -134,8 +160,19 @@ public class UsersController : ControllerBase
     [HttpPost("{id}/restore")]
     public async Task<IActionResult> Restore(int id)
     {
+
         var user = await _db.Users.FindAsync(id)
             ?? throw new NotFoundException(nameof(User), id);
+
+
+        var user = await _db.Users.FindAsync(id);
+        if (user == null) return NotFound();
+
+        if (!await HasPermissionAsync("delete"))
+            return Forbid();
+        var user = await _db.Users.FindAsync(id)
+            ?? throw new NotFoundException(nameof(User), id);
+
 
         user.IsDeleted = false;
 
@@ -185,7 +222,7 @@ public class UsersController : ControllerBase
             user.IsActive
         });
     }
-}
+
 
 public class UserDto
 {
@@ -199,4 +236,42 @@ public class UserDto
     public string? WebsiteUrl { get; set; }
     public int RoleId { get; set; }
     public string? Password { get; set; }
+
+    private async Task<bool> HasPermissionAsync(string action)
+    {
+        var roleName = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+        if (roleName == "Super Admin") return true;
+
+        var role = await _db.Roles.FirstOrDefaultAsync(r => r.Name == roleName);
+        if (role == null) return false;
+
+        var perm = await _db.RolePermissions
+            .FirstOrDefaultAsync(p => p.RoleId == role.Id && p.ScreenKey == "Manage Users" && !p.IsDeleted);
+
+        if (perm == null) return false;
+
+        return action switch
+        {
+            "view" => perm.CanView,
+            "add" => perm.CanAdd,
+            "edit" => perm.CanEdit,
+            "delete" => perm.CanDelete,
+            _ => false
+        };
+    }
+
+    public class UserDto
+    {
+        public string FirstName { get; set; }
+        public string LastName { get; set; }
+        public string Email { get; set; }
+        public string FirstContact { get; set; }
+        public string? SecondContact { get; set; }
+        public string? HomeAddress { get; set; }
+        public string? OfficeAddress { get; set; }
+        public string? WebsiteUrl { get; set; }
+        public int RoleId { get; set; }
+        public string? Password { get; set; }
+    }
+
 }

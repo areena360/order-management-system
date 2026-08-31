@@ -12,17 +12,7 @@ import {
 } from './guards/auth.guard';
 import { ManageUsersComponent } from './manage-user/manage-users.component';
 import { RegisterComponent } from './register/register.component';
-
 import { ProfileComponent } from './profile/profile.component';
-
-
-
-import { AccountPendingComponent } from './account-pending/account-pending.component';
- 
-
-import { ProfileComponent } from './profile/profile.component';
-import { ManageRolesComponent } from './manage-roles/manage-roles.component';
-import { permissionGuard } from './guards/permission.guard';
 
 export const routes: Routes = [
 
@@ -38,7 +28,6 @@ export const routes: Routes = [
 
   // Everything under /dashboard shares the sidebar + topbar layout
   {
-
     path: 'dashboard',
     component: LayoutComponent,
     canActivate: [authGuard],
@@ -64,47 +53,9 @@ export const routes: Routes = [
         component: ProfileComponent
       }
 
-
-  path: 'dashboard',
-  component: LayoutComponent,
-  canActivate: [authGuard],
-  children: [
-    { path: '', component: DashboardComponent },
-    { path: 'manage-users', component: ManageUsersComponent, canActivate: [adminOrSuperAdminGuard] },
-  ],
-},
-  { path: '**', redirectTo: 'login' },
-];
-
-    path: 'dashboard',
-    component: LayoutComponent,
-    children: [
-      {
-        path: '',
-        component: DashboardComponent,
-        canActivate: [permissionGuard],
-        data: { screenKey: 'Dashboard' }
-      },
-      {
-        path: 'manage-users',
-        component: ManageUsersComponent,
-        canActivate: [permissionGuard],
-        data: { screenKey: 'Manage Users' }
-      },
-      {
-        path: 'manage-roles',
-        component: ManageRolesComponent,
-        canActivate: [permissionGuard],
-        data: { screenKey: 'Manage Roles' }
-      },
-      { path: 'profile', component: ProfileComponent }
-
     ]
   },
 
   { path: '**', redirectTo: 'login' }
 
 ];
-
-];
-

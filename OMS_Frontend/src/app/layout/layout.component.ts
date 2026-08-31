@@ -2,7 +2,6 @@ import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, RouterLinkActive, RouterOutlet, Router } from '@angular/router';
 import { AuthService } from '../auth/auth.service';
-import { PermissionService } from '../auth/permission.service';
 
 @Component({
   selector: 'app-layout',
@@ -13,29 +12,13 @@ import { PermissionService } from '../auth/permission.service';
 export class LayoutComponent {
   sidebarOpen = signal(true);
   user: any;
-
   isAdminOrSuperAdmin = false;
-
   profileMenuOpen = false;
 
-  profileMenuOpen = false;
-
-
-  constructor(
-    private authService: AuthService,
-    private router: Router,
-    public perm: PermissionService
-  ) {
+  constructor(private authService: AuthService, private router: Router) {
     this.user = this.authService.getCurrentUser();
-    this.perm.load().subscribe();
-  }
-
-  get isSuperAdmin(): boolean {
-    return this.authService.currentRole() === 'Super Admin';
-  }
-
-  canView(key: string): boolean {
-    return this.isSuperAdmin || this.perm.canView(key);
+    const role = this.authService.currentRole();
+    this.isAdminOrSuperAdmin = role === 'Super Admin' || role === 'Admin';
   }
 
   toggleSidebar(): void {
@@ -43,7 +26,6 @@ export class LayoutComponent {
   }
 
   logout(): void {
-    this.perm.reset();
     this.authService.logout();
     this.router.navigate(['/login']);
   }

@@ -10,19 +10,14 @@ import { errorInterceptor } from './interceptors/error.interceptor';
 export const appConfig: ApplicationConfig = {
   providers: [
     provideRouter(routes),
-
-    provideHttpClient(withInterceptors([jwtInterceptor])),
-
     provideAnimations(), // required by ngx-toastr
     provideHttpClient(withInterceptors([jwtInterceptor, errorInterceptor])),
     provideToastr({
       timeOut: 4000,
       positionClass: 'toast-top-center',
-
       preventDuplicates: true,
       closeButton: true,
       progressBar: true,
     }),
-
   ],
 };

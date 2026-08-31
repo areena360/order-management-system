@@ -1,23 +1,31 @@
 import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink, RouterLinkActive, RouterOutlet, Router } from '@angular/router';
+import {
+  RouterLink,
+  RouterLinkActive,
+  RouterOutlet,
+  Router
+} from '@angular/router';
 import { AuthService } from '../auth/auth.service';
 import { PermissionService } from '../auth/permission.service';
 
 @Component({
   selector: 'app-layout',
   standalone: true,
-  imports: [CommonModule, RouterLink, RouterLinkActive, RouterOutlet],
+  imports: [
+    CommonModule,
+    RouterLink,
+    RouterLinkActive,
+    RouterOutlet
+  ],
   templateUrl: './layout.component.html',
 })
 export class LayoutComponent {
   sidebarOpen = signal(true);
   user: any;
-<<<<<<< Updated upstream
+
   isAdminOrSuperAdmin = false;
-=======
   profileMenuOpen = false;
->>>>>>> Stashed changes
 
   constructor(
     private authService: AuthService,
@@ -41,6 +49,7 @@ export class LayoutComponent {
   }
 
   logout(): void {
+    this.profileMenuOpen = false;
     this.perm.reset();
     this.authService.logout();
     this.router.navigate(['/login']);
@@ -48,6 +57,9 @@ export class LayoutComponent {
 
   initials(): string {
     if (!this.user) return '?';
-    return `${this.user.firstName?.[0] ?? ''}${this.user.lastName?.[0] ?? ''}`.toUpperCase();
+
+    return `${this.user.firstName?.[0] ?? ''}${this.user.lastName?.[0] ?? ''}`
+      .toUpperCase();
   }
 }
+

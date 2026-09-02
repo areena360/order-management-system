@@ -19,23 +19,29 @@
 
     <!-- Toolbar -->
     <div
-      class="bg-white rounded-xl shadow-sm ring-1 ring-gray-200 p-4 mb-4 flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
-      <div class="relative w-full md:w-72">
-        <svg class="absolute left-3 top-2.5 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="2"
-          stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round"
-            d="m21 21-5.2-5.2m1.7-5.3a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" />
-        </svg>
-        <input type="text" [(ngModel)]="searchTerm" (ngModelChange)="applyFilters()"
-          placeholder="Search by name or email..."
-          class="w-full rounded-lg border border-gray-300 pl-9 pr-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500" />
+      class="bg-white rounded-xl shadow-sm ring-1 ring-gray-200 p-4 mb-4 flex flex-col lg:flex-row gap-4 lg:items-end lg:justify-between">
+
+      <!-- Search -->
+      <div class="w-full lg:w-80">
+        <label class="mb-1.5 block text-xs font-medium text-gray-500">Search</label>
+        <div class="relative">
+          <svg class="absolute left-3 top-2.5 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="2"
+            stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="m21 21-5.2-5.2m1.7-5.3a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" />
+          </svg>
+          <input type="text" [(ngModel)]="searchTerm" (ngModelChange)="applyFilters()"
+            placeholder="Search across all columns..."
+            class="w-full rounded-lg border border-gray-300 pl-9 pr-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500" />
+        </div>
       </div>
 
-      <div class="flex flex-wrap gap-3">
+      <div class="flex flex-wrap gap-4">
         <div class="relative" data-role-menu>
+          <label class="mb-1.5 block text-xs font-medium text-gray-500">Role</label>
           <button (click)="toggleRoleMenu()" type="button"
             class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer">
-            {{ roleFilter }}
+            {{ roleFilter === 'All' ? 'All Roles' : roleFilter }}
             <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-gray-400 transition-transform"
               [class.rotate-180]="showRoleMenu" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
@@ -46,25 +52,29 @@
             <button *ngFor="let r of roles" (click)="selectRole(r)"
               class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors"
               [class.bg-gray-100]="roleFilter === r" [class.font-medium]="roleFilter === r">
-              {{ r }}
+              {{ r === 'All' ? 'All Roles' : r }}
             </button>
           </div>
         </div>
 
-        <div class="inline-flex rounded-lg bg-gray-100 p-1 text-sm font-medium">
-          <button (click)="statusFilter='active'; applyFilters()" [class.bg-white]="statusFilter==='active'"
+        <div>
+          <label class="mb-1.5 block text-xs font-medium text-gray-500">Status</label>
+          <div class="inline-flex rounded-lg bg-gray-100 p-1 text-sm font-medium">
+            <button (click)="statusFilter='active'; applyFilters()" [class.bg-white]="statusFilter==='active'"
             [class.shadow]="statusFilter==='active'"
             class="px-3 py-1.5 rounded-md text-gray-700 transition-all cursor-pointer">Active</button>
           <button (click)="statusFilter='deleted'; applyFilters()" [class.bg-white]="statusFilter==='deleted'"
             [class.shadow]="statusFilter==='deleted'"
             class="px-3 py-1.5 rounded-md text-gray-700 transition-all cursor-pointer">Deleted</button>
-          <button (click)="statusFilter='all'; applyFilters()" [class.bg-white]="statusFilter==='all'"
-            [class.shadow]="statusFilter==='all'"
-            class="px-3 py-1.5 rounded-md text-gray-700 transition-all cursor-pointer">All</button>
+            <button (click)="statusFilter='all'; applyFilters()" [class.bg-white]="statusFilter==='all'"
+              [class.shadow]="statusFilter==='all'"
+              class="px-3 py-1.5 rounded-md text-gray-700 transition-all cursor-pointer">All</button>
+          </div>
         </div>
 
         <!-- Column visibility toggle -->
         <div class="relative" data-column-menu>
+          <label class="mb-1.5 block text-xs font-medium text-gray-500">View</label>
           <button (click)="toggleColumnMenu()" type="button"
             class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24"
@@ -173,10 +183,41 @@
                 <span *ngIf="!user.websiteUrl">—</span>
               </td>
               <td class="px-4 py-4 whitespace-nowrap">
-                <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset"
-                  [ngClass]="roleBadgeClass(user.role)">
-                  {{ user.role }}
-                </span>
+                <div class="relative inline-block" data-user-role-menu>
+                  <button
+                    type="button"
+                    (click)="toggleUserRoleMenu(user.id)"
+                    [disabled]="!canEdit || isRowSuperAdmin(user) || roleSavingUserId === user.id"
+                    class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset transition-all cursor-pointer hover:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    [ngClass]="roleBadgeClass(user.role)">
+                    {{ user.role }}
+                    <svg xmlns="http://www.w3.org/2000/svg"
+                      class="h-3 w-3 transition-transform"
+                      [class.rotate-180]="openUserRoleId === user.id"
+                      fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6" />
+                    </svg>
+                  </button>
+
+                  <div *ngIf="openUserRoleId === user.id"
+                    class="absolute left-0 top-full z-30 mt-2 min-w-36 rounded-lg bg-white p-1.5 shadow-lg ring-1 ring-gray-200">
+                    <button
+                      *ngFor="let r of roleOptions"
+                      type="button"
+                      (click)="changeUserRole(user, r.id)"
+                      [disabled]="roleSavingUserId === user.id"
+                      class="flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-50 cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      [class.bg-gray-100]="user.roleId === r.id"
+                      [class.font-medium]="user.roleId === r.id">
+                      <span>{{ r.name }}</span>
+                      <svg *ngIf="user.roleId === r.id"
+                        xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-gray-600"
+                        fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m5 12 4 4L19 7" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
               </td>
               <td *ngIf="statusFilter !== 'deleted'" class="px-4 py-4 whitespace-nowrap">
                 <span *ngIf="user.isActive"
@@ -274,6 +315,7 @@
 
       <div class="grid grid-cols-2 gap-3">
         <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">First Name <span class="text-red-500">*</span></label>
           <input [(ngModel)]="form.firstName" #firstName="ngModel" name="firstName" placeholder="First name" required
             minlength="2" maxlength="50"
             class="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"
@@ -286,6 +328,7 @@
           </p>
         </div>
         <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Last Name <span class="text-red-500">*</span></label>
           <input [(ngModel)]="form.lastName" #lastName="ngModel" name="lastName" placeholder="Last name" required
             minlength="2" maxlength="50"
             class="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"
@@ -300,6 +343,7 @@
       </div>
 
       <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Email <span class="text-red-500">*</span></label>
         <input [(ngModel)]="form.email" #email="ngModel" name="email" type="email" placeholder="Email" required
           pattern="^[^\s@]+@[^\s@]+\.[^\s@]{2,}$"
           class="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"
@@ -313,6 +357,7 @@
 
       <div class="grid grid-cols-2 gap-3">
         <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">First Contact <span class="text-red-500">*</span></label>
           <input [(ngModel)]="form.firstContact" #firstContact="ngModel" name="firstContact" placeholder="First contact"
             required pattern="^[0-9+\-\s()]{7,15}$"
             class="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"
@@ -324,6 +369,7 @@
           </p>
         </div>
         <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Second Contact</label>
           <input [(ngModel)]="form.secondContact" #secondContact="ngModel" name="secondContact"
             placeholder="Second contact" pattern="^[0-9+\-\s()]{7,15}$"
             class="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"
@@ -336,6 +382,7 @@
       </div>
 
       <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Home Address</label>
         <input [(ngModel)]="form.homeAddress" #homeAddress="ngModel" name="homeAddress" placeholder="Home address"
           maxlength="250"
           class="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"
@@ -347,6 +394,7 @@
       </div>
 
       <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Office Address</label>
         <input [(ngModel)]="form.officeAddress" #officeAddress="ngModel" name="officeAddress"
           placeholder="Office address" maxlength="250"
           class="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"
@@ -358,6 +406,7 @@
       </div>
 
       <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Website URL</label>
         <input [(ngModel)]="form.websiteUrl" #websiteUrl="ngModel" name="websiteUrl" placeholder="Website URL"
           pattern="^(https?:\/\/)?([\w-]+\.)+[\w-]{2,}(\/\S*)?$"
           class="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"
@@ -369,6 +418,7 @@
       </div>
 
       <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Password <span class="text-red-500">*</span></label>
         <div class="relative">
           <input [(ngModel)]="form.password" #password="ngModel" name="password"
             [type]="showAddPassword ? 'text' : 'password'" placeholder="Password" required minlength="8" maxlength="32"
@@ -403,6 +453,7 @@
       </div>
 
       <div class="relative" data-form-role-menu>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Role <span class="text-red-500">*</span></label>
         <button type="button" (click)="toggleFormRoleMenu()"
           class="w-full flex items-center justify-between rounded-lg border border-gray-300 px-3 py-2 text-sm text-left focus:outline-none focus:ring-2 focus:ring-gray-500 hover:bg-gray-50 cursor-pointer">
           {{ formRoleName() }}
@@ -442,6 +493,7 @@
 
       <div class="grid grid-cols-2 gap-3">
         <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">First Name <span class="text-red-500">*</span></label>
           <input [(ngModel)]="form.firstName" #editFirstName="ngModel" name="editFirstName" placeholder="First name"
             required minlength="2" maxlength="50"
             class="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"
@@ -454,6 +506,7 @@
           </p>
         </div>
         <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Last Name <span class="text-red-500">*</span></label>
           <input [(ngModel)]="form.lastName" #editLastName="ngModel" name="editLastName" placeholder="Last name"
             required minlength="2" maxlength="50"
             class="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"
@@ -468,6 +521,7 @@
       </div>
 
       <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Email <span class="text-red-500">*</span></label>
         <input [(ngModel)]="form.email" #editEmail="ngModel" name="editEmail" type="email" placeholder="Email" required
           pattern="^[^\s@]+@[^\s@]+\.[^\s@]{2,}$"
           class="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"
@@ -481,6 +535,7 @@
 
       <div class="grid grid-cols-2 gap-3">
         <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">First Contact <span class="text-red-500">*</span></label>
           <input [(ngModel)]="form.firstContact" #editFirstContact="ngModel" name="editFirstContact"
             placeholder="First contact" required pattern="^[0-9+\-\s()]{7,15}$"
             class="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"
@@ -492,6 +547,7 @@
           </p>
         </div>
         <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Second Contact</label>
           <input [(ngModel)]="form.secondContact" #editSecondContact="ngModel" name="editSecondContact"
             placeholder="Second contact" pattern="^[0-9+\-\s()]{7,15}$"
             class="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"
@@ -504,6 +560,7 @@
       </div>
 
       <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Home Address</label>
         <input [(ngModel)]="form.homeAddress" #editHomeAddress="ngModel" name="editHomeAddress"
           placeholder="Home address" maxlength="250"
           class="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"
@@ -515,6 +572,7 @@
       </div>
 
       <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Office Address</label>
         <input [(ngModel)]="form.officeAddress" #editOfficeAddress="ngModel" name="editOfficeAddress"
           placeholder="Office address" maxlength="250"
           class="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"
@@ -526,6 +584,7 @@
       </div>
 
       <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Website URL</label>
         <input [(ngModel)]="form.websiteUrl" #editWebsiteUrl="ngModel" name="editWebsiteUrl" placeholder="Website URL"
           pattern="^(https?:\/\/)?([\w-]+\.)+[\w-]{2,}(\/\S*)?$"
           class="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"
@@ -537,6 +596,7 @@
       </div>
 
       <div class="relative" data-form-role-menu-edit>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Role <span class="text-red-500">*</span></label>
         <button type="button" (click)="toggleFormRoleMenu()"
           class="w-full flex items-center justify-between rounded-lg border border-gray-300 px-3 py-2 text-sm text-left focus:outline-none focus:ring-2 focus:ring-gray-500 hover:bg-gray-50 cursor-pointer">
           {{ formRoleName() }}

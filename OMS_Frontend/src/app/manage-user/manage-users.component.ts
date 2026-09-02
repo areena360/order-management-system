@@ -162,6 +162,7 @@ export class ManageUsersComponent implements OnInit {
     if (!target.closest('[data-column-menu]')) this.showColumnMenu = false;
     if (!target.closest('[data-role-menu]')) this.showRoleMenu = false;
     if (!target.closest('[data-form-role-menu]') && !target.closest('[data-form-role-menu-edit]')) this.showFormRoleMenu = false;
+    if (!target.closest('[data-user-role-menu]')) this.openUserRoleId = null;
   }
 
   showAddModal = false;
@@ -231,18 +232,47 @@ export class ManageUsersComponent implements OnInit {
   applyFilters(): void {
     let list = [...this.users];
 
-    if (this.statusFilter === 'active') list = list.filter(u => !u.isDeleted);
-    else if (this.statusFilter === 'deleted') list = list.filter(u => u.isDeleted);
+    if (this.statusFilter === 'active') {
+      list = list.filter(u => !u.isDeleted);
+    } else if (this.statusFilter === 'deleted') {
+      list = list.filter(u => u.isDeleted);
+    }
 
-    if (this.roleFilter !== 'All') list = list.filter(u => u.role === this.roleFilter);
+    if (this.roleFilter !== 'All') {
+      list = list.filter(u => u.role === this.roleFilter);
+    }
 
+    // Global search: searches across all user fields, including fields
+    // that are currently hidden from the table.
     if (this.searchTerm.trim()) {
-      const term = this.searchTerm.toLowerCase();
-      list = list.filter(u =>
-        u.firstName.toLowerCase().includes(term) ||
-        u.lastName.toLowerCase().includes(term) ||
-        u.email.toLowerCase().includes(term)
-      );
+      const term = this.searchTerm.trim().toLowerCase();
+
+      list = list.filter(u => {
+        const searchableValues = [
+          u.id,
+          u.firstName,
+          u.lastName,
+          this.fullName(u),
+          u.firstContact,
+          u.secondContact,
+          u.email,
+          u.homeAddress,
+          u.officeAddress,
+          u.websiteUrl,
+          u.roleId,
+          u.role,
+          u.isActive ? 'active' : 'inactive',
+          u.isDeleted ? 'deleted' : 'not deleted',
+          u.createdDate,
+          u.createdBy,
+          u.updatedDate,
+          u.updatedBy
+        ];
+
+        return searchableValues.some(value =>
+          String(value ?? '').toLowerCase().includes(term)
+        );
+      });
     }
 
     this.filteredUsers = list;
@@ -275,6 +305,54 @@ export class ManageUsersComponent implements OnInit {
 
   roleName(roleId: number): string {
     return this.roleOptions.find(r => r.id === roleId)?.name || 'Unknown';
+  }
+
+  openUserRoleId: number | null = null;
+  roleSavingUserId: number | null = null;
+
+  toggleUserRoleMenu(userId: number): void {
+    if (this.roleSavingUserId === userId) return;
+    this.openUserRoleId = this.openUserRoleId === userId ? null : userId;
+  }
+
+  changeUserRole(user: AppUser, roleId: number): void {
+    if (!this.canEdit || user.isDeleted || this.isRowSuperAdmin(user)) return;
+    if (user.roleId === roleId) {
+      this.openUserRoleId = null;
+      return;
+    }
+
+    const role = this.roleOptions.find(r => r.id === roleId);
+    if (!role) return;
+
+    this.roleSavingUserId = user.id;
+    this.openUserRoleId = null;
+
+    const payload: UserForm = {
+      id: user.id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      firstContact: user.firstContact,
+      secondContact: user.secondContact,
+      homeAddress: user.homeAddress,
+      officeAddress: user.officeAddress,
+      websiteUrl: user.websiteUrl,
+      roleId,
+      isActive: user.isActive
+    };
+
+    this.http.put(`${this.apiUrl}/${user.id}`, payload).subscribe({
+      next: () => {
+        user.roleId = roleId;
+        user.role = role.name;
+        this.roleSavingUserId = null;
+        this.applyFilters();
+      },
+      error: () => {
+        this.roleSavingUserId = null;
+      }
+    });
   }
 
   fullName(user: AppUser): string {

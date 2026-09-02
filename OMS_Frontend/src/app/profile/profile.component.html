@@ -26,7 +26,6 @@
       <div class="flex items-center justify-between mb-6">
         <div>
           <h1 class="text-lg font-semibold text-gray-900">Account profile</h1>
-          <p class="text-xs text-gray-500 mt-0.5">User ID #{{ u.id }}</p>
         </div>
         <span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium"
           [class.bg-emerald-50]="u.isActive" [class.text-emerald-700]="u.isActive" [class.bg-amber-50]="!u.isActive"
@@ -130,7 +129,8 @@
         <div class="lg:col-span-2 space-y-6">
 
           <!-- Personal information -->
-          <div class="bg-white border-2 border-gray-200 rounded-xl shadow-[0_8px_24px_-4px_rgba(0,0,0,0.15),0_2px_6px_-2px_rgba(0,0,0,0.1)] p-5 sm:p-6">
+          <div
+            class="bg-white border-2 border-gray-200 rounded-xl shadow-[0_8px_24px_-4px_rgba(0,0,0,0.15),0_2px_6px_-2px_rgba(0,0,0,0.1)] p-5 sm:p-6">
             <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-4">Personal information</h2>
             <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
               <div>
@@ -150,25 +150,13 @@
                 <dd class="text-sm text-gray-900 font-medium truncate">{{ u.email }}</dd>
               </div>
               <div>
-                <dt class="text-xs text-gray-500 mb-1">Website URL</dt>
-                <dd class="text-sm text-gray-900 font-medium truncate">{{ u.websiteUrl || '—' }}</dd>
-              </div>
-              <div>
                 <dt class="text-xs text-gray-500 mb-1">WhatsApp number</dt>
                 <dd class="text-sm text-gray-900 font-medium">{{ u.firstContact }}</dd>
               </div>
-            </dl>
-          </div>
-
-          <!-- Contact & address -->
-          <div class="bg-white border-2 border-gray-200 rounded-xl shadow-[0_8px_24px_-4px_rgba(0,0,0,0.15),0_2px_6px_-2px_rgba(0,0,0,0.1)] p-5 sm:p-6">
-            <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-4">Contact &amp; address</h2>
-            <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
               <div>
                 <dt class="text-xs text-gray-500 mb-1">Call number</dt>
                 <dd class="text-sm text-gray-900 font-medium">{{ u.secondContact || '—' }}</dd>
               </div>
-              <div></div>
               <div>
                 <dt class="text-xs text-gray-500 mb-1">Home address</dt>
                 <dd class="text-sm text-gray-900 font-medium">{{ u.homeAddress || '—' }}</dd>
@@ -177,21 +165,9 @@
                 <dt class="text-xs text-gray-500 mb-1">Office address</dt>
                 <dd class="text-sm text-gray-900 font-medium">{{ u.officeAddress || '—' }}</dd>
               </div>
-            </dl>
-          </div>
-
-          <!-- Account information -->
-          <div class="bg-white border-2 border-gray-200 rounded-xl shadow-[0_8px_24px_-4px_rgba(0,0,0,0.15),0_2px_6px_-2px_rgba(0,0,0,0.1)] p-5 sm:p-6">
-            <h2 class="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-4">Account information</h2>
-            <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
-              <div>
-                <dt class="text-xs text-gray-500 mb-1">Created on</dt>
-                <dd class="text-sm text-gray-900 font-medium">{{ u.createdDate | date:'medium' }}</dd>
-              </div>
-              <div>
-                <dt class="text-xs text-gray-500 mb-1">Last updated</dt>
-                <dd class="text-sm text-gray-900 font-medium">{{ u.updatedDate ? (u.updatedDate | date:'medium') : '—'
-                  }}</dd>
+              <div class="sm:col-span-2">
+                <dt class="text-xs text-gray-500 mb-1">Website URL</dt>
+                <dd class="text-sm text-gray-900 font-medium truncate">{{ u.websiteUrl || '—' }}</dd>
               </div>
             </dl>
           </div>
@@ -200,183 +176,197 @@
       </div>
     </ng-container>
     <!-- Change Password Modal -->
-<div *ngIf="showPasswordModal()"
-  class="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/40 backdrop-blur-sm">
-  <div class="w-full max-w-sm bg-white border-2 border-gray-200 rounded-xl shadow-[0_8px_24px_-4px_rgba(0,0,0,0.15),0_2px_6px_-2px_rgba(0,0,0,0.1)] p-6">
+    <div *ngIf="showPasswordModal()"
+      class="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/40 backdrop-blur-sm">
+      <div
+        class="w-full max-w-sm bg-white border-2 border-gray-200 rounded-xl shadow-[0_8px_24px_-4px_rgba(0,0,0,0.15),0_2px_6px_-2px_rgba(0,0,0,0.1)] p-6">
 
-    <div class="flex items-center justify-between mb-4">
-      <h3 class="text-sm font-semibold text-gray-900">Change password</h3>
-      <button type="button" (click)="closePasswordModal()"
-        class="text-gray-400 hover:text-gray-600 cursor-pointer">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
-          stroke-width="1.8" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      </button>
-    </div>
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-sm font-semibold text-gray-900">Change password</h3>
+          <button type="button" (click)="closePasswordModal()" class="text-gray-400 hover:text-gray-600 cursor-pointer">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8"
+              stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
 
-    <div *ngIf="passwordSuccess()" class="text-center py-6">
-      <div class="mx-auto h-10 w-10 rounded-full bg-emerald-50 flex items-center justify-center mb-2">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-emerald-600" fill="none" viewBox="0 0 24 24"
-          stroke-width="2" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-        </svg>
-      </div>
-      <p class="text-sm font-medium text-gray-700">Password updated successfully</p>
-    </div>
+        <div *ngIf="passwordSuccess()" class="text-center py-6">
+          <div class="mx-auto h-10 w-10 rounded-full bg-emerald-50 flex items-center justify-center mb-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-emerald-600" fill="none" viewBox="0 0 24 24"
+              stroke-width="2" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+            </svg>
+          </div>
+          <p class="text-sm font-medium text-gray-700">Password updated successfully</p>
+        </div>
 
         <form *ngIf="!passwordSuccess()" (ngSubmit)="submitPasswordChange()" class="space-y-3">
-      <div>
-        <label class="text-xs text-gray-500 mb-1 block">Current password</label>
-        <div class="relative">
-          <input [type]="showOldPassword() ? 'text' : 'password'" [(ngModel)]="oldPassword" name="oldPassword"
-            autocomplete="current-password"
-            class="w-full rounded-lg border border-gray-300 px-3 pr-9 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600" />
-          <button type="button" (click)="toggleOldPassword()"
-            class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-700">
-            <svg *ngIf="!showOldPassword()" xmlns="http://www.w3.org/2000/svg" class="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            <svg *ngIf="showOldPassword()" xmlns="http://www.w3.org/2000/svg" class="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12c1.292 4.338 5.31 7.5 10.066 7.5a10.45 10.45 0 004.294-.916m3.51-2.877A10.49 10.49 0 0022.066 12c-1.292-4.338-5.31-7.5-10.066-7.5a10.523 10.523 0 00-3.07.443" />
-              <path stroke-linecap="round" stroke-linejoin="round" d="M3 3l18 18M9.88 9.88a3 3 0 104.24 4.24" />
-            </svg>
-          </button>
-        </div>
+          <div>
+            <label class="text-xs text-gray-500 mb-1 block">Current password</label>
+            <div class="relative">
+              <input [type]="showOldPassword() ? 'text' : 'password'" [(ngModel)]="oldPassword" name="oldPassword"
+                autocomplete="current-password"
+                class="w-full rounded-lg border border-gray-300 px-3 pr-9 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600" />
+              <button type="button" (click)="toggleOldPassword()"
+                class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-700">
+                <svg *ngIf="!showOldPassword()" xmlns="http://www.w3.org/2000/svg" class="h-4.5 w-4.5" fill="none"
+                  viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <svg *ngIf="showOldPassword()" xmlns="http://www.w3.org/2000/svg" class="h-4.5 w-4.5" fill="none"
+                  viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M3.98 8.223A10.477 10.477 0 001.934 12c1.292 4.338 5.31 7.5 10.066 7.5a10.45 10.45 0 004.294-.916m3.51-2.877A10.49 10.49 0 0022.066 12c-1.292-4.338-5.31-7.5-10.066-7.5a10.523 10.523 0 00-3.07.443" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 3l18 18M9.88 9.88a3 3 0 104.24 4.24" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label class="text-xs text-gray-500 mb-1 block">New password</label>
+            <div class="relative">
+              <input [type]="showNewPassword() ? 'text' : 'password'" [(ngModel)]="newPassword" name="newPassword"
+                autocomplete="new-password"
+                class="w-full rounded-lg border border-gray-300 px-3 pr-9 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600" />
+              <button type="button" (click)="toggleNewPassword()"
+                class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-700">
+                <svg *ngIf="!showNewPassword()" xmlns="http://www.w3.org/2000/svg" class="h-4.5 w-4.5" fill="none"
+                  viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <svg *ngIf="showNewPassword()" xmlns="http://www.w3.org/2000/svg" class="h-4.5 w-4.5" fill="none"
+                  viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M3.98 8.223A10.477 10.477 0 001.934 12c1.292 4.338 5.31 7.5 10.066 7.5a10.45 10.45 0 004.294-.916m3.51-2.877A10.49 10.49 0 0022.066 12c-1.292-4.338-5.31-7.5-10.066-7.5a10.523 10.523 0 00-3.07.443" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 3l18 18M9.88 9.88a3 3 0 104.24 4.24" />
+                </svg>
+              </button>
+            </div>
+            <p class="mt-0.5 text-[11px] text-gray-400">Min 8 chars, upper, lower, number &amp; symbol.</p>
+          </div>
+
+          <div>
+            <label class="text-xs text-gray-500 mb-1 block">Confirm new password</label>
+            <div class="relative">
+              <input [type]="showConfirmPassword() ? 'text' : 'password'" [(ngModel)]="confirmPassword"
+                name="confirmPassword" autocomplete="new-password"
+                class="w-full rounded-lg border border-gray-300 px-3 pr-9 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600" />
+              <button type="button" (click)="toggleConfirmPassword()"
+                class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-700">
+                <svg *ngIf="!showConfirmPassword()" xmlns="http://www.w3.org/2000/svg" class="h-4.5 w-4.5" fill="none"
+                  viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <svg *ngIf="showConfirmPassword()" xmlns="http://www.w3.org/2000/svg" class="h-4.5 w-4.5" fill="none"
+                  viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M3.98 8.223A10.477 10.477 0 001.934 12c1.292 4.338 5.31 7.5 10.066 7.5a10.45 10.45 0 004.294-.916m3.51-2.877A10.49 10.49 0 0022.066 12c-1.292-4.338-5.31-7.5-10.066-7.5a10.523 10.523 0 00-3.07.443" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 3l18 18M9.88 9.88a3 3 0 104.24 4.24" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <p *ngIf="passwordError()" class="text-xs text-red-600">{{ passwordError() }}</p>
+
+          <div class="flex gap-2 pt-2">
+            <button type="button" (click)="closePasswordModal()"
+              class="flex-1 rounded-lg border border-gray-300 bg-white py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 cursor-pointer">
+              Cancel
+            </button>
+            <button type="submit" [disabled]="isSaving()"
+              class="flex-1 rounded-lg bg-indigo-600 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60 cursor-pointer">
+              {{ isSaving() ? 'Saving...' : 'Update' }}
+            </button>
+          </div>
+        </form>
       </div>
-
-      <div>
-        <label class="text-xs text-gray-500 mb-1 block">New password</label>
-        <div class="relative">
-          <input [type]="showNewPassword() ? 'text' : 'password'" [(ngModel)]="newPassword" name="newPassword"
-            autocomplete="new-password"
-            class="w-full rounded-lg border border-gray-300 px-3 pr-9 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600" />
-          <button type="button" (click)="toggleNewPassword()"
-            class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-700">
-            <svg *ngIf="!showNewPassword()" xmlns="http://www.w3.org/2000/svg" class="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            <svg *ngIf="showNewPassword()" xmlns="http://www.w3.org/2000/svg" class="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12c1.292 4.338 5.31 7.5 10.066 7.5a10.45 10.45 0 004.294-.916m3.51-2.877A10.49 10.49 0 0022.066 12c-1.292-4.338-5.31-7.5-10.066-7.5a10.523 10.523 0 00-3.07.443" />
-              <path stroke-linecap="round" stroke-linejoin="round" d="M3 3l18 18M9.88 9.88a3 3 0 104.24 4.24" />
-            </svg>
-          </button>
-        </div>
-        <p class="mt-0.5 text-[11px] text-gray-400">Min 8 chars, upper, lower, number &amp; symbol.</p>
-      </div>
-
-      <div>
-        <label class="text-xs text-gray-500 mb-1 block">Confirm new password</label>
-        <div class="relative">
-          <input [type]="showConfirmPassword() ? 'text' : 'password'" [(ngModel)]="confirmPassword" name="confirmPassword"
-            autocomplete="new-password"
-            class="w-full rounded-lg border border-gray-300 px-3 pr-9 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600" />
-          <button type="button" (click)="toggleConfirmPassword()"
-            class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-700">
-            <svg *ngIf="!showConfirmPassword()" xmlns="http://www.w3.org/2000/svg" class="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            <svg *ngIf="showConfirmPassword()" xmlns="http://www.w3.org/2000/svg" class="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke-width="1.6" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12c1.292 4.338 5.31 7.5 10.066 7.5a10.45 10.45 0 004.294-.916m3.51-2.877A10.49 10.49 0 0022.066 12c-1.292-4.338-5.31-7.5-10.066-7.5a10.523 10.523 0 00-3.07.443" />
-              <path stroke-linecap="round" stroke-linejoin="round" d="M3 3l18 18M9.88 9.88a3 3 0 104.24 4.24" />
-            </svg>
-          </button>
-        </div>
-      </div>
-
-      <p *ngIf="passwordError()" class="text-xs text-red-600">{{ passwordError() }}</p>
-
-      <div class="flex gap-2 pt-2">
-        <button type="button" (click)="closePasswordModal()"
-          class="flex-1 rounded-lg border border-gray-300 bg-white py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 cursor-pointer">
-          Cancel
-        </button>
-        <button type="submit" [disabled]="isSaving()"
-          class="flex-1 rounded-lg bg-indigo-600 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60 cursor-pointer">
-          {{ isSaving() ? 'Saving...' : 'Update' }}
-        </button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<!-- Edit Profile Modal -->
-<div *ngIf="showEditModal()"
-  class="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/40 backdrop-blur-sm">
-  <div class="w-full max-w-lg bg-white border-2 border-gray-200 rounded-xl shadow-[0_8px_24px_-4px_rgba(0,0,0,0.15),0_2px_6px_-2px_rgba(0,0,0,0.1)] p-6 max-h-[90vh] overflow-y-auto">
-
-    <div class="flex items-center justify-between mb-4">
-      <h3 class="text-sm font-semibold text-gray-900">Edit profile</h3>
-      <button type="button" (click)="closeEditModal()" class="text-gray-400 hover:text-gray-600 cursor-pointer">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      </button>
     </div>
 
-    <form (ngSubmit)="submitProfileEdit()" class="space-y-3">
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div>
-          <label class="text-xs text-gray-500 mb-1 block">First name</label>
-          <input type="text" [(ngModel)]="editFirstName" name="editFirstName"
-            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600" />
+    <!-- Edit Profile Modal -->
+    <div *ngIf="showEditModal()"
+      class="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/40 backdrop-blur-sm">
+      <div
+        class="w-full max-w-lg bg-white border-2 border-gray-200 rounded-xl shadow-[0_8px_24px_-4px_rgba(0,0,0,0.15),0_2px_6px_-2px_rgba(0,0,0,0.1)] p-6 max-h-[90vh] overflow-y-auto">
+
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-sm font-semibold text-gray-900">Edit profile</h3>
+          <button type="button" (click)="closeEditModal()" class="text-gray-400 hover:text-gray-600 cursor-pointer">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8"
+              stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
-        <div>
-          <label class="text-xs text-gray-500 mb-1 block">Last name</label>
-          <input type="text" [(ngModel)]="editLastName" name="editLastName"
-            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600" />
-        </div>
-      </div>
 
-      <div>
-        <label class="text-xs text-gray-500 mb-1 block">Website URL</label>
-        <input type="text" [(ngModel)]="editWebsiteUrl" name="editWebsiteUrl"
-          class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600" />
-      </div>
+        <form (ngSubmit)="submitProfileEdit()" class="space-y-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="text-xs text-gray-500 mb-1 block">First name</label>
+              <input type="text" [(ngModel)]="editFirstName" name="editFirstName"
+                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600" />
+            </div>
+            <div>
+              <label class="text-xs text-gray-500 mb-1 block">Last name</label>
+              <input type="text" [(ngModel)]="editLastName" name="editLastName"
+                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600" />
+            </div>
+          </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div>
-          <label class="text-xs text-gray-500 mb-1 block">WhatsApp number</label>
-          <input type="text" [(ngModel)]="editFirstContact" name="editFirstContact"
-            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600" />
-        </div>
-        <div>
-          <label class="text-xs text-gray-500 mb-1 block">Call number</label>
-          <input type="text" [(ngModel)]="editSecondContact" name="editSecondContact"
-            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600" />
-        </div>
-      </div>
+          <div>
+            <label class="text-xs text-gray-500 mb-1 block">Website URL</label>
+            <input type="text" [(ngModel)]="editWebsiteUrl" name="editWebsiteUrl"
+              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600" />
+          </div>
 
-      <div>
-        <label class="text-xs text-gray-500 mb-1 block">Home address</label>
-        <input type="text" [(ngModel)]="editHomeAddress" name="editHomeAddress"
-          class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600" />
-      </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="text-xs text-gray-500 mb-1 block">WhatsApp number</label>
+              <input type="text" [(ngModel)]="editFirstContact" name="editFirstContact"
+                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600" />
+            </div>
+            <div>
+              <label class="text-xs text-gray-500 mb-1 block">Call number</label>
+              <input type="text" [(ngModel)]="editSecondContact" name="editSecondContact"
+                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600" />
+            </div>
+          </div>
 
-      <div>
-        <label class="text-xs text-gray-500 mb-1 block">Office address</label>
-        <input type="text" [(ngModel)]="editOfficeAddress" name="editOfficeAddress"
-          class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600" />
-      </div>
+          <div>
+            <label class="text-xs text-gray-500 mb-1 block">Home address</label>
+            <input type="text" [(ngModel)]="editHomeAddress" name="editHomeAddress"
+              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600" />
+          </div>
 
-      <p *ngIf="editError()" class="text-xs text-red-600">{{ editError() }}</p>
+          <div>
+            <label class="text-xs text-gray-500 mb-1 block">Office address</label>
+            <input type="text" [(ngModel)]="editOfficeAddress" name="editOfficeAddress"
+              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-600" />
+          </div>
 
-      <div class="flex gap-2 pt-2">
-        <button type="button" (click)="closeEditModal()"
-          class="flex-1 rounded-lg border border-gray-300 bg-white py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 cursor-pointer">
-          Cancel
-        </button>
-        <button type="submit" [disabled]="isSavingProfile()"
-          class="flex-1 rounded-lg bg-indigo-600 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60 cursor-pointer">
-          {{ isSavingProfile() ? 'Saving...' : 'Save changes' }}
-        </button>
+          <p *ngIf="editError()" class="text-xs text-red-600">{{ editError() }}</p>
+
+          <div class="flex gap-2 pt-2">
+            <button type="button" (click)="closeEditModal()"
+              class="flex-1 rounded-lg border border-gray-300 bg-white py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 cursor-pointer">
+              Cancel
+            </button>
+            <button type="submit" [disabled]="isSavingProfile()"
+              class="flex-1 rounded-lg bg-indigo-600 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60 cursor-pointer">
+              {{ isSavingProfile() ? 'Saving...' : 'Save changes' }}
+            </button>
+          </div>
+        </form>
       </div>
-    </form>
-  </div>
-</div>
+    </div>
   </div>
 </div>
 <app-footer></app-footer>

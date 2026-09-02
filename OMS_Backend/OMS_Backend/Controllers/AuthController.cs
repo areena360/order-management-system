@@ -7,6 +7,7 @@ using OMS_Backend.DTOs;
 using OMS_Backend.Models;
 using OMS_Backend.Services;
 using System.Security.Cryptography;
+using OMS_Backend.Common.Exceptions;
 
 namespace OMS_Backend.Controllers
 {

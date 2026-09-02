@@ -23,14 +23,25 @@ export class ProfileComponent implements OnInit {
   isSaving = signal(false);
   passwordError = signal<string | null>(null);
   passwordSuccess = signal(false);
-
   showOldPassword = signal(false);
   showNewPassword = signal(false);
   showConfirmPassword = signal(false);
-
   oldPassword = '';
   newPassword = '';
   confirmPassword = '';
+
+  // Edit profile modal state
+  showEditModal = signal(false);
+  isSavingProfile = signal(false);
+  editError = signal<string | null>(null);
+
+  editFirstName = '';
+  editLastName = '';
+  editWebsiteUrl = '';
+  editFirstContact = '';
+  editSecondContact = '';
+  editHomeAddress = '';
+  editOfficeAddress = '';
 
   initials = computed(() => {
     const u = this.user();
@@ -59,7 +70,55 @@ export class ProfileComponent implements OnInit {
   }
 
   onEdit(): void {
-    this.router.navigate(['/profile/edit']);
+    const u = this.user();
+    if (!u) return;
+    this.editFirstName = u.firstName;
+    this.editLastName = u.lastName;
+    this.editWebsiteUrl = u.websiteUrl || '';
+    this.editFirstContact = u.firstContact;
+    this.editSecondContact = u.secondContact || '';
+    this.editHomeAddress = u.homeAddress || '';
+    this.editOfficeAddress = u.officeAddress || '';
+    this.editError.set(null);
+    this.showEditModal.set(true);
+  }
+
+  closeEditModal(): void {
+    this.showEditModal.set(false);
+  }
+
+  submitProfileEdit(): void {
+    this.editError.set(null);
+
+    if (!this.editFirstName || !this.editLastName || !this.editFirstContact) {
+      this.editError.set('First name, last name and WhatsApp number are required.');
+      return;
+    }
+
+    this.isSavingProfile.set(true);
+    this.authService.updateProfile({
+      firstName: this.editFirstName,
+      lastName: this.editLastName,
+      websiteUrl: this.editWebsiteUrl || undefined,
+      firstContact: this.editFirstContact,
+      secondContact: this.editSecondContact || undefined,
+      homeAddress: this.editHomeAddress || undefined,
+      officeAddress: this.editOfficeAddress || undefined,
+    }).subscribe({
+      next: (updated) => {
+        this.user.set(updated);
+        this.authService.updateLocalUser({
+          firstName: updated.firstName,
+          lastName: updated.lastName,
+        });
+        this.isSavingProfile.set(false);
+        this.showEditModal.set(false);
+      },
+      error: (err) => {
+        this.isSavingProfile.set(false);
+        this.editError.set(err?.error?.message || 'Failed to update profile.');
+      },
+    });
   }
 
   onChangePassword(): void {
@@ -78,17 +137,9 @@ export class ProfileComponent implements OnInit {
     this.showPasswordModal.set(false);
   }
 
-  toggleOldPassword(): void {
-    this.showOldPassword.update((v) => !v);
-  }
-
-  toggleNewPassword(): void {
-    this.showNewPassword.update((v) => !v);
-  }
-
-  toggleConfirmPassword(): void {
-    this.showConfirmPassword.update((v) => !v);
-  }
+  toggleOldPassword(): void { this.showOldPassword.update((v) => !v); }
+  toggleNewPassword(): void { this.showNewPassword.update((v) => !v); }
+  toggleConfirmPassword(): void { this.showConfirmPassword.update((v) => !v); }
 
   private isValidPasswordFormat(value: string): boolean {
     const hasUpper = /[A-Z]/.test(value);

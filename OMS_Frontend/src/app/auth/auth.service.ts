@@ -46,6 +46,10 @@ export class AuthService {
     this.getCurrentUser()?.role ?? null
   );
 
+  currentUser = signal<AuthResponse | null>(
+    this.getCurrentUser()
+  );
+
   constructor(private http: HttpClient) {}
 
   // ============================================================
@@ -132,7 +136,7 @@ export class AuthService {
     );
   }
 
-    // ============================================================
+  // ============================================================
   // CHANGE PASSWORD
   // ============================================================
 
@@ -159,6 +163,26 @@ export class AuthService {
   }
 
   // ============================================================
+  // UPDATE PROFILE
+  // ============================================================
+
+  updateProfile(payload: {
+    firstName: string;
+    lastName: string;
+    websiteUrl?: string;
+    firstContact: string;
+    secondContact?: string;
+    homeAddress?: string;
+    officeAddress?: string;
+  }): Observable<UserProfile> {
+
+    return this.http.put<UserProfile>(
+      `${environment.apiUrl}/profile/me`,
+      payload
+    );
+  }
+
+  // ============================================================
   // LOGOUT
   // ============================================================
 
@@ -169,6 +193,7 @@ export class AuthService {
 
     this.isAuthenticated.set(false);
     this.currentRole.set(null);
+    this.currentUser.set(null);
   }
 
   // ============================================================
@@ -191,6 +216,25 @@ export class AuthService {
     return raw
       ? JSON.parse(raw)
       : null;
+  }
+
+  // ============================================================
+  // UPDATE LOCAL USER (after profile edit)
+  // ============================================================
+
+  updateLocalUser(patch: Partial<AuthResponse>): void {
+
+    const current = this.getCurrentUser();
+    if (!current) return;
+
+    const updated = { ...current, ...patch };
+
+    localStorage.setItem(
+      this.userKey,
+      JSON.stringify(updated)
+    );
+
+    this.currentUser.set(updated);
   }
 
   // ============================================================
@@ -221,5 +265,7 @@ export class AuthService {
     this.isAuthenticated.set(true);
 
     this.currentRole.set(res.role);
+
+    this.currentUser.set(res);
   }
 }

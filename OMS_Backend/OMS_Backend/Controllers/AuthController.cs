@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using System.Security.Cryptography;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -7,8 +8,6 @@ using OMS_Backend.Data;
 using OMS_Backend.DTOs;
 using OMS_Backend.Models;
 using OMS_Backend.Services;
-using System.Security.Cryptography;
-using OMS_Backend.Common.Exceptions;
 
 namespace OMS_Backend.Controllers
 {
@@ -253,8 +252,7 @@ namespace OMS_Backend.Controllers
         public async Task<IActionResult> ChangePassword(
             [FromBody] ChangePasswordDto dto)
         {
-            var userIdClaim = User.FindFirst("id")?.Value
-                ?? User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            var userIdClaim = User.FindFirst("userId")?.Value;
 
             if (userIdClaim == null || !int.TryParse(userIdClaim, out var userId))
                 throw new UnauthorizedAppException("Invalid token.");

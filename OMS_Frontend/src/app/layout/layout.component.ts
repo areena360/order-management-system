@@ -1,4 +1,8 @@
+<<<<<<< Updated upstream
 import { Component, HostListener, signal } from '@angular/core';
+=======
+import { Component, signal, computed } from '@angular/core';
+>>>>>>> Stashed changes
 import { CommonModule } from '@angular/common';
 import {
   RouterLink,
@@ -22,6 +26,7 @@ import { PermissionService } from '../auth/permission.service';
 })
 export class LayoutComponent {
   sidebarOpen = signal(true);
+<<<<<<< Updated upstream
   user: any;
 
   isAdminOrSuperAdmin = false;
@@ -42,6 +47,26 @@ export class LayoutComponent {
 
   canView(key: string): boolean {
     return this.isSuperAdmin || this.perm.canView(key);
+=======
+  profileMenuOpen = false;
+
+  user;
+  isAdminOrSuperAdmin;
+  initials;
+
+  constructor(private authService: AuthService, private router: Router) {
+    this.user = this.authService.currentUser;
+
+    this.isAdminOrSuperAdmin = computed(() => {
+      const role = this.authService.currentRole();
+      return role === 'Super Admin' || role === 'Admin';
+    });
+
+    this.initials = computed(() => {
+      const u = this.user();
+      return u ? `${u.firstName?.[0] ?? ''}${u.lastName?.[0] ?? ''}`.toUpperCase() : '?';
+    });
+>>>>>>> Stashed changes
   }
 
   toggleSidebar(): void {
@@ -54,6 +79,7 @@ export class LayoutComponent {
     this.authService.logout();
     this.router.navigate(['/login']);
   }
+<<<<<<< Updated upstream
 
   @HostListener('document:click', ['$event'])
 onDocumentClick(event: MouseEvent) {
@@ -72,3 +98,6 @@ onDocumentClick(event: MouseEvent) {
   }
 }
 
+=======
+}
+>>>>>>> Stashed changes

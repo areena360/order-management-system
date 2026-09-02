@@ -1,25 +1,17 @@
 <div class="h-screen bg-gray-100 flex overflow-hidden">
 
   <!-- Sidebar -->
-  <aside
-    class="h-screen bg-gray-900 text-gray-100 flex flex-col overflow-hidden shrink-0 transition-all duration-200"
-    [class.w-64]="sidebarOpen()"
-    [class.w-[72px]]="!sidebarOpen()">
+  <aside class="h-screen bg-gray-900 text-gray-100 flex flex-col overflow-hidden shrink-0 transition-all duration-200"
+    [class.w-64]="sidebarOpen()" [class.w-[72px]]="!sidebarOpen()">
 
     <!-- Brand -->
     <div class="h-16 flex items-center gap-3 px-4 border-b border-gray-800">
 
       <div class="h-10 w-10 shrink-0 flex rounded-lg bg-gray-100 items-center justify-center">
-        <img
-          src="/assets/images/oms-logo.png"
-          alt="OMS Logo"
-          class="h-8 w-8 object-contain"
-        />
+        <img src="/assets/images/oms-logo.png" alt="OMS Logo" class="h-8 w-8 object-contain" />
       </div>
 
-      <span
-        *ngIf="sidebarOpen()"
-        class="font-semibold text-sm whitespace-nowrap">
+      <span *ngIf="sidebarOpen()" class="font-semibold text-sm whitespace-nowrap">
         OMS Panel
       </span>
 
@@ -29,94 +21,55 @@
     <nav class="flex-1 px-2 py-4 space-y-1">
 
       <!-- Dashboard -->
-      <a
-        *ngIf="canView('Dashboard')"
-        routerLink="/dashboard"
-        routerLinkActive="bg-gray-800 text-white"
+      <a *ngIf="canView('Dashboard')" routerLink="/dashboard" routerLinkActive="bg-gray-800 text-white"
         [routerLinkActiveOptions]="{ exact: true }"
         class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition">
 
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          class="h-5 w-5 shrink-0"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke-width="1.7"
-          stroke="currentColor">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24"
+          stroke-width="1.7" stroke="currentColor">
 
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"
-          />
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
 
         </svg>
 
-        <span
-          *ngIf="sidebarOpen()"
-          class="whitespace-nowrap">
+        <span *ngIf="sidebarOpen()" class="whitespace-nowrap">
           Dashboard
         </span>
 
       </a>
 
       <!-- Manage Users -->
-      <a
-        *ngIf="canView('Manage Users')"
-        routerLink="/dashboard/manage-users"
-        routerLinkActive="bg-gray-800 text-white"
+      <a *ngIf="canView('Manage Users')" routerLink="/dashboard/manage-users" routerLinkActive="bg-gray-800 text-white"
         class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition">
 
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          class="h-5 w-5 shrink-0"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke-width="1.7"
-          stroke="currentColor">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24"
+          stroke-width="1.7" stroke="currentColor">
 
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"
-          />
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
 
         </svg>
 
-        <span
-          *ngIf="sidebarOpen()"
-          class="whitespace-nowrap">
+        <span *ngIf="sidebarOpen()" class="whitespace-nowrap">
           Manage Users
         </span>
 
       </a>
 
       <!-- Manage Roles -->
-      <a
-        *ngIf="canView('Manage Roles')"
-        routerLink="/dashboard/manage-roles"
-        routerLinkActive="bg-gray-800 text-white"
+      <a *ngIf="canView('Manage Roles')" routerLink="/dashboard/manage-roles" routerLinkActive="bg-gray-800 text-white"
         class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition">
 
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          class="h-5 w-5 shrink-0"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke-width="1.7"
-          stroke="currentColor">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24"
+          stroke-width="1.7" stroke="currentColor">
 
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"
-          />
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
 
         </svg>
 
-        <span
-          *ngIf="sidebarOpen()"
-          class="whitespace-nowrap">
+        <span *ngIf="sidebarOpen()" class="whitespace-nowrap">
           Manage Roles
         </span>
 
@@ -125,24 +78,13 @@
     </nav>
 
     <!-- Collapse Toggle -->
-    <button
-      (click)="toggleSidebar()"
+    <button (click)="toggleSidebar()"
       class="flex items-center gap-3 px-3 py-3 m-2 cursor-w-resize rounded-lg text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition">
 
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        class="h-5 w-5 shrink-0 transition-transform"
-        [class.rotate-180]="!sidebarOpen()"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke-width="1.7"
-        stroke="currentColor">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 transition-transform"
+        [class.rotate-180]="!sidebarOpen()" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor">
 
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          d="M11 19l-7-7 7-7m8 14l-7-7 7-7"
-        />
+        <path stroke-linecap="round" stroke-linejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
 
       </svg>
 
@@ -158,18 +100,15 @@
   <div class="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
 
     <!-- Topbar -->
-    <header
-      class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6">
+    <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6">
 
       <div></div>
 
       <!-- Profile Area -->
-      <div class="flex items-center gap-3 relative">
+      <div class="profile-menu-container flex items-center gap-3 relative">
 
         <!-- Profile Button -->
-        <button
-          type="button"
-          (click)="profileMenuOpen = !profileMenuOpen"
+        <button type="button" (click)="profileMenuOpen = !profileMenuOpen"
           class="flex items-center gap-3 px-2 py-1.5 rounded-lg hover:bg-gray-50 transition cursor-pointer">
 
           <!-- Avatar -->
@@ -194,28 +133,18 @@
           </div>
 
           <!-- Chevron -->
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="h-4 w-4 text-gray-400 transition-transform"
-            [class.rotate-180]="profileMenuOpen"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke-width="1.8"
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400 transition-transform"
+            [class.rotate-180]="profileMenuOpen" fill="none" viewBox="0 0 24 24" stroke-width="1.8"
             stroke="currentColor">
 
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M19 9l-7 7-7-7"
-            />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
 
           </svg>
 
         </button>
 
         <!-- Profile Dropdown -->
-        <div
-          *ngIf="profileMenuOpen"
+        <div *ngIf="profileMenuOpen"
           class="absolute right-0 top-12 w-64 bg-white border border-gray-200 rounded-xl shadow-lg py-2 z-50">
 
           <!-- Profile Header -->
@@ -232,13 +161,11 @@
 
               <div class="min-w-0">
 
-                <p
-                  class="text-sm font-semibold text-gray-800 truncate">
+                <p class="text-sm font-semibold text-gray-800 truncate">
                   {{ user?.firstName }} {{ user?.lastName }}
                 </p>
 
-                <p
-                  class="text-xs text-gray-400 truncate">
+                <p class="text-xs text-gray-400 truncate">
                   {{ user?.email }}
                 </p>
 
@@ -252,25 +179,14 @@
           <div class="py-1">
 
             <!-- My Profile -->
-            <button
-              type="button"
-              routerLink="/dashboard/profile"
-              (click)="profileMenuOpen = false"
+            <button type="button" routerLink="/dashboard/profile" (click)="profileMenuOpen = false"
               class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition cursor-pointer">
 
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                class="h-5 w-5 text-gray-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke-width="1.7"
-                stroke="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24"
+                stroke-width="1.7" stroke="currentColor">
 
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.5 20.25a8.25 8.25 0 0115 0"
-                />
+                <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.5 20.25a8.25 8.25 0 0115 0" />
 
               </svg>
 
@@ -285,24 +201,14 @@
           <!-- Logout -->
           <div class="border-t border-gray-100 pt-1">
 
-            <button
-              type="button"
-              (click)="logout()"
+            <button type="button" (click)="logout()"
               class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition cursor-pointer">
 
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                class="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke-width="1.7"
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.7"
                 stroke="currentColor">
 
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75"
-                />
+                <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
 
               </svg>
 
@@ -328,4 +234,3 @@
   </div>
 
 </div>
-

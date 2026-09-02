@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, HostListener, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   RouterLink,
@@ -54,6 +54,15 @@ export class LayoutComponent {
     this.authService.logout();
     this.router.navigate(['/login']);
   }
+
+  @HostListener('document:click', ['$event'])
+onDocumentClick(event: MouseEvent) {
+  const target = event.target as HTMLElement;
+
+  if (!target.closest('.profile-menu-container')) {
+    this.profileMenuOpen = false;
+  }
+}
 
   initials(): string {
     if (!this.user) return '?';

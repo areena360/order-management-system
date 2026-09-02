@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule, NgForm } from '@angular/forms';
 import { FooterComponent } from "../footer/footer.component";
 import { AuthService } from '../auth/auth.service';
+import { PermissionService } from '../auth/permission.service';
 
 export interface AppUser {
   id: number;
@@ -14,7 +15,7 @@ export interface AppUser {
   email: string;
   homeAddress: string;
   officeAddress: string;
-  websiteUrl: string; 
+  websiteUrl: string;
   roleId: number;
   role: string;
   isActive: boolean;
@@ -34,7 +35,7 @@ export interface UserForm {
   secondContact: string;
   homeAddress: string;
   officeAddress: string;
-  websiteUrl: string; 
+  websiteUrl: string;
   roleId: number;
   isActive?: boolean;
   password?: string;
@@ -173,10 +174,26 @@ export class ManageUsersComponent implements OnInit {
 
   private apiUrl = 'https://localhost:44370/api/users';
 
-  constructor(private http: HttpClient, public auth: AuthService) {}
+  constructor(
+    private http: HttpClient,
+    public auth: AuthService,
+    public perm: PermissionService
+  ) {}
 
   ngOnInit(): void {
     this.fetchUsers();
+  }
+
+  get canAdd(): boolean {
+    return this.auth.isSuperAdmin() || this.perm.canAdd('Manage Users');
+  }
+
+  get canEdit(): boolean {
+    return this.auth.isSuperAdmin() || this.perm.canEdit('Manage Users');
+  }
+
+  get canDelete(): boolean {
+    return this.auth.isSuperAdmin() || this.perm.canDelete('Manage Users');
   }
 
   emptyForm(): UserForm {
@@ -206,7 +223,6 @@ export class ManageUsersComponent implements OnInit {
         this.loading = false;
       },
       error: () => {
-        // Toast already shown by error interceptor.
         this.loading = false;
       }
     });

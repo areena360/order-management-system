@@ -13,6 +13,7 @@ import {
 import { ManageUsersComponent } from './manage-user/manage-users.component';
 import { RegisterComponent } from './register/register.component';
 import { ProfileComponent } from './profile/profile.component';
+import { ManageRolesComponent } from './manage-roles/manage-roles.component';
 
 export const routes: Routes = [
 
@@ -51,6 +52,11 @@ export const routes: Routes = [
       {
         path: 'profile',
         component: ProfileComponent
+      },
+
+      {
+        path: 'manage-roles',
+        component: ManageRolesComponent
       }
 
     ]

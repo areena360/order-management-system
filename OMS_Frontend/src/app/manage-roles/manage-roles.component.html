@@ -1,0 +1,101 @@
+<div class="min-h-screen bg-gray-50 p-6">
+  <div class="max-w-4xl mx-auto">
+
+    <div class="mb-6">
+      <h1 class="text-2xl font-bold text-gray-900">Manage Roles</h1>
+      <p class="text-sm text-gray-500 mt-1">Control which screens and actions each role can access</p>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm ring-1 ring-gray-200 overflow-hidden">
+
+      <!-- Role selector -->
+      <div class="p-5 border-b border-gray-100 flex items-center gap-3">
+        <label class="text-sm font-medium text-gray-700">Role</label>
+        <div class="relative" data-role-menu>
+          <button (click)="toggleRoleMenu()" type="button"
+            class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer min-w-[160px] justify-between">
+            {{ selectedRoleName }}
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-gray-400 transition-transform"
+              [class.rotate-180]="showRoleMenu" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+            </svg>
+          </button>
+          <div *ngIf="showRoleMenu"
+            class="absolute left-0 z-20 mt-2 w-44 rounded-lg bg-white shadow-lg ring-1 ring-gray-200 p-1.5">
+            <button *ngFor="let r of roleOptions" (click)="selectRole(r.id)"
+              class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors"
+              [class.bg-gray-100]="selectedRoleId === r.id" [class.font-medium]="selectedRoleId === r.id">
+              {{ r.name }}
+            </button>
+          </div>
+        </div>
+
+        <span *ngIf="saved" class="ml-auto inline-flex items-center gap-1.5 text-sm text-emerald-600 font-medium">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2"
+            stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+          </svg>
+          Saved
+        </span>
+      </div>
+
+      <div *ngIf="loading" class="p-10 text-center text-gray-500 text-sm">Loading permissions...</div>
+
+      <!-- Permissions table -->
+      <div *ngIf="!loading" class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200 text-sm">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Screen /
+                Module</th>
+              <th class="px-5 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Visible
+              </th>
+              <th class="px-5 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Add</th>
+              <th class="px-5 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Edit</th>
+              <th class="px-5 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Delete</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            <tr *ngFor="let row of permissions" class="hover:bg-gray-50 transition-colors">
+              <td class="px-5 py-3.5 font-medium text-gray-800">{{ row.screenKey }}</td>
+              <td class="px-5 py-3.5 text-center">
+                <input type="checkbox" [checked]="row.canView" (change)="toggleAllForRow(row, !row.canView)"
+                  class="h-4 w-4 rounded border-gray-300 text-gray-800 focus:ring-gray-800 accent-gray-800 cursor-pointer" />
+              </td>
+              <td class="px-5 py-3.5 text-center">
+                <input type="checkbox" [checked]="row.canAdd" (change)="row.canAdd = !row.canAdd"
+                  [disabled]="!row.canView || isNoActionScreen(row.screenKey)"
+                  class="h-4 w-4 rounded border-gray-300 text-gray-800 focus:ring-gray-800 accent-gray-800 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed" />
+              </td>
+              <td class="px-5 py-3.5 text-center">
+                <input type="checkbox" [checked]="row.canEdit" (change)="row.canEdit = !row.canEdit"
+                  [disabled]="!row.canView || isNoActionScreen(row.screenKey)"
+                  class="h-4 w-4 rounded border-gray-300 text-gray-800 focus:ring-gray-800 accent-gray-800 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed" />
+              </td>
+              <td class="px-5 py-3.5 text-center">
+                <input type="checkbox" [checked]="row.canDelete" (change)="row.canDelete = !row.canDelete"
+                  [disabled]="!row.canView || isNoActionScreen(row.screenKey)"
+                  class="h-4 w-4 rounded border-gray-300 text-gray-800 focus:ring-gray-800 accent-gray-800 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed" />
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Footer -->
+      <div class="flex justify-end px-5 py-4 border-t border-gray-100">
+        <button (click)="saveChanges()" [disabled]="saving || loading"
+          class="inline-flex items-center gap-2 rounded-lg bg-gray-800 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-gray-900 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+          <svg *ngIf="saving" class="h-4 w-4 animate-spin text-white" xmlns="http://www.w3.org/2000/svg" fill="none"
+            viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+          </svg>
+          {{ saving ? 'Saving...' : 'Save Changes' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<app-footer></app-footer>

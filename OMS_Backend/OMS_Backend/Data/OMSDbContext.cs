@@ -19,6 +19,7 @@ namespace OMS_Backend.Data
         public DbSet<LookupType> LookupTypes { get; set; }
         public DbSet<LookupItem> LookupItems { get; set; }
         public DbSet<PasswordResetToken> PasswordResetTokens { get; set; }
+        public DbSet<RolePermission> RolePermissions { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -32,6 +33,16 @@ namespace OMS_Backend.Data
                     modelBuilder.Entity(entityType.ClrType)
                         .Property<DateTime>(nameof(BaseEntity.CreatedDate))
                         .HasDefaultValueSql("GETUTCDATE()");
+
+                    modelBuilder.Entity<RolePermission>()
+                        .HasOne(rp => rp.Role)
+                        .WithMany()
+                        .HasForeignKey(rp => rp.RoleId)
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    modelBuilder.Entity<RolePermission>()
+                        .HasIndex(rp => new { rp.RoleId, rp.ScreenKey })
+                        .IsUnique();
                 }
             }
 

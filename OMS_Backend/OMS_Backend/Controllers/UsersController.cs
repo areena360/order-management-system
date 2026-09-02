@@ -8,7 +8,7 @@ using OMS_Backend.Services;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "Super Admin,Admin")]
+[Authorize]
 public class UsersController : ControllerBase
 {
     private readonly OMSDbContext _db;
@@ -185,6 +185,7 @@ public class UsersController : ControllerBase
             user.IsActive
         });
     }
+
 }
 
 public class UserDto

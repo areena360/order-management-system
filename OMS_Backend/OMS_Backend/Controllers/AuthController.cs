@@ -1,4 +1,4 @@
-﻿using System.Security.Cryptography;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -6,6 +6,7 @@ using OMS_Backend.Data;
 using OMS_Backend.DTOs;
 using OMS_Backend.Models;
 using OMS_Backend.Services;
+using System.Security.Cryptography;
 
 namespace OMS_Backend.Controllers
 {
@@ -322,6 +323,45 @@ namespace OMS_Backend.Controllers
             return Ok(new
             {
                 message = "Password has been reset successfully. You can now log in."
+            });
+        }
+
+        // ============================================================
+        // CHANGE PASSWORD
+        // ============================================================
+
+        [Authorize]
+        [HttpPost("change-password")]
+        public async Task<IActionResult> ChangePassword(
+            [FromBody] ChangePasswordDto dto)
+        {
+            var userIdClaim = User.FindFirst("id")?.Value
+                ?? User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+            if (userIdClaim == null || !int.TryParse(userIdClaim, out var userId))
+                throw new UnauthorizedAppException("Invalid token.");
+
+            var user = await _db.Users.FirstOrDefaultAsync(
+                u => u.Id == userId && !u.IsDeleted);
+
+            if (user == null)
+                throw new UnauthorizedAppException("Invalid token.");
+
+            var result = _passwordHasher.VerifyHashedPassword(
+                user, user.Password, dto.OldPassword);
+
+            if (result == PasswordVerificationResult.Failed)
+                throw new BadRequestAppException("Current password is incorrect.");
+
+            user.Password = _passwordHasher.HashPassword(user, dto.NewPassword);
+            user.UpdatedDate = DateTime.UtcNow;
+            user.UpdatedBy = user.Id;
+
+            await _db.SaveChangesAsync();
+
+            return Ok(new
+            {
+                message = "Password changed successfully."
             });
         }
     }

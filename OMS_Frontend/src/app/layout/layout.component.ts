@@ -1,8 +1,4 @@
-<<<<<<< Updated upstream
-import { Component, HostListener, signal } from '@angular/core';
-=======
-import { Component, signal, computed } from '@angular/core';
->>>>>>> Stashed changes
+import { Component, HostListener, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   RouterLink,
@@ -26,36 +22,19 @@ import { PermissionService } from '../auth/permission.service';
 })
 export class LayoutComponent {
   sidebarOpen = signal(true);
-<<<<<<< Updated upstream
-  user: any;
-
-  isAdminOrSuperAdmin = false;
-  profileMenuOpen = false;
-
-  constructor(
-    private authService: AuthService,
-    private router: Router,
-    public perm: PermissionService
-  ) {
-    this.user = this.authService.getCurrentUser();
-    this.perm.load().subscribe();
-  }
-
-  get isSuperAdmin(): boolean {
-    return this.authService.currentRole() === 'Super Admin';
-  }
-
-  canView(key: string): boolean {
-    return this.isSuperAdmin || this.perm.canView(key);
-=======
   profileMenuOpen = false;
 
   user;
   isAdminOrSuperAdmin;
   initials;
 
-  constructor(private authService: AuthService, private router: Router) {
+  constructor(
+    private authService: AuthService,
+    private router: Router,
+    public perm: PermissionService
+  ) {
     this.user = this.authService.currentUser;
+    this.perm.load().subscribe();
 
     this.isAdminOrSuperAdmin = computed(() => {
       const role = this.authService.currentRole();
@@ -66,7 +45,14 @@ export class LayoutComponent {
       const u = this.user();
       return u ? `${u.firstName?.[0] ?? ''}${u.lastName?.[0] ?? ''}`.toUpperCase() : '?';
     });
->>>>>>> Stashed changes
+  }
+
+  get isSuperAdmin(): boolean {
+    return this.authService.currentRole() === 'Super Admin';
+  }
+
+  canView(key: string): boolean {
+    return this.isSuperAdmin || this.perm.canView(key);
   }
 
   toggleSidebar(): void {
@@ -79,25 +65,13 @@ export class LayoutComponent {
     this.authService.logout();
     this.router.navigate(['/login']);
   }
-<<<<<<< Updated upstream
 
   @HostListener('document:click', ['$event'])
-onDocumentClick(event: MouseEvent) {
-  const target = event.target as HTMLElement;
+  onDocumentClick(event: MouseEvent) {
+    const target = event.target as HTMLElement;
 
-  if (!target.closest('.profile-menu-container')) {
-    this.profileMenuOpen = false;
+    if (!target.closest('.profile-menu-container')) {
+      this.profileMenuOpen = false;
+    }
   }
 }
-
-  initials(): string {
-    if (!this.user) return '?';
-
-    return `${this.user.firstName?.[0] ?? ''}${this.user.lastName?.[0] ?? ''}`
-      .toUpperCase();
-  }
-}
-
-=======
-}
->>>>>>> Stashed changes

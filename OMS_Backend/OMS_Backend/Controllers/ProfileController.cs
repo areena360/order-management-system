@@ -3,11 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OMS_Backend.Common.Exceptions;
 using OMS_Backend.Data;
-<<<<<<< Updated upstream
-using System.Linq;
-=======
 using OMS_Backend.DTOs;
->>>>>>> Stashed changes
+using System.Linq;
 
 namespace OMS_Backend.Controllers
 {
@@ -56,7 +53,51 @@ namespace OMS_Backend.Controllers
             return Ok(user);
         }
 
-<<<<<<< Updated upstream
+        // PUT api/profile/me
+        [HttpPut("me")]
+        public async Task<IActionResult> UpdateMe([FromBody] UpdateProfileDto dto)
+        {
+            var userIdClaim = User.FindFirst("userId")?.Value;
+            if (userIdClaim == null || !int.TryParse(userIdClaim, out var userId))
+                throw new UnauthorizedAppException("Invalid token.");
+
+            var user = await _db.Users
+                .Include(u => u.Role)
+                .FirstOrDefaultAsync(u => u.Id == userId && !u.IsDeleted);
+
+            if (user == null)
+                throw new NotFoundException("User", userId);
+
+            user.FirstName = dto.FirstName;
+            user.LastName = dto.LastName;
+            user.WebsiteUrl = dto.WebsiteUrl;
+            user.FirstContact = dto.FirstContact;
+            user.SecondContact = dto.SecondContact;
+            user.HomeAddress = dto.HomeAddress;
+            user.OfficeAddress = dto.OfficeAddress;
+            user.UpdatedDate = DateTime.UtcNow;
+            user.UpdatedBy = user.Id;
+
+            await _db.SaveChangesAsync();
+
+            return Ok(new
+            {
+                user.Id,
+                user.FirstName,
+                user.LastName,
+                user.Email,
+                user.FirstContact,
+                user.SecondContact,
+                user.HomeAddress,
+                user.OfficeAddress,
+                user.WebsiteUrl,
+                Role = user.Role != null ? user.Role.Name : "No Role",
+                user.IsActive,
+                user.CreatedDate,
+                user.UpdatedDate
+            });
+        }
+
         [HttpGet("permissions")]
         public async Task<IActionResult> GetMyPermissions()
         {
@@ -102,51 +143,6 @@ namespace OMS_Backend.Controllers
             });
 
             return Ok(result);
-=======
-        // PUT api/profile/me
-        [HttpPut("me")]
-        public async Task<IActionResult> UpdateMe([FromBody] UpdateProfileDto dto)
-        {
-            var userIdClaim = User.FindFirst("userId")?.Value;
-            if (userIdClaim == null || !int.TryParse(userIdClaim, out var userId))
-                return Unauthorized(new { message = "Invalid token." });
-
-            var user = await _db.Users
-                .Include(u => u.Role)
-                .FirstOrDefaultAsync(u => u.Id == userId && !u.IsDeleted);
-
-            if (user == null)
-                return NotFound(new { message = "User not found." });
-
-            user.FirstName = dto.FirstName;
-            user.LastName = dto.LastName;
-            user.WebsiteUrl = dto.WebsiteUrl;
-            user.FirstContact = dto.FirstContact;
-            user.SecondContact = dto.SecondContact;
-            user.HomeAddress = dto.HomeAddress;
-            user.OfficeAddress = dto.OfficeAddress;
-            user.UpdatedDate = DateTime.UtcNow;
-            user.UpdatedBy = user.Id;
-
-            await _db.SaveChangesAsync();
-
-            return Ok(new
-            {
-                user.Id,
-                user.FirstName,
-                user.LastName,
-                user.Email,
-                user.FirstContact,
-                user.SecondContact,
-                user.HomeAddress,
-                user.OfficeAddress,
-                user.WebsiteUrl,
-                Role = user.Role != null ? user.Role.Name : "No Role",
-                user.IsActive,
-                user.CreatedDate,
-                user.UpdatedDate
-            });
->>>>>>> Stashed changes
         }
     }
 }

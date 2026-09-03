@@ -72,6 +72,7 @@ export class ManageUsersComponent implements OnInit {
 
   currentPage = 1;
   pageSize = 8;
+  pageSizeOptions: number[] = [5, 8, 10, 25, 50];
 
   columnOptions: ColumnOption[] = [
     { key: 'firstContact', label: 'First Contact' },
@@ -114,6 +115,7 @@ export class ManageUsersComponent implements OnInit {
 
   showFormRoleMenu = false;
   showAddPassword = false;
+  showPageSizeMenu = false;
 
   toggleFormRoleMenu(): void {
     this.showFormRoleMenu = !this.showFormRoleMenu;
@@ -156,6 +158,16 @@ export class ManageUsersComponent implements OnInit {
     return Object.values(this.visibleColumns).filter(Boolean).length;
   }
 
+  togglePageSizeMenu(): void {
+  this.showPageSizeMenu = !this.showPageSizeMenu;
+}
+
+selectPageSize(size: number): void {
+  this.pageSize = size;
+  this.showPageSizeMenu = false;
+  this.currentPage = 1;
+}
+
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent): void {
     const target = event.target as HTMLElement;
@@ -163,6 +175,8 @@ export class ManageUsersComponent implements OnInit {
     if (!target.closest('[data-role-menu]')) this.showRoleMenu = false;
     if (!target.closest('[data-form-role-menu]') && !target.closest('[data-form-role-menu-edit]')) this.showFormRoleMenu = false;
     if (!target.closest('[data-user-role-menu]')) this.openUserRoleId = null;
+    if (!target.closest('[data-user-status-menu]')) this.openUserStatusId = null;
+    if (!target.closest('[data-pagesize-menu]')) this.showPageSizeMenu = false;
   }
 
   showAddModal = false;
@@ -232,6 +246,9 @@ export class ManageUsersComponent implements OnInit {
   applyFilters(): void {
     let list = [...this.users];
 
+    // Super Admin is never shown in this table
+    list = list.filter(u => !this.isSuperAdmin(u));
+
     if (this.statusFilter === 'active') {
       list = list.filter(u => !u.isDeleted);
     } else if (this.statusFilter === 'deleted') {
@@ -290,6 +307,10 @@ export class ManageUsersComponent implements OnInit {
 
   goToPage(page: number): void {
     if (page >= 1 && page <= this.totalPages) this.currentPage = page;
+  }
+
+  onPageSizeChange(): void {
+    this.currentPage = 1;
   }
 
   roleBadgeClass(role: string): string {
@@ -353,6 +374,23 @@ export class ManageUsersComponent implements OnInit {
         this.roleSavingUserId = null;
       }
     });
+  }
+
+  // ===== Status (Active/Inactive) dropdown =====
+  openUserStatusId: number | null = null;
+
+  toggleUserStatusMenu(userId: number): void {
+    this.openUserStatusId = this.openUserStatusId === userId ? null : userId;
+  }
+
+  selectUserStatus(user: AppUser, isActive: boolean): void {
+    this.openUserStatusId = null;
+    if (!this.canEdit || user.isDeleted || this.isSuperAdmin(user)) return;
+    if (user.isActive === isActive) return;
+
+    // Open the existing confirmation modal; confirmToggleActive() does the API call.
+    this.selectedUser = user;
+    this.showToggleActiveModal = true;
   }
 
   fullName(user: AppUser): string {

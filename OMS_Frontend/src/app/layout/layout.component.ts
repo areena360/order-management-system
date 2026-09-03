@@ -24,6 +24,9 @@ export class LayoutComponent {
   sidebarOpen = signal(true);
   profileMenuOpen = false;
 
+  // Mobile screen detection
+  isMobile = signal(window.innerWidth < 640);
+
   user;
   isAdminOrSuperAdmin;
   initials;
@@ -43,7 +46,9 @@ export class LayoutComponent {
 
     this.initials = computed(() => {
       const u = this.user();
-      return u ? `${u.firstName?.[0] ?? ''}${u.lastName?.[0] ?? ''}`.toUpperCase() : '?';
+      return u
+        ? `${u.firstName?.[0] ?? ''}${u.lastName?.[0] ?? ''}`.toUpperCase()
+        : '?';
     });
   }
 
@@ -66,8 +71,13 @@ export class LayoutComponent {
     this.router.navigate(['/login']);
   }
 
+  @HostListener('window:resize')
+  onResize(): void {
+    this.isMobile.set(window.innerWidth < 640);
+  }
+
   @HostListener('document:click', ['$event'])
-  onDocumentClick(event: MouseEvent) {
+  onDocumentClick(event: MouseEvent): void {
     const target = event.target as HTMLElement;
 
     if (!target.closest('.profile-menu-container')) {

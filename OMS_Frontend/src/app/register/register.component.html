@@ -105,30 +105,32 @@
 
         <!-- Remaining fields: 2-column grid -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <!-- Home Address -->
           <div>
-            <label for="homeAddress" class="block text-sm font-medium text-gray-700 mb-1">Home address <span
-                class="text-gray-400">(optional)</span></label>
-            <input id="homeAddress" type="text" formControlName="homeAddress" placeholder="Street, city, postal code"
-              class="w-full rounded-lg border bg-gray-50 px-3 py-2 text-sm text-gray-900 placeholder-gray-400
-                     focus:outline-none focus:ring-2 focus:ring-gray-800 focus:border-gray-800 transition"
+            <label for="homeAddress" class="block text-sm font-medium text-gray-700 mb-1"> Home address <span
+                class="text-gray-400">(optional)</span>
+            </label>
+            <textarea id="homeAddress" formControlName="homeAddress" placeholder="Street, city, postal code" rows="2"
+              maxlength="250"
+              class="w-full rounded-lg border bg-gray-50 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-800 focus:border-gray-800 transition"
               [class.border-gray-300]="!(f['homeAddress'].invalid && f['homeAddress'].touched)"
-              [class.border-red-400]="f['homeAddress'].invalid && f['homeAddress'].touched" />
-            <p *ngIf="f['homeAddress'].invalid && f['homeAddress'].touched" class="mt-1 text-xs text-red-600">
-              {{ fieldError('homeAddress') }}
-            </p>
+              [class.border-red-400]="f['homeAddress'].invalid && f['homeAddress'].touched">
+                   </textarea>
+            <p *ngIf="f['homeAddress'].invalid && f['homeAddress'].touched" class="mt-1 text-xs text-red-600"> {{
+              fieldError('homeAddress') }} </p>
           </div>
-
+          <!-- Office Address -->
           <div>
-            <label for="officeAddress" class="block text-sm font-medium text-gray-700 mb-1">Office address <span
-                class="text-gray-400">(optional)</span></label>
-            <input id="officeAddress" type="text" formControlName="officeAddress"
-              placeholder="Street, city, postal code" class="w-full rounded-lg border bg-gray-50 px-3 py-2 text-sm text-gray-900 placeholder-gray-400
-                     focus:outline-none focus:ring-2 focus:ring-gray-800 focus:border-gray-800 transition"
+            <label for="officeAddress" class="block text-sm font-medium text-gray-700 mb-1"> Office address <span
+                class="text-gray-400">(optional)</span>
+            </label>
+            <textarea id="officeAddress" formControlName="officeAddress" placeholder="Street, city, postal code"
+              rows="2" maxlength="250"
+              class="w-full rounded-lg border bg-gray-50 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-800 focus:border-gray-800 transition"
               [class.border-gray-300]="!(f['officeAddress'].invalid && f['officeAddress'].touched)"
-              [class.border-red-400]="f['officeAddress'].invalid && f['officeAddress'].touched" />
-            <p *ngIf="f['officeAddress'].invalid && f['officeAddress'].touched" class="mt-1 text-xs text-red-600">
-              {{ fieldError('officeAddress') }}
-            </p>
+              [class.border-red-400]="f['officeAddress'].invalid && f['officeAddress'].touched"> </textarea>
+            <p *ngIf="f['officeAddress'].invalid && f['officeAddress'].touched" class="mt-1 text-xs text-red-600"> {{
+              fieldError('officeAddress') }} </p>
           </div>
 
           <div>

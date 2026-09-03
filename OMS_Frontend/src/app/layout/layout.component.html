@@ -2,7 +2,8 @@
 
   <!-- Sidebar -->
   <aside class="h-screen bg-gray-900 text-gray-100 flex flex-col overflow-hidden shrink-0 transition-all duration-200"
-    [class.w-64]="sidebarOpen()" [class.w-[72px]]="!sidebarOpen()">
+    [class.w-64]="sidebarOpen() && !isMobile()" [class.w-42]="sidebarOpen() && isMobile()"
+    [class.w-[72px]]="!sidebarOpen()">
 
     <!-- Brand -->
     <div class="h-16 flex items-center gap-3 px-4 border-b border-gray-800">

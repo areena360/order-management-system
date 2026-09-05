@@ -1,6 +1,7 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { AuthService } from '../auth/auth.service';
+import { PermissionService } from '../auth/permission.service';
 
 // Blocks any route if there's no JWT in storage
 export const authGuard: CanActivateFn = () => {
@@ -52,4 +53,31 @@ export const adminOrSuperAdminGuard: CanActivateFn = () => {
   }
 
   return true;
+};
+
+export const ordersGuard: CanActivateFn = () => {
+  const permissionService = inject(PermissionService);
+  const router = inject(Router);
+
+  return permissionService.canView('Orders')
+    ? true
+    : router.parseUrl('/dashboard');
+};
+
+export const ordersAddGuard: CanActivateFn = () => {
+  const permissionService = inject(PermissionService);
+  const router = inject(Router);
+
+  return permissionService.canAdd('Orders')
+    ? true
+    : router.parseUrl('/dashboard/orders');
+};
+
+export const ordersEditGuard: CanActivateFn = () => {
+  const permissionService = inject(PermissionService);
+  const router = inject(Router);
+
+  return permissionService.canEdit('Orders')
+    ? true
+    : router.parseUrl('/dashboard/orders');
 };

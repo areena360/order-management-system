@@ -1,0 +1,1057 @@
+<div class="min-h-full bg-gray-50 p-4 sm:p-6">
+
+  <div class="mx-auto max-w-7xl">
+
+    <!-- Header -->
+    <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+
+      <div>
+
+        <button
+          type="button"
+          (click)="cancel()"
+          class="mb-3 inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 transition hover:text-gray-900">
+
+          <svg
+            class="h-4 w-4"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="m15 18-6-6 6-6" />
+          </svg>
+
+          Back to Orders
+
+        </button>
+
+
+        <div class="flex flex-wrap items-center gap-3">
+
+          <h1 class="text-2xl font-semibold text-gray-900">
+            {{ pageTitle }}
+          </h1>
+
+          <span
+            *ngIf="isEditMode && orderNumber"
+            class="rounded-md bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700">
+
+            {{ orderNumber }}
+
+          </span>
+
+        </div>
+
+        <p class="mt-1 text-sm text-gray-500">
+          {{ pageSubtitle }}
+        </p>
+
+      </div>
+
+
+      <!-- Current Status -->
+      <div
+        *ngIf="isEditMode && currentStatus"
+        class="flex items-center gap-2">
+
+        <span class="text-xs font-medium text-gray-500">
+          Current status
+        </span>
+
+        <span
+          class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset"
+          [ngClass]="statusBadgeClass(currentStatus)">
+
+          {{ currentStatus }}
+
+        </span>
+
+      </div>
+
+    </div>
+
+
+    <!-- Error -->
+    <div
+      *ngIf="errorMsg"
+      class="mb-5 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+
+      <svg
+        class="mt-0.5 h-5 w-5 shrink-0"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2">
+
+        <circle
+          cx="12"
+          cy="12"
+          r="9" />
+
+        <path
+          stroke-linecap="round"
+          d="M12 8v4M12 16h.01" />
+
+      </svg>
+
+      <span>
+        {{ errorMsg }}
+      </span>
+
+    </div>
+
+
+    <!-- Loading -->
+    <div
+      *ngIf="loading"
+      class="space-y-5">
+
+      <div
+        *ngFor="let block of [1,2,3]"
+        class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+
+        <div class="mb-6 h-5 w-40 animate-pulse rounded bg-gray-100"></div>
+
+        <div class="grid gap-5 md:grid-cols-2">
+
+          <div
+            *ngFor="let field of [1,2,3,4]"
+            class="space-y-2">
+
+            <div class="h-3 w-24 animate-pulse rounded bg-gray-100"></div>
+
+            <div class="h-10 w-full animate-pulse rounded-lg bg-gray-100"></div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <!-- Form -->
+    <form
+      *ngIf="!loading"
+      [formGroup]="form"
+      (ngSubmit)="save()"
+      novalidate>
+
+
+      <!-- ========================= -->
+      <!-- Order Information -->
+      <!-- ========================= -->
+
+      <section class="mb-5 rounded-xl border border-gray-200 bg-white shadow-sm">
+
+        <div class="border-b border-gray-200 px-5 py-4">
+
+          <h2 class="text-base font-semibold text-gray-900">
+            Order Information
+          </h2>
+
+          <p class="mt-1 text-sm text-gray-500">
+            Basic customer and product information.
+          </p>
+
+        </div>
+
+
+        <div class="grid gap-5 p-5 md:grid-cols-2">
+
+
+          <!-- Customer -->
+          <div
+            class="relative"
+            data-customer-select>
+
+            <label class="mb-1.5 block text-sm font-medium text-gray-700">
+
+              Customer
+
+              <span class="text-red-500">*</span>
+
+            </label>
+
+
+            <div class="relative">
+
+              <input
+                type="text"
+                [value]="customerSearchTerm"
+                (input)="onCustomerInput($any($event.target).value)"
+                (focus)="onCustomerFocus()"
+                autocomplete="off"
+                placeholder="Search customer by name or email..."
+                class="w-full rounded-lg border bg-white px-3 py-2.5 pr-10 text-sm text-gray-900 outline-none transition placeholder:text-gray-400"
+                [class.border-red-300]="isInvalid('customerId')"
+                [class.border-gray-300]="!isInvalid('customerId')"
+                [class.focus:border-gray-500]="!isInvalid('customerId')"
+                [class.focus:ring-2]="!isInvalid('customerId')"
+                [class.focus:ring-gray-200]="!isInvalid('customerId')" />
+
+
+              <button
+                *ngIf="selectedCustomer"
+                type="button"
+                (click)="clearCustomer()"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700">
+
+                <svg
+                  class="h-4 w-4"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2">
+
+                  <path
+                    stroke-linecap="round"
+                    d="M6 6l12 12M18 6 6 18" />
+
+                </svg>
+
+              </button>
+
+            </div>
+
+
+            <!-- Customer Dropdown -->
+            <div
+              *ngIf="showCustomerDropdown"
+              class="absolute left-0 right-0 z-40 mt-2 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl">
+
+
+              <!-- Loading -->
+              <div
+                *ngIf="customerLoading"
+                class="flex items-center gap-3 px-4 py-3 text-sm text-gray-500">
+
+                <svg
+                  class="h-4 w-4 animate-spin"
+                  viewBox="0 0 24 24"
+                  fill="none">
+
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r="9"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    opacity=".25" />
+
+                  <path
+                    d="M21 12a9 9 0 0 0-9-9"
+                    stroke="currentColor"
+                    stroke-width="2" />
+
+                </svg>
+
+                Searching customers...
+
+              </div>
+
+
+              <!-- Results -->
+              <button
+                *ngFor="let customer of customerOptions"
+                type="button"
+                (click)="selectCustomer(customer)"
+                class="flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-gray-50">
+
+                <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gray-100 text-xs font-semibold text-gray-600">
+
+                  {{ customer.name.charAt(0).toUpperCase() }}
+
+                </div>
+
+                <div class="min-w-0">
+
+                  <div class="truncate text-sm font-medium text-gray-900">
+                    {{ customer.name }}
+                  </div>
+
+                  <div class="truncate text-xs text-gray-500">
+                    {{ customer.email }}
+                  </div>
+
+                </div>
+
+              </button>
+
+
+              <!-- No Results -->
+              <div
+                *ngIf="
+                  !customerLoading &&
+                  customerOptions.length === 0
+                "
+                class="px-4 py-4 text-center text-sm text-gray-500">
+
+                No customers found.
+
+              </div>
+
+            </div>
+
+
+            <p
+              *ngIf="isInvalid('customerId')"
+              class="mt-1.5 text-xs text-red-600">
+
+              Please select a customer.
+
+            </p>
+
+          </div>
+
+
+          <!-- Customer Order Number -->
+          <div>
+
+            <label class="mb-1.5 block text-sm font-medium text-gray-700">
+              Customer Order #
+            </label>
+
+            <input
+              type="text"
+              formControlName="customerOrderNumber"
+              maxlength="100"
+              placeholder="Enter customer order number"
+              class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-500 focus:ring-2 focus:ring-gray-200" />
+
+            <p
+              *ngIf="isInvalid('customerOrderNumber')"
+              class="mt-1.5 text-xs text-red-600">
+
+              {{ getError('customerOrderNumber') }}
+
+            </p>
+
+          </div>
+
+
+          <!-- Customer Product -->
+          <div>
+
+            <label class="mb-1.5 block text-sm font-medium text-gray-700">
+
+              Customer Product Title
+
+              <span class="text-red-500">*</span>
+
+            </label>
+
+            <input
+              type="text"
+              formControlName="customerProductTitle"
+              maxlength="200"
+              placeholder="Enter customer product title"
+              class="w-full rounded-lg border bg-white px-3 py-2.5 text-sm text-gray-900 outline-none transition placeholder:text-gray-400"
+              [class.border-red-300]="isInvalid('customerProductTitle')"
+              [class.border-gray-300]="!isInvalid('customerProductTitle')"
+              [class.focus:border-gray-500]="!isInvalid('customerProductTitle')"
+              [class.focus:ring-2]="!isInvalid('customerProductTitle')"
+              [class.focus:ring-gray-200]="!isInvalid('customerProductTitle')" />
+
+            <p
+              *ngIf="isInvalid('customerProductTitle')"
+              class="mt-1.5 text-xs text-red-600">
+
+              {{ getError('customerProductTitle') }}
+
+            </p>
+
+          </div>
+
+
+          <!-- Manufacturer Product -->
+          <div>
+
+            <label class="mb-1.5 block text-sm font-medium text-gray-700">
+              Manufacturer Product Title
+            </label>
+
+            <input
+              type="text"
+              formControlName="manufacturerProductTitle"
+              maxlength="200"
+              placeholder="Enter manufacturer product title"
+              class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-500 focus:ring-2 focus:ring-gray-200" />
+
+            <p
+              *ngIf="isInvalid('manufacturerProductTitle')"
+              class="mt-1.5 text-xs text-red-600">
+
+              {{ getError('manufacturerProductTitle') }}
+
+            </p>
+
+          </div>
+
+
+          <!-- Gender -->
+          <div>
+
+            <label class="mb-1.5 block text-sm font-medium text-gray-700">
+
+              Gender
+
+              <span class="text-red-500">*</span>
+
+            </label>
+
+            <select
+              formControlName="genderId"
+              class="w-full rounded-lg border bg-white px-3 py-2.5 text-sm text-gray-900 outline-none transition"
+              [class.border-red-300]="isInvalid('genderId')"
+              [class.border-gray-300]="!isInvalid('genderId')"
+              [class.focus:border-gray-500]="!isInvalid('genderId')"
+              [class.focus:ring-2]="!isInvalid('genderId')"
+              [class.focus:ring-gray-200]="!isInvalid('genderId')">
+
+              <option [ngValue]="null">
+                Select gender
+              </option>
+
+              <option
+                *ngFor="let gender of genders"
+                [ngValue]="gender.id">
+
+                {{ gender.name }}
+
+              </option>
+
+            </select>
+
+            <p
+              *ngIf="isInvalid('genderId')"
+              class="mt-1.5 text-xs text-red-600">
+
+              {{ getError('genderId') }}
+
+            </p>
+
+          </div>
+
+
+          <!-- Priority -->
+          <div>
+
+            <label class="mb-1.5 block text-sm font-medium text-gray-700">
+              Priority
+            </label>
+
+            <select
+              formControlName="priorityId"
+              class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none transition focus:border-gray-500 focus:ring-2 focus:ring-gray-200">
+
+              <option [ngValue]="null">
+                Select priority
+              </option>
+
+              <option
+                *ngFor="let priority of priorities"
+                [ngValue]="priority.id">
+
+                {{ priority.name }}
+
+              </option>
+
+            </select>
+
+          </div>
+
+
+          <!-- Amount -->
+          <div>
+
+            <label class="mb-1.5 block text-sm font-medium text-gray-700">
+              Amount
+            </label>
+
+            <input
+              type="number"
+              formControlName="amount"
+              min="0"
+              placeholder="Enter amount"
+              class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-500 focus:ring-2 focus:ring-gray-200" />
+
+            <p
+              *ngIf="isInvalid('amount')"
+              class="mt-1.5 text-xs text-red-600">
+
+              {{ getError('amount') }}
+
+            </p>
+
+          </div>
+
+        </div>
+
+      </section>
+
+
+      <!-- ========================= -->
+      <!-- Material & Size -->
+      <!-- ========================= -->
+
+      <section class="mb-5 rounded-xl border border-gray-200 bg-white shadow-sm">
+
+        <div class="border-b border-gray-200 px-5 py-4">
+
+          <h2 class="text-base font-semibold text-gray-900">
+            Material & Size
+          </h2>
+
+          <p class="mt-1 text-sm text-gray-500">
+            Configure customer and manufacturer materials and sizing.
+          </p>
+
+        </div>
+
+
+        <div class="grid gap-5 p-5 md:grid-cols-2">
+
+
+          <!-- Customer Material -->
+          <div>
+
+            <label class="mb-1.5 block text-sm font-medium text-gray-700">
+
+              Customer Material
+
+              <span class="text-red-500">*</span>
+
+            </label>
+
+            <select
+              formControlName="customerMaterialId"
+              class="w-full rounded-lg border bg-white px-3 py-2.5 text-sm text-gray-900 outline-none transition"
+              [class.border-red-300]="isInvalid('customerMaterialId')"
+              [class.border-gray-300]="!isInvalid('customerMaterialId')"
+              [class.focus:border-gray-500]="!isInvalid('customerMaterialId')"
+              [class.focus:ring-2]="!isInvalid('customerMaterialId')"
+              [class.focus:ring-gray-200]="!isInvalid('customerMaterialId')">
+
+              <option [ngValue]="null">
+                Select customer material
+              </option>
+
+              <option
+                *ngFor="let material of materials"
+                [ngValue]="material.id">
+
+                {{ material.name }}
+
+              </option>
+
+            </select>
+
+            <p
+              *ngIf="isInvalid('customerMaterialId')"
+              class="mt-1.5 text-xs text-red-600">
+
+              {{ getError('customerMaterialId') }}
+
+            </p>
+
+          </div>
+
+
+          <!-- Manufacturer Material -->
+          <div>
+
+            <label class="mb-1.5 block text-sm font-medium text-gray-700">
+
+              Manufacturer Material
+
+              <span class="text-red-500">*</span>
+
+            </label>
+
+            <select
+              formControlName="manufacturerMaterialId"
+              class="w-full rounded-lg border bg-white px-3 py-2.5 text-sm text-gray-900 outline-none transition"
+              [class.border-red-300]="isInvalid('manufacturerMaterialId')"
+              [class.border-gray-300]="!isInvalid('manufacturerMaterialId')"
+              [class.focus:border-gray-500]="!isInvalid('manufacturerMaterialId')"
+              [class.focus:ring-2]="!isInvalid('manufacturerMaterialId')"
+              [class.focus:ring-gray-200]="!isInvalid('manufacturerMaterialId')">
+
+              <option [ngValue]="null">
+                Select manufacturer material
+              </option>
+
+              <option
+                *ngFor="let material of materials"
+                [ngValue]="material.id">
+
+                {{ material.name }}
+
+              </option>
+
+            </select>
+
+            <p
+              *ngIf="isInvalid('manufacturerMaterialId')"
+              class="mt-1.5 text-xs text-red-600">
+
+              {{ getError('manufacturerMaterialId') }}
+
+            </p>
+
+          </div>
+
+
+          <!-- Custom Size Toggle -->
+          <div class="md:col-span-2">
+
+            <label class="flex cursor-pointer items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+
+              <input
+                type="checkbox"
+                formControlName="isCustomSize"
+                class="h-4 w-4 rounded border-gray-300 text-gray-900 focus:ring-gray-500" />
+
+              <span>
+
+                <span class="block text-sm font-medium text-gray-800">
+                  Use custom size
+                </span>
+
+                <span class="block text-xs text-gray-500">
+                  Enable this when the order does not use a standard size.
+                </span>
+
+              </span>
+
+            </label>
+
+          </div>
+
+
+          <!-- Standard Size -->
+          <ng-container
+            *ngIf="!form.controls.isCustomSize.value">
+
+
+            <!-- Size Chart -->
+            <div>
+
+              <label class="mb-1.5 block text-sm font-medium text-gray-700">
+
+                Size Chart
+
+                <span class="text-red-500">*</span>
+
+              </label>
+
+              <select
+                formControlName="sizeChartId"
+                class="w-full rounded-lg border bg-white px-3 py-2.5 text-sm text-gray-900 outline-none transition"
+                [class.border-red-300]="isInvalid('sizeChartId')"
+                [class.border-gray-300]="!isInvalid('sizeChartId')"
+                [class.focus:border-gray-500]="!isInvalid('sizeChartId')"
+                [class.focus:ring-2]="!isInvalid('sizeChartId')"
+                [class.focus:ring-gray-200]="!isInvalid('sizeChartId')">
+
+                <option [ngValue]="null">
+                  Select size chart
+                </option>
+
+                <option
+                  *ngFor="let chart of sizeCharts"
+                  [ngValue]="chart.id">
+
+                  {{ chart.name }}
+
+                </option>
+
+              </select>
+
+              <p
+                *ngIf="isInvalid('sizeChartId')"
+                class="mt-1.5 text-xs text-red-600">
+
+                {{ getError('sizeChartId') }}
+
+              </p>
+
+            </div>
+
+
+            <!-- Size -->
+            <div>
+
+              <label class="mb-1.5 block text-sm font-medium text-gray-700">
+
+                Size
+
+                <span class="text-red-500">*</span>
+
+              </label>
+
+              <select
+                formControlName="sizeId"
+                class="w-full rounded-lg border bg-white px-3 py-2.5 text-sm text-gray-900 outline-none transition"
+                [class.border-red-300]="isInvalid('sizeId')"
+                [class.border-gray-300]="!isInvalid('sizeId')"
+                [class.focus:border-gray-500]="!isInvalid('sizeId')"
+                [class.focus:ring-2]="!isInvalid('sizeId')"
+                [class.focus:ring-gray-200]="!isInvalid('sizeId')">
+
+                <option [ngValue]="null">
+                  Select size
+                </option>
+
+                <option
+                  *ngFor="let size of sizes"
+                  [ngValue]="size.id">
+
+                  {{ size.name }}
+
+                </option>
+
+              </select>
+
+              <p
+                *ngIf="isInvalid('sizeId')"
+                class="mt-1.5 text-xs text-red-600">
+
+                {{ getError('sizeId') }}
+
+              </p>
+
+            </div>
+
+          </ng-container>
+
+
+          <!-- Custom Size -->
+          <div
+            *ngIf="form.controls.isCustomSize.value"
+            class="md:col-span-2">
+
+            <label class="mb-1.5 block text-sm font-medium text-gray-700">
+
+              Custom Size Details
+
+              <span class="text-red-500">*</span>
+
+            </label>
+
+            <textarea
+              formControlName="sizeDetails"
+              rows="4"
+              maxlength="2000"
+              placeholder="Enter custom measurements or size details..."
+              class="w-full resize-y rounded-lg border bg-white px-3 py-2.5 text-sm text-gray-900 outline-none transition placeholder:text-gray-400"
+              [class.border-red-300]="isInvalid('sizeDetails')"
+              [class.border-gray-300]="!isInvalid('sizeDetails')"
+              [class.focus:border-gray-500]="!isInvalid('sizeDetails')"
+              [class.focus:ring-2]="!isInvalid('sizeDetails')"
+              [class.focus:ring-gray-200]="!isInvalid('sizeDetails')">
+            </textarea>
+
+            <p
+              *ngIf="isInvalid('sizeDetails')"
+              class="mt-1.5 text-xs text-red-600">
+
+              {{ getError('sizeDetails') }}
+
+            </p>
+
+          </div>
+
+        </div>
+
+      </section>
+
+
+      <!-- ========================= -->
+      <!-- Production & Delivery -->
+      <!-- ========================= -->
+
+      <section class="mb-5 rounded-xl border border-gray-200 bg-white shadow-sm">
+
+        <div class="border-b border-gray-200 px-5 py-4">
+
+          <h2 class="text-base font-semibold text-gray-900">
+            Production & Delivery
+          </h2>
+
+          <p class="mt-1 text-sm text-gray-500">
+            Production timeline and consignee information.
+          </p>
+
+        </div>
+
+
+        <div class="grid gap-5 p-5 md:grid-cols-2">
+
+
+          <!-- Days -->
+          <div>
+
+            <label class="mb-1.5 block text-sm font-medium text-gray-700">
+
+              Days for Making
+
+              <span class="text-red-500">*</span>
+
+            </label>
+
+            <input
+              type="number"
+              formControlName="daysForMaking"
+              min="0"
+              max="3650"
+              placeholder="Enter number of days"
+              class="w-full rounded-lg border bg-white px-3 py-2.5 text-sm text-gray-900 outline-none transition placeholder:text-gray-400"
+              [class.border-red-300]="isInvalid('daysForMaking')"
+              [class.border-gray-300]="!isInvalid('daysForMaking')"
+              [class.focus:border-gray-500]="!isInvalid('daysForMaking')"
+              [class.focus:ring-2]="!isInvalid('daysForMaking')"
+              [class.focus:ring-gray-200]="!isInvalid('daysForMaking')" />
+
+            <p
+              *ngIf="isInvalid('daysForMaking')"
+              class="mt-1.5 text-xs text-red-600">
+
+              {{ getError('daysForMaking') }}
+
+            </p>
+
+          </div>
+
+
+          <!-- Tracking -->
+          <div>
+
+            <label class="mb-1.5 block text-sm font-medium text-gray-700">
+              Tracking Number
+            </label>
+
+            <input
+              type="text"
+              formControlName="trackingNumber"
+              maxlength="200"
+              placeholder="Enter tracking number"
+              class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-500 focus:ring-2 focus:ring-gray-200" />
+
+            <p
+              *ngIf="isInvalid('trackingNumber')"
+              class="mt-1.5 text-xs text-red-600">
+
+              {{ getError('trackingNumber') }}
+
+            </p>
+
+          </div>
+
+
+          <!-- Consignee Name -->
+          <div>
+
+            <label class="mb-1.5 block text-sm font-medium text-gray-700">
+
+              Consignee Name
+
+              <span class="text-red-500">*</span>
+
+            </label>
+
+            <input
+              type="text"
+              formControlName="consigneeName"
+              maxlength="200"
+              placeholder="Enter consignee name"
+              class="w-full rounded-lg border bg-white px-3 py-2.5 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-500 focus:ring-2 focus:ring-gray-200"
+              [class.border-red-300]="isInvalid('consigneeName')"
+              [class.border-gray-300]="!isInvalid('consigneeName')" />
+
+            <p
+              *ngIf="isInvalid('consigneeName')"
+              class="mt-1.5 text-xs text-red-600">
+
+              {{ getError('consigneeName') }}
+
+            </p>
+
+          </div>
+
+
+          <!-- Consignee Address -->
+          <div>
+
+            <label class="mb-1.5 block text-sm font-medium text-gray-700">
+
+              Consignee Address
+
+              <span class="text-red-500">*</span>
+
+            </label>
+
+            <textarea
+              formControlName="consigneeAddress"
+              rows="3"
+              maxlength="1000"
+              placeholder="Enter complete consignee address"
+              class="w-full resize-y rounded-lg border bg-white px-3 py-2.5 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-500 focus:ring-2 focus:ring-gray-200"
+              [class.border-red-300]="isInvalid('consigneeAddress')"
+              [class.border-gray-300]="!isInvalid('consigneeAddress')">
+            </textarea>
+
+            <p
+              *ngIf="isInvalid('consigneeAddress')"
+              class="mt-1.5 text-xs text-red-600">
+
+              {{ getError('consigneeAddress') }}
+
+            </p>
+
+          </div>
+
+        </div>
+
+      </section>
+
+
+      <!-- ========================= -->
+      <!-- Notes -->
+      <!-- ========================= -->
+
+      <section class="mb-5 rounded-xl border border-gray-200 bg-white shadow-sm">
+
+        <div class="border-b border-gray-200 px-5 py-4">
+
+          <h2 class="text-base font-semibold text-gray-900">
+            Notes
+          </h2>
+
+          <p class="mt-1 text-sm text-gray-500">
+            Additional information related to the order.
+          </p>
+
+        </div>
+
+
+        <div class="grid gap-5 p-5 md:grid-cols-2">
+
+
+          <!-- Customer Notes -->
+          <div>
+
+            <label class="mb-1.5 block text-sm font-medium text-gray-700">
+              Notes by Customer
+            </label>
+
+            <textarea
+              formControlName="notesByCustomer"
+              rows="5"
+              maxlength="3000"
+              placeholder="Enter notes provided by the customer..."
+              class="w-full resize-y rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-500 focus:ring-2 focus:ring-gray-200">
+            </textarea>
+
+            <p
+              *ngIf="isInvalid('notesByCustomer')"
+              class="mt-1.5 text-xs text-red-600">
+
+              {{ getError('notesByCustomer') }}
+
+            </p>
+
+          </div>
+
+
+          <!-- Manufacturer Notes -->
+          <div>
+
+            <label class="mb-1.5 block text-sm font-medium text-gray-700">
+              Notes by Manufacturer
+            </label>
+
+            <textarea
+              formControlName="notesByManufacturer"
+              rows="5"
+              maxlength="3000"
+              placeholder="Enter internal manufacturer notes..."
+              class="w-full resize-y rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-500 focus:ring-2 focus:ring-gray-200">
+            </textarea>
+
+            <p
+              *ngIf="isInvalid('notesByManufacturer')"
+              class="mt-1.5 text-xs text-red-600">
+
+              {{ getError('notesByManufacturer') }}
+
+            </p>
+
+          </div>
+
+        </div>
+
+      </section>
+
+
+      <!-- Actions -->
+      <div class="mb-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+
+        <button
+          type="button"
+          (click)="cancel()"
+          [disabled]="saving"
+          class="rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50">
+
+          Cancel
+
+        </button>
+
+
+        <button
+          type="submit"
+          [disabled]="saving"
+          class="inline-flex items-center justify-center gap-2 rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60">
+
+          <svg
+            *ngIf="saving"
+            class="h-4 w-4 animate-spin"
+            viewBox="0 0 24 24"
+            fill="none">
+
+            <circle
+              cx="12"
+              cy="12"
+              r="9"
+              stroke="currentColor"
+              stroke-width="2"
+              opacity=".25" />
+
+            <path
+              d="M21 12a9 9 0 0 0-9-9"
+              stroke="currentColor"
+              stroke-width="2" />
+
+          </svg>
+
+          <span>
+            {{ saving ? 'Saving...' : (isEditMode ? 'Update Order' : 'Create Order') }}
+          </span>
+
+        </button>
+
+      </div>
+
+    </form>
+
+
+    <app-footer></app-footer>
+
+  </div>
+
+</div>

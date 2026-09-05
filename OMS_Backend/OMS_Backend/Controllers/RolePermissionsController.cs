@@ -14,7 +14,7 @@ namespace OMS_Backend.Controllers
     {
         private static readonly string[] Screens =
         {
-            "Dashboard", "Manage Users", "Manage Roles",
+            "Dashboard", "Manage Users", "Manage Roles", "Orders",
         };
 
         private readonly OMSDbContext _db;

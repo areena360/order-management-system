@@ -67,7 +67,7 @@ namespace OMS_Backend.Migrations
 
                     b.HasIndex("OrderId");
 
-                    b.ToTable("InventoryBills");
+                    b.ToTable("InventoryBills", (string)null);
                 });
 
             modelBuilder.Entity("LookupItem", b =>
@@ -109,7 +109,7 @@ namespace OMS_Backend.Migrations
 
                     b.HasIndex("LookupDataTypeId");
 
-                    b.ToTable("LookupItems");
+                    b.ToTable("LookupItems", (string)null);
 
                     b.HasData(
                         new
@@ -488,7 +488,7 @@ namespace OMS_Backend.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("LookupTypes");
+                    b.ToTable("LookupTypes", (string)null);
 
                     b.HasData(
                         new
@@ -594,7 +594,7 @@ namespace OMS_Backend.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("PasswordResetTokens");
+                    b.ToTable("PasswordResetTokens", (string)null);
                 });
 
             modelBuilder.Entity("Order", b =>
@@ -696,7 +696,7 @@ namespace OMS_Backend.Migrations
 
                     b.HasIndex("CustomerId");
 
-                    b.ToTable("Orders");
+                    b.ToTable("Orders", (string)null);
                 });
 
             modelBuilder.Entity("OrderImage", b =>
@@ -738,7 +738,7 @@ namespace OMS_Backend.Migrations
 
                     b.HasIndex("OrderId");
 
-                    b.ToTable("OrderImages");
+                    b.ToTable("OrderImages", (string)null);
                 });
 
             modelBuilder.Entity("OrderStatusHistory", b =>
@@ -779,7 +779,7 @@ namespace OMS_Backend.Migrations
 
                     b.HasIndex("OrderId");
 
-                    b.ToTable("OrderStatusHistories");
+                    b.ToTable("OrderStatusHistories", (string)null);
                 });
 
             modelBuilder.Entity("Role", b =>
@@ -816,7 +816,7 @@ namespace OMS_Backend.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Roles");
+                    b.ToTable("Roles", (string)null);
 
                     b.HasData(
                         new
@@ -942,7 +942,7 @@ namespace OMS_Backend.Migrations
 
                     b.HasIndex("RoleId");
 
-                    b.ToTable("Users");
+                    b.ToTable("Users", (string)null);
                 });
 
             modelBuilder.Entity("InventoryBill", b =>

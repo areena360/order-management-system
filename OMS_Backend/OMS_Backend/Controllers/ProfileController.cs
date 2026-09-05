@@ -106,7 +106,7 @@ namespace OMS_Backend.Controllers
 
             var screens = new[]
             {
-                "Dashboard", "Manage Users", "Manage Roles",
+                "Dashboard", "Manage Users", "Manage Roles", "Orders",
             };
 
             // Super Admin: full access always, no DB lookup needed

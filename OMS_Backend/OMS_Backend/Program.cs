@@ -19,6 +19,7 @@ builder.Services.AddDbContext<OMSDbContext>(options =>
 // ---- Auth services ----
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IOrderService, OrderService>();
 
 // ---- JWT Bearer authentication ----
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
@@ -72,7 +73,7 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
-    // NOTE: UseDeveloperExceptionPage() removed — GlobalExceptionHandler now
+    // NOTE: UseDeveloperExceptionPage() removed GlobalExceptionHandler now
     // handles all exceptions (dev + prod) via ProblemDetails.
 }
 
@@ -80,6 +81,7 @@ if (app.Environment.IsDevelopment())
 app.UseExceptionHandler();   // NEW
 
 app.UseHttpsRedirection();
+app.UseStaticFiles(); // serves wwwroot/uploads/orders/... (Order Images)
 app.UseCors("AngularClient");
 app.UseAuthentication();
 app.UseAuthorization();

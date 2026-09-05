@@ -1,0 +1,833 @@
+<div class="min-h-full bg-gray-50 p-4 sm:p-6">
+
+  <div class="mx-auto max-w-[1600px]">
+
+    <!-- Header -->
+    <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+
+      <div>
+        <h1 class="text-2xl font-semibold text-gray-900">
+          Manage Orders
+        </h1>
+
+        <p class="mt-1 text-sm text-gray-500">
+          View, search and manage customer orders.
+        </p>
+      </div>
+
+      <button
+        *ngIf="canAdd"
+        type="button"
+        (click)="addOrder()"
+        class="inline-flex items-center justify-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2">
+
+        <svg
+          class="h-4 w-4"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2">
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M12 5v14M5 12h14" />
+        </svg>
+
+        Add Order
+      </button>
+
+    </div>
+
+
+    <!-- Error -->
+    <div
+      *ngIf="errorMsg"
+      class="mb-4 flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+
+      <svg
+        class="mt-0.5 h-5 w-5 shrink-0"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2">
+        <circle
+          cx="12"
+          cy="12"
+          r="9" />
+        <path
+          stroke-linecap="round"
+          d="M12 8v4M12 16h.01" />
+      </svg>
+
+      <span>
+        {{ errorMsg }}
+      </span>
+
+    </div>
+
+
+    <!-- Toolbar -->
+    <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+
+      <div class="flex flex-col gap-3 border-b border-gray-200 p-4 xl:flex-row xl:items-center xl:justify-between">
+
+        <!-- Search -->
+        <div class="relative w-full xl:max-w-md">
+
+          <svg
+            class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2">
+            <circle
+              cx="11"
+              cy="11"
+              r="7" />
+            <path
+              stroke-linecap="round"
+              d="m20 20-4-4" />
+          </svg>
+
+          <input
+            type="text"
+            [(ngModel)]="searchTerm"
+            (ngModelChange)="onSearchChange()"
+            placeholder="Search orders..."
+            class="w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-4 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-gray-500 focus:ring-2 focus:ring-gray-200" />
+
+        </div>
+
+
+        <!-- Actions -->
+        <div class="flex flex-wrap items-center gap-2">
+
+          <!-- Filters -->
+          <div
+            class="relative"
+            data-filters-menu>
+
+            <button
+              type="button"
+              (click)="showFilters = !showFilters"
+              class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
+
+              <svg
+                class="h-4 w-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M4 6h16M7 12h10m-7 6h4" />
+              </svg>
+
+              Filters
+
+              <span
+                *ngIf="activeFilterCount > 0"
+                class="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-gray-900 px-1.5 text-[11px] font-semibold text-white">
+
+                {{ activeFilterCount }}
+
+              </span>
+
+            </button>
+
+
+            <!-- Filter Dropdown -->
+            <div
+              *ngIf="showFilters"
+              class="absolute right-0 z-30 mt-2 w-[340px] max-w-[calc(100vw-2rem)] rounded-xl border border-gray-200 bg-white p-4 shadow-xl">
+
+              <div class="mb-4 flex items-center justify-between">
+
+                <h3 class="text-sm font-semibold text-gray-900">
+                  Filter Orders
+                </h3>
+
+                <button
+                  type="button"
+                  (click)="clearFilters()"
+                  class="text-xs font-medium text-gray-500 hover:text-gray-900">
+
+                  Clear all
+
+                </button>
+
+              </div>
+
+
+              <div class="space-y-4">
+
+                <!-- Status -->
+                <div>
+
+                  <label class="mb-1.5 block text-xs font-medium text-gray-700">
+                    Status
+                  </label>
+
+                  <select
+                    [(ngModel)]="statusFilter"
+                    class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-200">
+
+                    <option [ngValue]="null">
+                      All statuses
+                    </option>
+
+                    <option
+                      *ngFor="let status of statuses"
+                      [ngValue]="status.id">
+
+                      {{ status.name }}
+
+                    </option>
+
+                  </select>
+
+                </div>
+
+
+                <!-- Priority -->
+                <div>
+
+                  <label class="mb-1.5 block text-xs font-medium text-gray-700">
+                    Priority
+                  </label>
+
+                  <select
+                    [(ngModel)]="priorityFilter"
+                    class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-200">
+
+                    <option [ngValue]="null">
+                      All priorities
+                    </option>
+
+                    <option
+                      *ngFor="let priority of priorities"
+                      [ngValue]="priority.id">
+
+                      {{ priority.name }}
+
+                    </option>
+
+                  </select>
+
+                </div>
+
+
+                <!-- Gender -->
+                <div>
+
+                  <label class="mb-1.5 block text-xs font-medium text-gray-700">
+                    Gender
+                  </label>
+
+                  <select
+                    [(ngModel)]="genderFilter"
+                    class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-200">
+
+                    <option [ngValue]="null">
+                      All genders
+                    </option>
+
+                    <option
+                      *ngFor="let gender of genders"
+                      [ngValue]="gender.id">
+
+                      {{ gender.name }}
+
+                    </option>
+
+                  </select>
+
+                </div>
+
+
+                <!-- Material -->
+                <div>
+
+                  <label class="mb-1.5 block text-xs font-medium text-gray-700">
+                    Material
+                  </label>
+
+                  <select
+                    [(ngModel)]="materialFilter"
+                    class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-200">
+
+                    <option [ngValue]="null">
+                      All materials
+                    </option>
+
+                    <option
+                      *ngFor="let material of materials"
+                      [ngValue]="material.id">
+
+                      {{ material.name }}
+
+                    </option>
+
+                  </select>
+
+                </div>
+
+
+                <!-- Dates -->
+                <div class="grid grid-cols-2 gap-3">
+
+                  <div>
+
+                    <label class="mb-1.5 block text-xs font-medium text-gray-700">
+                      From
+                    </label>
+
+                    <input
+                      type="date"
+                      [(ngModel)]="dateFrom"
+                      class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-200" />
+
+                  </div>
+
+                  <div>
+
+                    <label class="mb-1.5 block text-xs font-medium text-gray-700">
+                      To
+                    </label>
+
+                    <input
+                      type="date"
+                      [(ngModel)]="dateTo"
+                      class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-gray-500 focus:ring-2 focus:ring-gray-200" />
+
+                  </div>
+
+                </div>
+
+
+                <button
+                  type="button"
+                  (click)="applyFilters()"
+                  class="w-full rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-gray-800">
+
+                  Apply Filters
+
+                </button>
+
+              </div>
+
+            </div>
+
+          </div>
+
+
+          <!-- Columns -->
+          <div
+            class="relative"
+            data-column-menu>
+
+            <button
+              type="button"
+              (click)="toggleColumnMenu()"
+              class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
+
+              <svg
+                class="h-4 w-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2">
+                <rect
+                  x="3"
+                  y="4"
+                  width="18"
+                  height="16"
+                  rx="2" />
+                <path
+                  stroke-linecap="round"
+                  d="M9 4v16M15 4v16" />
+              </svg>
+
+              Columns
+
+            </button>
+
+
+            <div
+              *ngIf="showColumnMenu"
+              class="absolute right-0 z-30 mt-2 w-64 rounded-xl border border-gray-200 bg-white p-3 shadow-xl">
+
+              <div class="mb-2 flex items-center justify-between">
+
+                <span class="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  Optional Columns
+                </span>
+
+                <button
+                  type="button"
+                  (click)="resetColumns()"
+                  class="text-xs font-medium text-gray-500 hover:text-gray-900">
+
+                  Reset
+
+                </button>
+
+              </div>
+
+
+              <label
+                *ngFor="let column of columnOptions"
+                class="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2 hover:bg-gray-50">
+
+                <input
+                  type="checkbox"
+                  [checked]="isColumnVisible(column.key)"
+                  (change)="toggleColumn(column.key)"
+                  class="h-4 w-4 rounded border-gray-300 text-gray-900 focus:ring-gray-500" />
+
+                <span class="text-sm text-gray-700">
+                  {{ column.label }}
+                </span>
+
+              </label>
+
+            </div>
+
+          </div>
+
+
+          <!-- Page Size -->
+          <div
+            class="relative"
+            data-pagesize-menu>
+
+            <button
+              type="button"
+              (click)="togglePageSizeMenu()"
+              class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
+
+              {{ pageSize }}
+
+              <svg
+                class="h-4 w-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="m6 9 6 6 6-6" />
+              </svg>
+
+            </button>
+
+
+            <div
+              *ngIf="showPageSizeMenu"
+              class="absolute right-0 z-30 mt-2 w-32 rounded-xl border border-gray-200 bg-white p-1.5 shadow-xl">
+
+              <button
+                *ngFor="let size of pageSizeOptions"
+                type="button"
+                (click)="selectPageSize(size)"
+                class="flex w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-gray-50"
+                [class.bg-gray-100]="pageSize === size">
+
+                {{ size }} / page
+
+              </button>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <!-- Table -->
+      <div class="overflow-x-auto">
+
+        <table class="min-w-[1100px] w-full text-left">
+
+          <thead class="border-b border-gray-200 bg-gray-50">
+
+            <tr>
+
+              <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                Manufacturer Order #
+              </th>
+
+              <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                Customer
+              </th>
+
+              <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                Product
+              </th>
+
+              <th
+                *ngIf="isColumnVisible('customerOrderNumber')"
+                class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
+
+                Customer Order #
+
+              </th>
+
+              <th
+                *ngIf="isColumnVisible('manufacturerProductTitle')"
+                class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
+
+                Manufacturer Product
+
+              </th>
+
+              <th class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                Status
+              </th>
+
+              <th
+                *ngIf="isColumnVisible('priority')"
+                class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
+
+                Priority
+
+              </th>
+
+              <th
+                *ngIf="isColumnVisible('daysForMaking')"
+                class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
+
+                Days
+
+              </th>
+
+              <th
+                *ngIf="isColumnVisible('trackingNumber')"
+                class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
+
+                Tracking
+
+              </th>
+
+              <th
+                *ngIf="isColumnVisible('createdDate')"
+                class="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
+
+                Created
+
+              </th>
+
+              <th class="w-20 px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">
+                Action
+              </th>
+
+            </tr>
+
+          </thead>
+
+
+          <tbody class="divide-y divide-gray-100">
+
+            <!-- Loading -->
+            <ng-container *ngIf="loading">
+
+              <tr *ngFor="let row of [1,2,3,4,5]">
+
+                <td
+                  [attr.colspan]="
+                    7 + visibleColumnCount()
+                  "
+                  class="px-4 py-4">
+
+                  <div class="h-5 w-full animate-pulse rounded bg-gray-100"></div>
+
+                </td>
+
+              </tr>
+
+            </ng-container>
+
+
+            <!-- Empty -->
+            <tr
+              *ngIf="!loading && orders.length === 0">
+
+              <td
+                [attr.colspan]="
+                  7 + visibleColumnCount()
+                "
+                class="px-6 py-16 text-center">
+
+                <div class="mx-auto max-w-sm">
+
+                  <div class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-gray-100">
+
+                    <svg
+                      class="h-6 w-6 text-gray-400"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.7">
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z" />
+                      <path
+                        stroke-linecap="round"
+                        d="M8 8h8M8 12h8M8 16h5" />
+                    </svg>
+
+                  </div>
+
+                  <h3 class="text-sm font-semibold text-gray-900">
+                    No orders found
+                  </h3>
+
+                  <p class="mt-1 text-sm text-gray-500">
+                    Try changing your search or filters.
+                  </p>
+
+                </div>
+
+              </td>
+
+            </tr>
+
+
+            <!-- Orders -->
+            <tr
+              *ngFor="let order of orders"
+              class="group transition hover:bg-gray-50">
+
+              <td class="px-4 py-4">
+
+                <div class="font-medium text-gray-900">
+                  {{ order.manufacturerOrderNumber }}
+                </div>
+
+              </td>
+
+
+              <td class="px-4 py-4">
+
+                <div class="font-medium text-gray-900">
+                  {{ order.customerName }}
+                </div>
+
+              </td>
+
+
+              <td class="max-w-[220px] px-4 py-4">
+
+                <div
+                  class="truncate font-medium text-gray-900"
+                  [title]="order.customerProductTitle">
+
+                  {{ order.customerProductTitle }}
+
+                </div>
+
+                <div
+                  *ngIf="order.amount !== null"
+                  class="mt-0.5 text-xs text-gray-500">
+
+                  Amount: {{ order.amount }}
+
+                </div>
+
+              </td>
+
+
+              <td
+                *ngIf="isColumnVisible('customerOrderNumber')"
+                class="px-4 py-4 text-sm text-gray-600">
+
+                {{ order.customerOrderNumber || '—' }}
+
+              </td>
+
+
+              <td
+                *ngIf="isColumnVisible('manufacturerProductTitle')"
+                class="max-w-[200px] px-4 py-4">
+
+                <span
+                  class="block truncate text-sm text-gray-600"
+                  [title]="order.manufacturerProductTitle || ''">
+
+                  {{ order.manufacturerProductTitle || '—' }}
+
+                </span>
+
+              </td>
+
+
+              <td class="px-4 py-4">
+
+                <span
+                  class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset"
+                  [ngClass]="statusBadgeClass(order.status)">
+
+                  {{ order.status }}
+
+                </span>
+
+              </td>
+
+
+              <td
+                *ngIf="isColumnVisible('priority')"
+                class="px-4 py-4">
+
+                <span
+                  *ngIf="order.priority"
+                  class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset"
+                  [ngClass]="priorityBadgeClass(order.priority)">
+
+                  {{ order.priority }}
+
+                </span>
+
+                <span
+                  *ngIf="!order.priority"
+                  class="text-sm text-gray-400">
+
+                  —
+
+                </span>
+
+              </td>
+
+
+              <td
+                *ngIf="isColumnVisible('daysForMaking')"
+                class="px-4 py-4 text-sm text-gray-600">
+
+                {{ order.daysForMaking }}
+
+              </td>
+
+
+              <td
+                *ngIf="isColumnVisible('trackingNumber')"
+                class="max-w-[150px] px-4 py-4">
+
+                <span
+                  class="block truncate text-sm text-gray-600"
+                  [title]="order.trackingNumber || ''">
+
+                  {{ order.trackingNumber || '—' }}
+
+                </span>
+
+              </td>
+
+
+              <td
+                *ngIf="isColumnVisible('createdDate')"
+                class="whitespace-nowrap px-4 py-4 text-sm text-gray-500">
+
+                {{ order.createdDate | date:'dd MMM yyyy' }}
+
+              </td>
+
+
+              <td class="px-4 py-4 text-right">
+
+                <button
+                  *ngIf="canEdit"
+                  type="button"
+                  (click)="editOrder(order, $event)"
+                  class="inline-flex items-center rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 opacity-80 transition hover:bg-gray-50 hover:text-gray-900 group-hover:opacity-100">
+
+                  Edit
+
+                </button>
+
+              </td>
+
+            </tr>
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+
+      <!-- Pagination -->
+      <div
+        *ngIf="!loading && totalCount > 0"
+        class="flex flex-col gap-3 border-t border-gray-200 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+
+        <p class="text-sm text-gray-500">
+
+          Showing
+          <span class="font-medium text-gray-700">
+            {{ showingFrom }}
+          </span>
+          -
+          <span class="font-medium text-gray-700">
+            {{ showingTo }}
+          </span>
+          of
+          <span class="font-medium text-gray-700">
+            {{ totalCount }}
+          </span>
+
+        </p>
+
+
+        <div class="flex items-center gap-1">
+
+          <button
+            type="button"
+            [disabled]="currentPage === 1"
+            (click)="goToPage(currentPage - 1)"
+            class="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40">
+
+            Previous
+
+          </button>
+
+
+          <button
+            *ngFor="let page of pageNumbers"
+            type="button"
+            (click)="goToPage(page)"
+            class="h-9 min-w-9 rounded-lg px-2 text-sm font-medium"
+            [class.bg-gray-900]="currentPage === page"
+            [class.text-white]="currentPage === page"
+            [class.text-gray-700]="currentPage !== page"
+            [class.hover:bg-gray-100]="currentPage !== page">
+
+            {{ page }}
+
+          </button>
+
+
+          <button
+            type="button"
+            [disabled]="currentPage === totalPages"
+            (click)="goToPage(currentPage + 1)"
+            class="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40">
+
+            Next
+
+          </button>
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <app-footer></app-footer>
+
+  </div>
+
+</div>

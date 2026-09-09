@@ -1,0 +1,724 @@
+<div class="min-h-screen bg-gray-50 p-6">
+  <div class="max-w-7xl mx-auto">
+
+    <!-- Loading -->
+    <div *ngIf="loading" class="bg-white rounded-xl shadow-sm ring-1 ring-gray-200 p-6 animate-pulse">
+      <div class="flex justify-between items-center mb-8">
+        <div>
+          <div class="h-7 w-56 bg-gray-200 rounded mb-3"></div>
+          <div class="h-4 w-40 bg-gray-200 rounded"></div>
+        </div>
+        <div class="h-10 w-24 bg-gray-200 rounded-lg"></div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div *ngFor="let item of [1,2,3,4,5,6]" class="h-20 bg-gray-100 rounded-lg"></div>
+      </div>
+    </div>
+
+
+    <!-- Error -->
+    <div *ngIf="!loading && errorMsg" class="bg-white rounded-xl shadow-sm ring-1 ring-red-200 p-8 text-center">
+
+      <div class="mx-auto w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mb-4">
+        <svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M12 8v4m0 4h.01M10.29 3.86l-7.82 13.5A2 2 0 004.2 20h15.6a2 2 0 001.73-2.64l-7.82-13.5a2 2 0 00-3.46 0z" />
+        </svg>
+      </div>
+
+      <h2 class="text-lg font-semibold text-gray-900">Unable to load order</h2>
+      <p class="mt-2 text-sm text-gray-500">{{ errorMsg }}</p>
+
+      <div class="mt-6 flex justify-center gap-2">
+        <button type="button" (click)="goBack()"
+          class="px-4 py-2 text-sm rounded-lg border border-gray-300 cursor-pointer text-gray-700 hover:bg-gray-50">
+          Back to Orders
+        </button>
+        <button type="button" (click)="loadOrder()"
+          class="px-4 py-2 text-sm rounded-lg bg-gray-800 cursor-pointer text-white hover:bg-gray-900">
+          Try Again
+        </button>
+      </div>
+    </div>
+
+
+    <!-- Main -->
+    <div *ngIf="!loading && !errorMsg && order" class="space-y-4">
+
+
+      <!-- Header -->
+      <div class="bg-white rounded-xl shadow-sm ring-1 ring-gray-200 p-5 sm:p-6">
+
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
+
+          <div class="min-w-0">
+            <div class="flex items-center gap-3 flex-wrap">
+
+              <button type="button" (click)="goBack()"
+                class="w-9 h-9 rounded-lg border border-gray-300 flex items-center justify-center text-gray-500 hover:text-gray-900 hover:bg-gray-50 transition-colors cursor-pointer"
+                title="Back">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+
+              <div class="min-w-0">
+                <div class="flex items-center gap-3 flex-wrap">
+                  <h1 class="text-2xl font-bold text-gray-900">{{ order.manufacturerOrderNumber }}</h1>
+
+                  <span
+                    class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset"
+                    [ngClass]="statusBadgeClass(order.status)">
+                    {{ order.status }}
+                  </span>
+
+                  <span *ngIf="order.priority"
+                    class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset"
+                    [ngClass]="priorityBadgeClass(order.priority)">
+                    {{ order.priority }}
+                  </span>
+                </div>
+
+                <p class="mt-1 text-sm text-gray-500">Order created {{ formatDateTime(order.createdDate) }}</p>
+              </div>
+            </div>
+          </div>
+
+
+          <div class="flex items-center gap-2">
+            <button *ngIf="canEditOrder()" type="button" (click)="editOrder()"
+              class="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-100 hover:border-blue-300 transition-colors cursor-pointer">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+              </svg>
+              Edit Order
+            </button>
+
+            <button *ngIf="canDeleteOrder()" type="button" (click)="openDeleteModal()"
+              class="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-100 hover:border-red-300 transition-colors cursor-pointer">
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+              </svg>
+              Delete
+            </button>
+          </div>
+
+        </div>
+      </div>
+
+
+      <!-- Status -->
+      <div class="bg-white rounded-xl shadow-sm ring-1 ring-gray-200 p-5 sm:p-6">
+
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+
+          <div>
+            <h2 class="text-base font-semibold text-gray-900">Order Status</h2>
+            <p class="mt-1 text-sm text-gray-500">Update the current production status of this order.</p>
+          </div>
+
+          <div class="w-full sm:w-64 relative" data-status-dd>
+
+            <button type="button" (click)="!changingStatus && (showStatusDropdown = !showStatusDropdown)"
+              [disabled]="changingStatus"
+              class="w-full flex items-center justify-between rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 cursor-pointer disabled:bg-gray-100 disabled:cursor-not-allowed">
+
+              <span>{{ optionName(statuses, order.orderStatusId) || 'Select status' }}</span>
+
+              <svg class="h-3.5 w-3.5 text-gray-400 transition-transform" [class.rotate-180]="showStatusDropdown"
+                fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+              </svg>
+            </button>
+
+            <div *ngIf="showStatusDropdown"
+              class="absolute right-0 left-0 z-20 mt-2 max-h-56 overflow-y-auto rounded-lg bg-white shadow-lg ring-1 ring-gray-200 p-1.5">
+
+              <button *ngFor="let status of statuses" type="button"
+                (click)="showStatusDropdown = false; changeStatus(status.id)"
+                class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors"
+                [class.bg-gray-100]="order.orderStatusId === status.id"
+                [class.font-medium]="order.orderStatusId === status.id">
+                {{ status.name }}
+              </button>
+            </div>
+
+          </div>
+
+        </div>
+
+        <div *ngIf="changingStatus" class="mt-3 flex items-center gap-2 text-xs text-gray-500">
+          <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+          </svg>
+          Updating status...
+        </div>
+      </div>
+
+
+      <!-- Order Information -->
+      <div class="bg-white rounded-xl shadow-sm ring-1 ring-gray-200">
+        <div class="px-5 py-4 sm:px-6 border-b border-gray-100">
+          <h2 class="text-base font-semibold text-gray-900">Order Information</h2>
+        </div>
+
+        <div class="p-5 sm:p-6">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6">
+
+            <div>
+              <p class="text-xs font-medium uppercase tracking-wide text-gray-400">Manufacturer Order #</p>
+              <p class="mt-1.5 text-sm font-semibold text-gray-900">{{ order.manufacturerOrderNumber }}</p>
+            </div>
+
+            <div>
+              <p class="text-xs font-medium uppercase tracking-wide text-gray-400">Customer Order #</p>
+              <p class="mt-1.5 text-sm text-gray-700">{{ order.customerOrderNumber || '—' }}</p>
+            </div>
+
+            <div>
+              <p class="text-xs font-medium uppercase tracking-wide text-gray-400">Customer</p>
+              <p class="mt-1.5 text-sm font-medium text-gray-900">{{ order.customerName }}</p>
+            </div>
+
+            <div>
+              <p class="text-xs font-medium uppercase tracking-wide text-gray-400">Customer Product</p>
+              <p class="mt-1.5 text-sm text-gray-700">{{ order.customerProductTitle }}</p>
+            </div>
+
+            <div>
+              <p class="text-xs font-medium uppercase tracking-wide text-gray-400">Manufacturer Product</p>
+              <p class="mt-1.5 text-sm text-gray-700">{{ order.manufacturerProductTitle || '—' }}</p>
+            </div>
+
+            <div>
+              <p class="text-xs font-medium uppercase tracking-wide text-gray-400">Gender</p>
+              <p class="mt-1.5 text-sm text-gray-700">{{ order.gender || '—' }}</p>
+            </div>
+
+            <div>
+              <p class="text-xs font-medium uppercase tracking-wide text-gray-400">Amount</p>
+              <p class="mt-1.5 text-sm font-semibold text-gray-900">{{ order.amount !== null ? order.amount : '—' }}</p>
+            </div>
+
+            <div>
+              <p class="text-xs font-medium uppercase tracking-wide text-gray-400">Created Date</p>
+              <p class="mt-1.5 text-sm text-gray-700">{{ formatDate(order.createdDate) }}</p>
+            </div>
+
+            <div>
+              <p class="text-xs font-medium uppercase tracking-wide text-gray-400">Last Updated</p>
+              <p class="mt-1.5 text-sm text-gray-700">{{ formatDateTime(order.updatedDate) }}</p>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+
+      <!-- Material & Size -->
+      <div class="bg-white rounded-xl shadow-sm ring-1 ring-gray-200">
+        <div class="px-5 py-4 sm:px-6 border-b border-gray-100">
+          <h2 class="text-base font-semibold text-gray-900">Material & Size</h2>
+        </div>
+
+        <div class="p-5 sm:p-6">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6">
+
+            <div>
+              <p class="text-xs font-medium uppercase tracking-wide text-gray-400">Customer Material</p>
+              <p class="mt-1.5 text-sm text-gray-700">{{ order.customerMaterial || '—' }}</p>
+            </div>
+
+            <div>
+              <p class="text-xs font-medium uppercase tracking-wide text-gray-400">Manufacturer Material</p>
+              <p class="mt-1.5 text-sm text-gray-700">{{ order.manufacturerMaterial || '—' }}</p>
+            </div>
+
+            <div>
+              <p class="text-xs font-medium uppercase tracking-wide text-gray-400">Size Type</p>
+              <p class="mt-1.5 text-sm text-gray-700">{{ order.isCustomSize ? 'Custom Size' : 'Standard Size' }}</p>
+            </div>
+
+            <ng-container *ngIf="!order.isCustomSize">
+              <div>
+                <p class="text-xs font-medium uppercase tracking-wide text-gray-400">Size Chart</p>
+                <p class="mt-1.5 text-sm text-gray-700">{{ order.sizeChart || '—' }}</p>
+              </div>
+
+              <div>
+                <p class="text-xs font-medium uppercase tracking-wide text-gray-400">Size</p>
+                <p class="mt-1.5 text-sm font-semibold text-gray-900">{{ order.size || '—' }}</p>
+              </div>
+            </ng-container>
+
+            <div *ngIf="order.isCustomSize" class="sm:col-span-2 lg:col-span-3">
+              <p class="text-xs font-medium uppercase tracking-wide text-gray-400">Custom Size Details</p>
+              <div class="mt-2 rounded-lg bg-gray-50 ring-1 ring-gray-200 px-4 py-3">
+                <p class="text-sm text-gray-700 whitespace-pre-wrap">{{ order.sizeDetails || '—' }}</p>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+
+      <!-- Production & Delivery -->
+      <div class="bg-white rounded-xl shadow-sm ring-1 ring-gray-200">
+        <div class="px-5 py-4 sm:px-6 border-b border-gray-100">
+          <h2 class="text-base font-semibold text-gray-900">Production & Delivery</h2>
+        </div>
+
+        <div class="p-5 sm:p-6">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6">
+
+            <div>
+              <p class="text-xs font-medium uppercase tracking-wide text-gray-400">Days for Making</p>
+              <p class="mt-1.5 text-sm font-semibold text-gray-900">{{ order.daysForMaking }} days</p>
+            </div>
+
+            <div>
+              <p class="text-xs font-medium uppercase tracking-wide text-gray-400">Tracking Number</p>
+              <p class="mt-1.5 text-sm text-gray-700 break-all">{{ order.trackingNumber || '—' }}</p>
+            </div>
+
+            <div>
+              <p class="text-xs font-medium uppercase tracking-wide text-gray-400">Consignee Name</p>
+              <p class="mt-1.5 text-sm text-gray-700">{{ order.consigneeName }}</p>
+            </div>
+
+            <div class="sm:col-span-2 lg:col-span-3">
+              <p class="text-xs font-medium uppercase tracking-wide text-gray-400">Consignee Address</p>
+              <p class="mt-1.5 text-sm text-gray-700 whitespace-pre-wrap">{{ order.consigneeAddress }}</p>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+
+      <!-- Notes -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+        <div class="bg-white rounded-xl shadow-sm ring-1 ring-gray-200">
+          <div class="px-5 py-4 border-b border-gray-100">
+            <h2 class="text-base font-semibold text-gray-900">Customer Notes</h2>
+          </div>
+          <div class="p-5">
+            <p *ngIf="order.notesByCustomer" class="text-sm text-gray-700 whitespace-pre-wrap leading-6">
+              {{ order.notesByCustomer }}
+            </p>
+            <p *ngIf="!order.notesByCustomer" class="text-sm text-gray-400 italic">No customer notes.</p>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm ring-1 ring-gray-200">
+          <div class="px-5 py-4 border-b border-gray-100">
+            <h2 class="text-base font-semibold text-gray-900">Manufacturer Notes</h2>
+          </div>
+          <div class="p-5">
+            <p *ngIf="order.notesByManufacturer" class="text-sm text-gray-700 whitespace-pre-wrap leading-6">
+              {{ order.notesByManufacturer }}
+            </p>
+            <p *ngIf="!order.notesByManufacturer" class="text-sm text-gray-400 italic">No manufacturer notes.</p>
+          </div>
+        </div>
+
+      </div>
+
+
+      <!-- Status History -->
+      <div class="bg-white rounded-xl shadow-sm ring-1 ring-gray-200">
+        <div class="px-5 py-4 sm:px-6 border-b border-gray-100">
+          <h2 class="text-base font-semibold text-gray-900">Status History</h2>
+          <p class="mt-1 text-xs text-gray-500">Timeline of status changes for this order.</p>
+        </div>
+
+        <div class="p-5 sm:p-6">
+
+          <div *ngIf="!order.statusHistory?.length" class="py-6 text-center">
+            <p class="text-sm text-gray-400">No status history available.</p>
+          </div>
+
+          <div *ngIf="order.statusHistory?.length" class="relative">
+            <div class="absolute left-[7px] top-2 bottom-2 w-px bg-gray-200"></div>
+
+            <div *ngFor="let history of order.statusHistory; trackBy: trackById"
+              class="relative flex gap-4 pb-6 last:pb-0">
+
+              <div
+                class="relative z-10 mt-1 w-[15px] h-[15px] rounded-full border-4 border-white bg-gray-400 ring-1 ring-gray-200 shrink-0">
+              </div>
+
+              <div class="min-w-0">
+                <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset"
+                  [ngClass]="statusBadgeClass(history.status)">
+                  {{ history.status }}
+                </span>
+                <p class="mt-1 text-xs text-gray-500">{{ formatDateTime(history.createdDate) }}</p>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+
+      <!-- Images -->
+      <div class="bg-white rounded-xl shadow-sm ring-1 ring-gray-200">
+        <div class="px-5 py-4 sm:px-6 border-b border-gray-100">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <h2 class="text-base font-semibold text-gray-900">Order Images</h2>
+              <p class="mt-1 text-xs text-gray-500">Product and order-related images.</p>
+            </div>
+
+            <label *ngIf="canEditOrder()"
+              class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 cursor-pointer transition-colors">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+              Add Images
+              <input type="file" accept="image/*" multiple class="hidden" (change)="onImagesSelected($event)" />
+            </label>
+          </div>
+        </div>
+
+
+        <div class="p-5 sm:p-6">
+
+          <!-- Selected files -->
+          <div *ngIf="selectedImages.length" class="mb-6 rounded-lg ring-1 ring-gray-200 bg-gray-50 p-4">
+
+            <div class="flex items-center justify-between mb-3">
+              <div>
+                <h3 class="text-sm font-semibold text-gray-900">Selected Images</h3>
+                <p class="text-xs text-gray-500 mt-0.5">
+                  {{ selectedImages.length }} image{{ selectedImages.length === 1 ? '' : 's' }} ready to upload.
+                </p>
+              </div>
+              <button type="button" (click)="clearSelectedImages()"
+                class="text-xs text-gray-500 hover:text-gray-900 cursor-pointer">Clear</button>
+            </div>
+
+            <div class="space-y-2">
+              <div *ngFor="let file of selectedImages; let i = index"
+                class="flex items-center justify-between gap-3 bg-white ring-1 ring-gray-200 rounded-lg px-3 py-2">
+
+                <div class="min-w-0">
+                  <p class="text-sm text-gray-700 truncate">{{ file.name }}</p>
+                  <p class="text-xs text-gray-400">{{ formatFileSize(file.size) }}</p>
+                </div>
+
+                <button type="button" (click)="removeSelectedImage(i)"
+                  class="shrink-0 w-8 h-8 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                  title="Remove">
+                  <svg class="w-4 h-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="mt-4 flex justify-end">
+              <button type="button" (click)="uploadImages()" [disabled]="uploadingImages"
+                class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-gray-800 rounded-lg hover:bg-gray-900 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+
+                <svg *ngIf="uploadingImages" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                </svg>
+                {{ uploadingImages ? 'Uploading...' : 'Upload Images' }}
+              </button>
+            </div>
+
+          </div>
+
+
+          <!-- Upload error -->
+          <div *ngIf="imageUploadError" class="mb-5 rounded-lg bg-red-50 ring-1 ring-red-200 px-4 py-3">
+            <p class="text-sm text-red-700">{{ imageUploadError }}</p>
+          </div>
+
+
+          <!-- Empty -->
+          <div *ngIf="!order.images?.length" class="py-8 text-center">
+            <div class="mx-auto w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center">
+              <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 16m-2-9h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <p class="mt-3 text-sm text-gray-500">No images uploaded for this order.</p>
+          </div>
+
+
+          <!-- Images grid -->
+          <div *ngIf="order.images?.length" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+
+            <div *ngFor="let image of order.images; trackBy: trackById"
+              class="group relative aspect-square rounded-lg overflow-hidden bg-gray-100 ring-1 ring-gray-200">
+
+              <img [src]="getImageUrl(image.imageURL)" [alt]="'Order image ' + image.id"
+                class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                loading="lazy" />
+
+              <button *ngIf="canEditOrder()" type="button" (click)="openImageDeleteModal(image, $event)"
+                [disabled]="deletingImageId === image.id"
+                class="absolute top-2 right-2 w-8 h-8 rounded-lg bg-white/95 text-gray-500 shadow-sm opacity-0 group-hover:opacity-100 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer disabled:opacity-70">
+
+                <svg *ngIf="deletingImageId !== image.id" class="w-4 h-4 mx-auto" fill="none" stroke="currentColor"
+                  viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3m-9 0h12" />
+                </svg>
+
+                <svg *ngIf="deletingImageId === image.id" class="w-4 h-4 mx-auto animate-spin" fill="none"
+                  viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                </svg>
+              </button>
+
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+
+      <!-- Inventory Bills -->
+      <div class="bg-white rounded-xl shadow-sm ring-1 ring-gray-200">
+        <div class="px-5 py-4 sm:px-6 border-b border-gray-100">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <h2 class="text-base font-semibold text-gray-900">Inventory Bills</h2>
+              <p class="mt-1 text-xs text-gray-500">Inventory and material purchase records linked to this order.</p>
+            </div>
+
+            <button *ngIf="canEditOrder()" type="button" (click)="openBillModal()"
+              class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              Add Bill
+            </button>
+          </div>
+        </div>
+
+        <div class="p-5 sm:p-6">
+
+          <div *ngIf="!order.inventoryBills?.length" class="py-6 text-center">
+            <p class="text-sm text-gray-400">No inventory bills available.</p>
+          </div>
+
+          <div *ngIf="order.inventoryBills?.length" class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 text-sm">
+
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Bill #
+                  </th>
+                  <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Details
+                  </th>
+                  <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Date</th>
+                  <th class="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Bill
+                    Image</th>
+                </tr>
+              </thead>
+
+              <tbody class="divide-y divide-gray-100">
+                <tr *ngFor="let bill of order.inventoryBills; trackBy: trackById" class="hover:bg-gray-50">
+
+                  <td class="px-3 py-4 text-sm font-medium text-gray-900">{{ bill.billNumber ?? '—' }}</td>
+
+                  <td class="px-3 py-4 text-sm text-gray-700">
+                    <div class="max-w-xl whitespace-pre-wrap">{{ bill.billDetails }}</div>
+                  </td>
+
+                  <td class="px-3 py-4 text-sm text-gray-500 whitespace-nowrap">{{ formatDate(bill.createdDate) }}</td>
+
+                  <td class="px-3 py-4">
+                    <a *ngIf="bill.billImage" [href]="getFileUrl(bill.billImage)" target="_blank"
+                      rel="noopener noreferrer"
+                      class="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-800">
+                      View
+
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    </a>
+
+                    <span *ngIf="!bill.billImage" class="text-sm text-gray-400">
+                      —
+                    </span>
+                  </td>
+
+                </tr>
+              </tbody>
+
+            </table>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <!-- Add Inventory Bill Modal -->
+  <div *ngIf="showBillModal" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 p-4"
+    (click)="closeBillModal()">
+
+    <div class="bg-white rounded-xl shadow-xl ring-1 ring-gray-200 w-full max-w-md" (click)="$event.stopPropagation()">
+
+      <div class="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+        <h2 class="text-lg font-semibold text-gray-900">Add Inventory Bill</h2>
+
+        <button type="button" (click)="closeBillModal()" [disabled]="savingBill"
+          class="text-gray-400 hover:text-gray-700 cursor-pointer">
+          <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" d="M6 6l12 12M18 6 6 18" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="px-5 py-4 space-y-3">
+
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Bill Number</label>
+          <input type="number" [(ngModel)]="billForm.billNumber" [ngModelOptions]="{standalone: true}"
+            placeholder="Optional"
+            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-500" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Bill Details *</label>
+          <textarea rows="3" [(ngModel)]="billForm.billDetails" [ngModelOptions]="{standalone: true}"
+            placeholder="Enter bill / material purchase details..."
+            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"></textarea>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Bill Image / Document</label>
+
+          <div *ngIf="!billImageFile"
+            class="flex items-center justify-center rounded-lg border border-dashed border-gray-300 px-3 py-4">
+            <label class="cursor-pointer text-sm font-medium text-gray-600 hover:text-gray-900">
+              Choose file (JPG, PNG, WEBP, PDF)
+              <input type="file" accept="image/*,.pdf" class="hidden" (change)="onBillImageSelected($event)" />
+            </label>
+          </div>
+
+          <div *ngIf="billImageFile"
+            class="flex items-center justify-between rounded-lg ring-1 ring-gray-200 bg-gray-50 px-3 py-2">
+            <span class="text-sm text-gray-700 truncate">{{ billImageFile.name }}</span>
+            <button type="button" (click)="removeBillImage()" class="text-gray-400 hover:text-red-600 cursor-pointer">
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" d="M6 6l12 12M18 6 6 18" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div *ngIf="billError" class="rounded-lg bg-red-50 ring-1 ring-red-200 px-3 py-2 text-sm text-red-700">
+          {{ billError }}
+        </div>
+
+      </div>
+
+      <div class="flex justify-end gap-2 border-t border-gray-100 px-5 py-4">
+        <button type="button" (click)="closeBillModal()" [disabled]="savingBill"
+          class="px-4 py-2 text-sm rounded-lg border border-gray-300 cursor-pointer text-gray-700 hover:bg-gray-50 disabled:opacity-50">
+          Cancel
+        </button>
+        <button type="button" (click)="saveBill()" [disabled]="savingBill"
+          class="px-4 py-2 text-sm rounded-lg bg-gray-800 cursor-pointer text-white hover:bg-gray-900 disabled:opacity-50">
+          {{ savingBill ? 'Saving...' : 'Save Bill' }}
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- Delete Order Modal -->
+  <div *ngIf="showDeleteModal" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 p-4"
+    (click)="closeDeleteModal()">
+
+    <div class="bg-white rounded-xl shadow-xl ring-1 ring-gray-200 w-full max-w-sm p-6"
+      (click)="$event.stopPropagation()">
+
+      <h2 class="text-lg font-semibold text-gray-900 mb-2">Delete Order</h2>
+
+      <p class="text-sm text-gray-500 mb-6">
+        Are you sure you want to delete
+        <span class="font-medium text-gray-700">{{ order?.manufacturerOrderNumber }}</span>?
+        This order will be removed from the active order list.
+      </p>
+
+      <div *ngIf="deleteError" class="mb-4 rounded-lg bg-red-50 ring-1 ring-red-200 px-3 py-2 text-sm text-red-700">
+        {{ deleteError }}
+      </div>
+
+      <div class="flex justify-end gap-2">
+        <button type="button" (click)="closeDeleteModal()" [disabled]="deletingOrder"
+          class="px-4 py-2 text-sm rounded-lg border border-gray-300 cursor-pointer text-gray-700 hover:bg-gray-50 disabled:opacity-50">
+          Cancel
+        </button>
+
+        <button type="button" (click)="deleteOrder()" [disabled]="deletingOrder"
+          class="px-4 py-2 text-sm rounded-lg bg-red-500 cursor-pointer text-white hover:bg-red-800 disabled:opacity-50">
+          {{ deletingOrder ? 'Deleting...' : 'Delete' }}
+        </button>
+      </div>
+
+    </div>
+  </div>
+  <!-- Delete Image Modal -->
+<div *ngIf="showImageDeleteModal" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 p-4"
+  (click)="closeImageDeleteModal()">
+
+  <div class="bg-white rounded-xl shadow-xl ring-1 ring-gray-200 w-full max-w-sm p-6"
+    (click)="$event.stopPropagation()">
+
+    <h2 class="text-lg font-semibold text-gray-900 mb-2">Delete Image</h2>
+
+    <p class="text-sm text-gray-500 mb-6">
+      Are you sure you want to delete this image?
+      This action cannot be undone.
+    </p>
+
+    <!-- Thumbnail preview -->
+    <div *ngIf="imageToDelete" class="mb-4 rounded-lg overflow-hidden bg-gray-100 ring-1 ring-gray-200">
+      <img [src]="getImageUrl(imageToDelete.imageURL)" alt="Image to delete"
+        class="w-full h-32 object-cover" />
+    </div>
+
+    <div *ngIf="imageDeleteError" class="mb-4 rounded-lg bg-red-50 ring-1 ring-red-200 px-3 py-2 text-sm text-red-700">
+      {{ imageDeleteError }}
+    </div>
+
+    <div class="flex justify-end gap-2">
+      <button type="button" (click)="closeImageDeleteModal()" [disabled]="deletingImage"
+        class="px-4 py-2 text-sm rounded-lg border border-gray-300 cursor-pointer text-gray-700 hover:bg-gray-50 disabled:opacity-50">
+        Cancel
+      </button>
+
+      <button type="button" (click)="confirmImageDelete()" [disabled]="deletingImage"
+        class="px-4 py-2 text-sm rounded-lg bg-red-500 cursor-pointer text-white hover:bg-red-800 disabled:opacity-50">
+        {{ deletingImage ? 'Deleting...' : 'Delete' }}
+      </button>
+    </div>
+
+  </div>
+</div>
+
+</div>

@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, tap } from 'rxjs';
+import { Observable, tap, BehaviorSubject, of } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 interface ScreenPermission {
   screenKey: string;
@@ -14,16 +15,52 @@ interface ScreenPermission {
 export class PermissionService {
   private map = new Map<string, ScreenPermission>();
   private loaded = false;
-  private apiUrl = 'https://localhost:44370/api/profile/permissions';
+  private loading = false;
+  private apiUrl = `${environment.apiUrl}/profile/permissions`;
+  
+  // For guards to wait for permissions to load
+  private permissionsLoadedSubject = new BehaviorSubject<boolean>(false);
+  permissionsLoaded$ = this.permissionsLoadedSubject.asObservable();
 
   constructor(private http: HttpClient) {}
 
   load(): Observable<ScreenPermission[]> {
+    // Agar already loaded hain toh return karo
+    if (this.loaded) {
+      this.permissionsLoadedSubject.next(true);
+      return of([]);
+    }
+
+    // Agar already loading ho rahi hai toh wait karo
+    if (this.loading) {
+      return new Observable(observer => {
+        const subscription = this.permissionsLoaded$.subscribe(loaded => {
+          if (loaded) {
+            observer.next([]);
+            observer.complete();
+            subscription.unsubscribe();
+          }
+        });
+      });
+    }
+
+    this.loading = true;
+
     return this.http.get<ScreenPermission[]>(this.apiUrl).pipe(
-      tap((data) => {
-        this.map.clear();
-        data.forEach((p) => this.map.set(p.screenKey, p));
-        this.loaded = true;
+      tap({
+        next: (data) => {
+          this.map.clear();
+          data.forEach((p) => this.map.set(p.screenKey, p));
+          this.loaded = true;
+          this.loading = false;
+          this.permissionsLoadedSubject.next(true);
+          console.log('✅ Permissions loaded successfully:', data);
+        },
+        error: (error) => {
+          console.error('❌ Failed to load permissions:', error);
+          this.loading = false;
+          this.permissionsLoadedSubject.next(true);
+        }
       })
     );
   }
@@ -32,24 +69,34 @@ export class PermissionService {
     return this.loaded;
   }
 
+  permissionsLoaded(): boolean {
+    return this.loaded;
+  }
+
   canView(screenKey: string): boolean {
-    return this.map.get(screenKey)?.canView ?? false;
+    const permission = this.map.get(screenKey);
+    return permission?.canView ?? false;
   }
 
   canAdd(screenKey: string): boolean {
-    return this.map.get(screenKey)?.canAdd ?? false;
+    const permission = this.map.get(screenKey);
+    return permission?.canAdd ?? false;
   }
 
   canEdit(screenKey: string): boolean {
-    return this.map.get(screenKey)?.canEdit ?? false;
+    const permission = this.map.get(screenKey);
+    return permission?.canEdit ?? false;
   }
 
   canDelete(screenKey: string): boolean {
-    return this.map.get(screenKey)?.canDelete ?? false;
+    const permission = this.map.get(screenKey);
+    return permission?.canDelete ?? false;
   }
 
   reset(): void {
     this.map.clear();
     this.loaded = false;
+    this.loading = false;
+    this.permissionsLoadedSubject.next(false);
   }
 }

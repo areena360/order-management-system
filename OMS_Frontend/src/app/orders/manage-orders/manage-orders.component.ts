@@ -28,6 +28,7 @@ import {
 } from '../lookup.service';
 
 import {
+  CustomerOption,
   LookupItem,
   OrderListItem,
   OrderQuery
@@ -69,6 +70,12 @@ export class ManageOrdersComponent
 
   searchTerm = '';
 
+  // Delete Modal state
+  deleteOrderItem: OrderListItem | null = null;
+  showDeleteModal = false;
+  deletingOrder = false;
+  deleteError = '';
+
   private searchInput$ =
     new Subject<string>();
 
@@ -83,6 +90,11 @@ export class ManageOrdersComponent
 
   materials: LookupItem[] = [];
 
+  customerOptions: CustomerOption[] = [];
+
+  private customerFilterSearch$ =
+    new Subject<string>();
+
   statusFilter: number | null = null;
 
   priorityFilter: number | null = null;
@@ -91,11 +103,16 @@ export class ManageOrdersComponent
 
   materialFilter: number | null = null;
 
+  customerFilter: number | null = null;
+
   dateFrom: string | null = null;
 
   dateTo: string | null = null;
 
   showFilters = false;
+
+  /** Key of the currently open filter dropdown, or null when none is open. */
+  openFilterDropdown: string | null = null;
 
   sortBy = 'CreatedDate';
 
@@ -155,9 +172,16 @@ export class ManageOrdersComponent
       'manufacturerProductTitle'
     ]);
 
+  canView = false;
+
   canAdd = false;
 
   canEdit = false;
+
+  canDelete = false;
+
+  // Delete state (keeping for backward compatibility)
+  deletingOrderId: number | null = null;
 
   statusBadgeClass =
     statusBadgeClass;
@@ -173,9 +197,14 @@ export class ManageOrdersComponent
     private permissionService: PermissionService,
 
     private router: Router
-  ) {}
+  ) { }
 
   ngOnInit(): void {
+
+    this.canView =
+      this.permissionService.canView(
+        'Orders'
+      );
 
     this.canAdd =
       this.permissionService.canAdd(
@@ -184,6 +213,11 @@ export class ManageOrdersComponent
 
     this.canEdit =
       this.permissionService.canEdit(
+        'Orders'
+      );
+
+    this.canDelete =
+      this.permissionService.canDelete(
         'Orders'
       );
 
@@ -198,6 +232,25 @@ export class ManageOrdersComponent
         this.currentPage = 1;
 
         this.fetchOrders();
+
+      });
+
+    this.customerFilterSearch$
+      .pipe(
+        debounceTime(300),
+        distinctUntilChanged(),
+        takeUntil(this.destroy$)
+      )
+      .subscribe(term => {
+
+        this.lookupService
+          .getCustomers(term)
+          .pipe(takeUntil(this.destroy$))
+          .subscribe({
+            next: result => {
+              this.customerOptions = result;
+            }
+          });
 
       });
 
@@ -258,12 +311,30 @@ export class ManageOrdersComponent
           this.materials = result;
         }
       });
+
+    this.lookupService
+      .getCustomers()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: result => {
+          this.customerOptions = result;
+        }
+      });
   }
 
   onSearchChange(): void {
 
     this.searchInput$.next(
       this.searchTerm
+    );
+  }
+
+  onCustomerFilterSearch(
+    term: string
+  ): void {
+
+    this.customerFilterSearch$.next(
+      term
     );
   }
 
@@ -301,6 +372,9 @@ export class ManageOrdersComponent
 
       materialId:
         this.materialFilter,
+
+      customerId:
+        this.customerFilter,
 
       dateFrom:
         this.dateFrom,
@@ -342,6 +416,7 @@ export class ManageOrdersComponent
     this.currentPage = 1;
 
     this.showFilters = false;
+    this.openFilterDropdown = null;
 
     this.fetchOrders();
   }
@@ -356,9 +431,12 @@ export class ManageOrdersComponent
 
     this.materialFilter = null;
 
+    this.customerFilter = null;
+
     this.dateFrom = null;
 
     this.dateTo = null;
+    this.openFilterDropdown = null;
 
     this.currentPage = 1;
 
@@ -379,6 +457,8 @@ export class ManageOrdersComponent
 
       this.materialFilter,
 
+      this.customerFilter,
+
       this.dateFrom,
 
       this.dateTo
@@ -389,6 +469,60 @@ export class ManageOrdersComponent
         value !== undefined &&
         value !== ''
     ).length;
+  }
+
+  toggleFilterDropdown(key: string): void {
+    this.openFilterDropdown =
+      this.openFilterDropdown === key
+        ? null
+        : key;
+  }
+
+  selectFilterDropdown(
+    filterName: string,
+    value: number | null
+  ): void {
+    switch (filterName) {
+      case 'statusFilter':
+        this.statusFilter = value;
+        break;
+
+      case 'priorityFilter':
+        this.priorityFilter = value;
+        break;
+
+      case 'customerFilter':
+        this.customerFilter = value;
+        break;
+
+      case 'genderFilter':
+        this.genderFilter = value;
+        break;
+
+      case 'materialFilter':
+        this.materialFilter = value;
+        break;
+
+      default:
+        return;
+    }
+
+    this.openFilterDropdown = null;
+  }
+
+  optionName(
+    options: LookupItem[],
+    id: number | null | undefined
+  ): string {
+    if (id === null || id === undefined) {
+      return '';
+    }
+
+    return (
+      options.find(
+        option => option.id === id
+      )?.name ?? ''
+    );
   }
 
   sort(column: string): void {
@@ -408,6 +542,15 @@ export class ManageOrdersComponent
     }
 
     this.fetchOrders();
+  }
+
+  sortIcon(column: string): string {
+
+    if (this.sortBy !== column) {
+      return '';
+    }
+
+    return this.sortDirection === 'asc' ? '▲' : '▼';
   }
 
   get totalPages(): number {
@@ -544,6 +687,14 @@ export class ManageOrdersComponent
     ]);
   }
 
+  viewOrder(order: OrderListItem): void {
+
+    this.router.navigate([
+      '/dashboard/orders',
+      order.id
+    ]);
+  }
+
   editOrder(
     order: OrderListItem,
     event: Event
@@ -558,25 +709,74 @@ export class ManageOrdersComponent
     ]);
   }
 
-  /*
-   * Phase 5 mein Order Details route
-   * add hone ke baad is method ko
-   * /dashboard/orders/:id par navigate
-   * karwayenge.
+  // ============================================
+  // DELETE MODAL METHODS
+  // ============================================
+
+  /**
+   * Open delete confirmation modal
    */
-  viewOrder(
-    order: OrderListItem
+  openDeleteModal(
+    order: OrderListItem,
+    event: Event
   ): void {
+    event.stopPropagation();
 
-    if (this.canEdit) {
-
-      this.router.navigate([
-        '/dashboard/orders',
-        order.id,
-        'edit'
-      ]);
-
+    if (this.deletingOrder) {
+      return;
     }
+
+    this.deleteOrderItem = order;
+    this.deleteError = '';
+    this.showDeleteModal = true;
+  }
+
+  /**
+   * Close delete confirmation modal
+   */
+  closeDeleteModal(): void {
+    if (this.deletingOrder) {
+      return;
+    }
+
+    this.showDeleteModal = false;
+    this.deleteOrderItem = null;
+    this.deleteError = '';
+  }
+
+  /**
+   * Confirm and execute order deletion
+   */
+  confirmDeleteOrder(): void {
+    if (!this.deleteOrderItem || this.deletingOrder) {
+      return;
+    }
+
+    this.deletingOrder = true;
+    this.deletingOrderId = this.deleteOrderItem.id;
+    this.deleteError = '';
+
+    this.ordersService.deleteOrder(this.deleteOrderItem.id).subscribe({
+      next: () => {
+        this.deletingOrder = false;
+        this.deletingOrderId = null;
+        this.showDeleteModal = false;
+        this.deleteOrderItem = null;
+
+        // Refetch so pagination/totals stay correct
+        this.fetchOrders();
+      },
+
+      error: (error) => {
+        console.error('Failed to delete order:', error);
+        this.deletingOrder = false;
+        this.deletingOrderId = null;
+
+        this.deleteError =
+          error?.error?.message ??
+          'Unable to delete order. Please try again.';
+      }
+    });
   }
 
   get showingFrom(): number {
@@ -611,6 +811,11 @@ export class ManageOrdersComponent
     const target =
       event.target as HTMLElement;
 
+    // Don't close anything if delete modal is open
+    if (this.showDeleteModal) {
+      return;
+    }
+
     if (
       !target.closest(
         '[data-column-menu]'
@@ -636,6 +841,11 @@ export class ManageOrdersComponent
     ) {
 
       this.showFilters = false;
+      this.openFilterDropdown = null;
+    }
+
+    if (!target.closest('[data-dd]')) {
+      this.openFilterDropdown = null;
     }
   }
 }

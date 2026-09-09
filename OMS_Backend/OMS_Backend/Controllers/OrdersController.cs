@@ -11,14 +11,18 @@ namespace OMS_Backend.Controllers
     public class OrdersController : ControllerBase
     {
         private readonly IOrderService _orderService;
-        public OrdersController(IOrderService orderService) => _orderService = orderService;
+
+        public OrdersController(IOrderService orderService)
+        {
+            _orderService = orderService;
+        }
 
         private int CurrentUserId =>
             int.Parse(User.FindFirst("userId")?.Value ?? "0");
 
-        // GET api/orders?pageNumber=&pageSize=&search=&sortBy=&sortDirection=&statusId=&priorityId=...
         [HttpGet]
-        public async Task<IActionResult> GetAll([FromQuery] OrderQueryDto query)
+        public async Task<IActionResult> GetAll(
+            [FromQuery] OrderQueryDto query)
         {
             var result = await _orderService.GetOrdersAsync(query);
             return Ok(result);
@@ -32,40 +36,84 @@ namespace OMS_Backend.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Create([FromBody] CreateOrderDto dto)
+        public async Task<IActionResult> Create(
+            [FromBody] CreateOrderDto dto)
         {
-            var order = await _orderService.CreateOrderAsync(dto, CurrentUserId);
-            return CreatedAtAction(nameof(GetById), new { id = order.Id }, order);
+            var order = await _orderService.CreateOrderAsync(
+                dto,
+                CurrentUserId);
+
+            return CreatedAtAction(
+                nameof(GetById),
+                new { id = order.Id },
+                order);
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> Update(int id, [FromBody] UpdateOrderDto dto)
+        public async Task<IActionResult> Update(
+            int id,
+            [FromBody] UpdateOrderDto dto)
         {
-            var order = await _orderService.UpdateOrderAsync(id, dto, CurrentUserId);
+            var order = await _orderService.UpdateOrderAsync(
+                id,
+                dto,
+                CurrentUserId);
+
             return Ok(order);
         }
 
-        [HttpPatch("{id}/status")]
-        public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateOrderStatusDto dto)
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> Delete(int id)
         {
-            var order = await _orderService.UpdateOrderStatusAsync(id, dto, CurrentUserId);
+            await _orderService.DeleteOrderAsync(
+                id,
+                CurrentUserId);
+
+            return NoContent();
+        }
+
+        [HttpPatch("{id}/status")]
+        public async Task<IActionResult> UpdateStatus(
+            int id,
+            [FromBody] UpdateOrderStatusDto dto)
+        {
+            var order = await _orderService.UpdateOrderStatusAsync(
+                id,
+                dto,
+                CurrentUserId);
+
             return Ok(order);
         }
 
         [HttpPost("{id}/images")]
-        public async Task<IActionResult> UploadImages(int id, [FromForm] List<IFormFile> files)
+        public async Task<IActionResult> UploadImages(
+            int id,
+            [FromForm] List<IFormFile> files)
         {
             if (files == null || files.Count == 0)
-                return BadRequest(new { message = "No files provided." });
+            {
+                return BadRequest(new
+                {
+                    message = "No files provided."
+                });
+            }
 
-            var images = await _orderService.AddOrderImagesAsync(id, files);
+            var images = await _orderService.AddOrderImagesAsync(
+                id,
+                files);
+
             return Ok(images);
         }
 
         [HttpDelete("{id}/images/{imageId}")]
-        public async Task<IActionResult> DeleteImage(int id, int imageId)
+        public async Task<IActionResult> DeleteImage(
+            int id,
+            int imageId)
         {
-            await _orderService.DeleteOrderImageAsync(id, imageId);
+            await _orderService.DeleteOrderImageAsync(
+                id,
+                imageId);
+
             return NoContent();
         }
 
@@ -77,9 +125,14 @@ namespace OMS_Backend.Controllers
         }
 
         [HttpPost("{id}/inventory-bill")]
-        public async Task<IActionResult> AddInventoryBill(int id, [FromBody] SaveInventoryBillDto dto)
+        public async Task<IActionResult> AddInventoryBill(
+            int id,
+            [FromForm] SaveInventoryBillDto dto)
         {
-            var bill = await _orderService.AddInventoryBillAsync(id, dto);
+            var bill = await _orderService.AddInventoryBillAsync(
+                id,
+                dto);
+
             return Ok(bill);
         }
     }

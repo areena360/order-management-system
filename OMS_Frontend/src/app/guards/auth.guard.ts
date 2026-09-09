@@ -1,5 +1,6 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
+import { map, of, catchError } from 'rxjs';
 import { AuthService } from '../auth/auth.service';
 import { PermissionService } from '../auth/permission.service';
 
@@ -17,7 +18,6 @@ export const authGuard: CanActivateFn = () => {
 };
 
 // Blocks route unless logged-in user's role is "Super Admin"
-// Used for Create User Account + Manage Customers routes
 export const superAdminGuard: CanActivateFn = () => {
   const authService = inject(AuthService);
   const router = inject(Router);
@@ -36,7 +36,6 @@ export const superAdminGuard: CanActivateFn = () => {
 };
 
 // Blocks route unless role is "Super Admin" or "Admin"
-// Used for Manage Users route
 export const adminOrSuperAdminGuard: CanActivateFn = () => {
   const authService = inject(AuthService);
   const router = inject(Router);
@@ -55,29 +54,100 @@ export const adminOrSuperAdminGuard: CanActivateFn = () => {
   return true;
 };
 
+// ============ ORDER GUARDS ============
+
 export const ordersGuard: CanActivateFn = () => {
   const permissionService = inject(PermissionService);
   const router = inject(Router);
+  const authService = inject(AuthService);
 
-  return permissionService.canView('Orders')
-    ? true
-    : router.parseUrl('/dashboard');
+  // Pehle auth check
+  if (!authService.getToken()) {
+    router.navigate(['/login']);
+    return false;
+  }
+
+  // Agar permissions already loaded hain toh direct check karo
+  if (permissionService.isLoaded()) {
+    const hasPermission = permissionService.canView('Orders');
+    if (hasPermission) {
+      return true;
+    }
+    return router.parseUrl('/dashboard');
+  }
+
+  // Warna permissions load hone ka wait karo
+  return permissionService.load().pipe(
+    map(() => {
+      const hasPermission = permissionService.canView('Orders');
+      if (hasPermission) {
+        return true;
+      }
+      return router.parseUrl('/dashboard');
+    }),
+    catchError(() => {
+      // Error ki surat mein access allow karo
+      return of(true);
+    })
+  );
 };
 
 export const ordersAddGuard: CanActivateFn = () => {
   const permissionService = inject(PermissionService);
   const router = inject(Router);
+  const authService = inject(AuthService);
 
-  return permissionService.canAdd('Orders')
-    ? true
-    : router.parseUrl('/dashboard/orders');
+  if (!authService.getToken()) {
+    router.navigate(['/login']);
+    return false;
+  }
+
+  if (permissionService.isLoaded()) {
+    if (permissionService.canAdd('Orders')) {
+      return true;
+    }
+    return router.parseUrl('/dashboard/orders');
+  }
+
+  return permissionService.load().pipe(
+    map(() => {
+      if (permissionService.canAdd('Orders')) {
+        return true;
+      }
+      return router.parseUrl('/dashboard/orders');
+    }),
+    catchError(() => {
+      return of(true);
+    })
+  );
 };
 
 export const ordersEditGuard: CanActivateFn = () => {
   const permissionService = inject(PermissionService);
   const router = inject(Router);
+  const authService = inject(AuthService);
 
-  return permissionService.canEdit('Orders')
-    ? true
-    : router.parseUrl('/dashboard/orders');
+  if (!authService.getToken()) {
+    router.navigate(['/login']);
+    return false;
+  }
+
+  if (permissionService.isLoaded()) {
+    if (permissionService.canEdit('Orders')) {
+      return true;
+    }
+    return router.parseUrl('/dashboard/orders');
+  }
+
+  return permissionService.load().pipe(
+    map(() => {
+      if (permissionService.canEdit('Orders')) {
+        return true;
+      }
+      return router.parseUrl('/dashboard/orders');
+    }),
+    catchError(() => {
+      return of(true);
+    })
+  );
 };

@@ -232,6 +232,10 @@ export class OrderFormComponent
 
   customerLoading = false;
 
+  /** Key of the currently open custom dropdown (genderId, priorityId, customerMaterialId,
+   *  manufacturerMaterialId, sizeChartId, sizeId), or null if none is open. */
+  openDropdown: string | null = null;
+
   private customerSearch$ =
     new Subject<string>();
 
@@ -702,6 +706,55 @@ export class OrderFormComponent
     this.customerSearch$.next('');
   }
 
+  /*
+   * CUSTOM DROPDOWNS (Gender, Priority, Materials, Size Chart, Size)
+   */
+
+  toggleDropdown(key: string): void {
+
+    this.openDropdown =
+      this.openDropdown === key
+        ? null
+        : key;
+  }
+
+  selectDropdown(
+    controlName: string,
+    value: number
+  ): void {
+
+    const control =
+      this.form.get(controlName);
+
+    if (!control) {
+      return;
+    }
+
+    control.setValue(value);
+
+    control.markAsTouched();
+
+    control.markAsDirty();
+
+    this.openDropdown = null;
+  }
+
+  optionName(
+    options: LookupItem[],
+    id: number | null | undefined
+  ): string {
+
+    if (id === null || id === undefined) {
+      return '';
+    }
+
+    return (
+      options.find(
+        option => option.id === id
+      )?.name ?? ''
+    );
+  }
+
   save(): void {
 
     if (this.saving) {
@@ -976,5 +1029,27 @@ export class OrderFormComponent
       this.showCustomerDropdown =
         false;
     }
+
+    if (
+      !target.closest(
+        '[data-dd]'
+      )
+    ) {
+
+      this.openDropdown = null;
+    }
   }
+
+  getImageUrl(
+  imageUrl: string | null | undefined
+): string {
+
+  return this.ordersService.getImageUrl(imageUrl);
+}
+
+getFileUrl(
+  fileUrl: string | null | undefined
+): string {
+  return this.ordersService.getFileUrl(fileUrl);
+}
 }

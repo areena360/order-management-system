@@ -183,7 +183,7 @@ namespace OMS_Backend.DTOs
     {
         public int? BillNumber { get; set; }
         [Required] public string BillDetails { get; set; } = default!;
-        public string? BillImage { get; set; }
+        public IFormFile? BillImageFile { get; set; }
     }
 
     public class LookupItemDto

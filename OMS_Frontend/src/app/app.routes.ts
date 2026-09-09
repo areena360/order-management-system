@@ -7,7 +7,6 @@ import { LayoutComponent } from './layout/layout.component';
 import { DashboardComponent } from './dashboard/dashboard.component';
 
 import {
-  adminOrSuperAdminGuard,
   authGuard,
   ordersGuard,
   ordersAddGuard,
@@ -22,7 +21,6 @@ import { ManageRolesComponent } from './manage-roles/manage-roles.component';
 import { ManageOrdersComponent } from './orders/manage-orders/manage-orders.component';
 
 export const routes: Routes = [
-
   {
     path: '',
     redirectTo: 'login',
@@ -55,7 +53,6 @@ export const routes: Routes = [
     canActivate: [authGuard],
 
     children: [
-
       // Dashboard
       {
         path: '',
@@ -66,7 +63,6 @@ export const routes: Routes = [
       {
         path: 'manage-users',
         component: ManageUsersComponent,
-        canActivate: [adminOrSuperAdminGuard]
       },
 
       // Profile
@@ -81,13 +77,12 @@ export const routes: Routes = [
         component: ManageRolesComponent
       },
 
-      // Orders
+      // Orders - IMPORTANT: Path order matters!
       {
         path: 'orders',
         canActivate: [ordersGuard],
 
         children: [
-
           // /dashboard/orders
           {
             path: '',
@@ -103,18 +98,24 @@ export const routes: Routes = [
             canActivate: [ordersAddGuard]
           },
 
-          // /dashboard/orders/:id/edit
+          // /dashboard/orders/:id/edit (MUST be before :id)
           {
             path: ':id/edit',
             loadComponent: () =>
               import('./orders/order-form/order-form.component')
                 .then(m => m.OrderFormComponent),
             canActivate: [ordersEditGuard]
-          }
+          },
 
+          // /dashboard/orders/:id
+          {
+            path: ':id',
+            loadComponent: () =>
+              import('./orders/order-details/order-details.component')
+                .then(m => m.OrderDetailsComponent)
+          }
         ]
       }
-
     ]
   },
 
@@ -122,5 +123,4 @@ export const routes: Routes = [
     path: '**',
     redirectTo: 'login'
   }
-
 ];

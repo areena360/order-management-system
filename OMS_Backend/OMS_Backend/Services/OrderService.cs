@@ -382,6 +382,22 @@ namespace OMS_Backend.Services
             await _db.SaveChangesAsync();
         }
 
+        public async Task DeleteOrderAsync(int id, int userId)
+        {
+            var order = await _db.Orders
+                .FirstOrDefaultAsync(o => o.Id == id && !o.IsDeleted);
+
+            if (order == null)
+                throw new NotFoundException(nameof(Order), id);
+
+            order.IsDeleted = true;
+            order.IsActive = false;
+            order.UpdatedDate = DateTime.UtcNow;
+            order.UpdatedBy = userId;
+
+            await _db.SaveChangesAsync();
+        }
+
         public async Task<List<InventoryBillDto>> GetInventoryBillsAsync(int orderId)
         {
             return await _db.InventoryBills
@@ -402,12 +418,37 @@ namespace OMS_Backend.Services
             var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == orderId && !o.IsDeleted)
                 ?? throw new NotFoundException(nameof(Order), orderId);
 
+            string? billImageUrl = null;
+
+            if (dto.BillImageFile != null)
+            {
+                var allowedExt = new[] { ".jpg", ".jpeg", ".png", ".webp", ".pdf" };
+                const long maxSize = 10 * 1024 * 1024; // 10 MB
+
+                var ext = Path.GetExtension(dto.BillImageFile.FileName).ToLowerInvariant();
+                if (!allowedExt.Contains(ext))
+                    throw new ValidationAppException($"Unsupported bill image format: {ext}");
+                if (dto.BillImageFile.Length > maxSize)
+                    throw new ValidationAppException("Bill image exceeds the 10MB limit.");
+
+                var uploadRoot = Path.Combine(_env.ContentRootPath, "wwwroot", "uploads", "inventory-bills", orderId.ToString());
+                Directory.CreateDirectory(uploadRoot);
+
+                var fileName = $"{Guid.NewGuid()}{ext}";
+                var fullPath = Path.Combine(uploadRoot, fileName);
+
+                using (var stream = new FileStream(fullPath, FileMode.Create))
+                    await dto.BillImageFile.CopyToAsync(stream);
+
+                billImageUrl = $"/uploads/inventory-bills/{orderId}/{fileName}";
+            }
+
             var bill = new InventoryBill
             {
                 OrderId = orderId,
                 BillNumber = dto.BillNumber,
                 BillDetails = dto.BillDetails,
-                BillImage = dto.BillImage,
+                BillImage = billImageUrl,
                 IsActive = true,
                 CreatedDate = DateTime.UtcNow
             };

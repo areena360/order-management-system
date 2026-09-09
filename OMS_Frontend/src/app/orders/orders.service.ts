@@ -3,47 +3,133 @@ import {
   HttpClient,
   HttpParams
 } from '@angular/common/http';
-
 import { Observable } from 'rxjs';
 
-import { environment } from '../../environments/environment';
-
 import {
+  CustomerOption,
+  InventoryBillItem,
+  LookupItem,
   OrderDetails,
   OrderFormValue,
+  OrderImageItem,
   OrderListItem,
   OrderQuery,
-  OrderImageItem,
-  PagedResult,
-  InventoryBillItem
+  PagedResult
 } from './order.models';
+
+import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class OrdersService {
 
+  /**
+   * API URL
+   * https://localhost:44370/api/orders
+   */
   private readonly apiUrl =
     `${environment.apiUrl}/orders`;
+
+  /**
+   * Backend base URL
+   * https://localhost:44370
+   *
+   * Files are stored in:
+   * wwwroot/uploads/...
+   *
+   * So a database URL such as:
+   * /uploads/orders/1/image.jpg
+   *
+   * will become:
+   * https://localhost:44370/uploads/orders/1/image.jpg
+   */
+  private readonly backendUrl =
+    environment.apiUrl.replace(/\/api\/?$/, '');
 
   constructor(
     private http: HttpClient
   ) {}
+
+  // =========================================================
+  // FILE / IMAGE URL
+  // =========================================================
+
+  /**
+   * Converts a relative backend file URL into
+   * an absolute backend URL.
+   *
+   * Example:
+   *
+   * /uploads/orders/1/image.jpg
+   *
+   * becomes:
+   *
+   * https://localhost:44370/uploads/orders/1/image.jpg
+   */
+  getFileUrl(
+    fileUrl: string | null | undefined
+  ): string {
+
+    if (!fileUrl) {
+      return '';
+    }
+
+    // Already an absolute URL
+    if (
+      fileUrl.startsWith('http://') ||
+      fileUrl.startsWith('https://')
+    ) {
+      return fileUrl;
+    }
+
+    // Relative URL
+    return `${this.backendUrl}${fileUrl.startsWith('/') ? '' : '/'}${fileUrl}`;
+  }
+
+  /**
+   * Alias for image URLs.
+   *
+   * Keeps the component code clean:
+   * getImageUrl(image.imageURL)
+   */
+  getImageUrl(
+    imageUrl: string | null | undefined
+  ): string {
+
+    return this.getFileUrl(imageUrl);
+  }
+
+  // =========================================================
+  // ORDERS
+  // =========================================================
 
   getOrders(
     query: OrderQuery
   ): Observable<PagedResult<OrderListItem>> {
 
     let params = new HttpParams()
-      .set('pageNumber', query.pageNumber)
-      .set('pageSize', query.pageSize);
+      .set(
+        'pageNumber',
+        query.pageNumber
+      )
+      .set(
+        'pageSize',
+        query.pageSize
+      );
 
     if (query.search) {
-      params = params.set('search', query.search);
+      params = params.set(
+        'search',
+        query.search
+      );
     }
 
     if (query.sortBy) {
-      params = params.set('sortBy', query.sortBy);
+      params = params.set(
+        'sortBy',
+        query.sortBy
+      );
     }
 
     if (query.sortDirection) {
@@ -102,7 +188,9 @@ export class OrdersService {
       );
     }
 
-    return this.http.get<PagedResult<OrderListItem>>(
+    return this.http.get<
+      PagedResult<OrderListItem>
+    >(
       this.apiUrl,
       { params }
     );
@@ -138,6 +226,15 @@ export class OrdersService {
     );
   }
 
+  deleteOrder(
+    id: number
+  ): Observable<void> {
+
+    return this.http.delete<void>(
+      `${this.apiUrl}/${id}`
+    );
+  }
+
   updateStatus(
     id: number,
     statusId: number
@@ -145,9 +242,15 @@ export class OrdersService {
 
     return this.http.patch<OrderDetails>(
       `${this.apiUrl}/${id}/status`,
-      { statusId }
+      {
+        statusId
+      }
     );
   }
+
+  // =========================================================
+  // ORDER IMAGES
+  // =========================================================
 
   uploadImages(
     id: number,
@@ -157,7 +260,10 @@ export class OrdersService {
     const formData = new FormData();
 
     files.forEach(file => {
-      formData.append('files', file);
+      formData.append(
+        'files',
+        file
+      );
     });
 
     return this.http.post<OrderImageItem[]>(
@@ -176,6 +282,10 @@ export class OrdersService {
     );
   }
 
+  // =========================================================
+  // INVENTORY BILLS
+  // =========================================================
+
   getInventoryBills(
     orderId: number
   ): Observable<InventoryBillItem[]> {
@@ -190,13 +300,37 @@ export class OrdersService {
     dto: {
       billNumber: number | null;
       billDetails: string;
-      billImage?: string | null;
+      billImageFile?: File | null;
     }
   ): Observable<InventoryBillItem> {
 
+    const formData = new FormData();
+
+    if (
+      dto.billNumber !== null &&
+      dto.billNumber !== undefined
+    ) {
+      formData.append(
+        'billNumber',
+        String(dto.billNumber)
+      );
+    }
+
+    formData.append(
+      'billDetails',
+      dto.billDetails
+    );
+
+    if (dto.billImageFile) {
+      formData.append(
+        'billImageFile',
+        dto.billImageFile
+      );
+    }
+
     return this.http.post<InventoryBillItem>(
       `${this.apiUrl}/${orderId}/inventory-bill`,
-      dto
+      formData
     );
   }
 }

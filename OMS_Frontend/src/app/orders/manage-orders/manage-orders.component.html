@@ -31,250 +31,200 @@
 
 
     <!-- Toolbar -->
-    <div
-      class="bg-white rounded-xl shadow-sm ring-1 ring-gray-200 p-4 mb-4 flex flex-col lg:flex-row gap-4 lg:items-end lg:justify-between">
+    <div class="bg-white rounded-xl shadow-sm ring-1 ring-gray-200 p-4 mb-4">
 
-      <!-- Search -->
-      <div class="w-full lg:w-80">
-        <label class="mb-1.5 block text-xs font-medium text-gray-500">Search</label>
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
 
-        <div class="relative">
-          <svg class="absolute left-3 top-2.5 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24"
-            stroke-width="2" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round"
-              d="m21 21-5.2-5.2m1.7-5.3a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" />
-          </svg>
-
-          <input type="text" [(ngModel)]="searchTerm" (ngModelChange)="onSearchChange()"
-            placeholder="Search orders..."
-            class="w-full rounded-lg border border-gray-300 pl-9 pr-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500" />
+        <!-- Search -->
+        <div class="sm:col-span-2">
+          <label class="mb-1.5 block text-xs font-medium text-gray-500">Search</label>
+          <div class="relative">
+            <svg class="absolute left-3 top-2.5 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24"
+              stroke-width="2" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="m21 21-5.2-5.2m1.7-5.3a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" />
+            </svg>
+            <input type="text" [(ngModel)]="searchTerm" (ngModelChange)="onSearchChange()"
+              placeholder="Search orders..."
+              class="w-full rounded-lg border border-gray-300 pl-9 pr-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500" />
+          </div>
         </div>
-      </div>
 
-
-      <div class="flex flex-wrap gap-4">
-
-        <!-- Filters -->
-        <div class="relative" data-filters-menu (click)="$event.stopPropagation()">
-          <label class="mb-1.5 block text-xs font-medium text-gray-500">Filters</label>
-
-          <button type="button" (click)="showFilters = !showFilters"
-            class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer">
-
-            Filters
-
-            <span *ngIf="activeFilterCount > 0"
-              class="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-gray-800 px-1.5 text-[11px] font-semibold text-white">
-              {{ activeFilterCount }}
-            </span>
-
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-gray-400 transition-transform"
-              [class.rotate-180]="showFilters" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+        <!-- Status -->
+        <div class="relative" data-dd="statusFilter">
+          <label class="mb-1.5 block text-xs font-medium text-gray-500">Status</label>
+          <button type="button" (click)="toggleFilterDropdown('statusFilter')"
+            class="w-full flex items-center justify-between rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 cursor-pointer">
+            <span class="truncate">{{ optionName(statuses, statusFilter) || 'All statuses' }}</span>
+            <svg class="h-3.5 w-3.5 text-gray-400 shrink-0 ml-2 transition-transform"
+              [class.rotate-180]="openFilterDropdown === 'statusFilter'"
+              fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
             </svg>
           </button>
 
+          <div *ngIf="openFilterDropdown === 'statusFilter'"
+            class="absolute left-0 z-30 mt-2 w-full min-w-[200px] max-h-56 overflow-y-auto rounded-lg bg-white shadow-lg ring-1 ring-gray-200 p-1.5">
+            <button type="button" (click)="selectFilterDropdown('statusFilter', null)"
+              class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors"
+              [class.bg-gray-100]="statusFilter === null" [class.font-medium]="statusFilter === null">
+              All statuses
+            </button>
+            <button *ngFor="let status of statuses" type="button" (click)="selectFilterDropdown('statusFilter', status.id)"
+              class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors"
+              [class.bg-gray-100]="statusFilter === status.id" [class.font-medium]="statusFilter === status.id">
+              {{ status.name }}
+            </button>
+          </div>
+        </div>
 
-          <!-- Filter Dropdown -->
-          <div *ngIf="showFilters"
-            class="absolute right-0 z-20 mt-2 w-[340px] max-w-[calc(100vw-2rem)] rounded-lg bg-white shadow-lg ring-1 ring-gray-200 p-4">
+        <!-- Priority (non-customer) -->
+        <div *ngIf="!isCustomer" class="relative" data-dd="priorityFilter">
+          <label class="mb-1.5 block text-xs font-medium text-gray-500">Priority</label>
+          <button type="button" (click)="toggleFilterDropdown('priorityFilter')"
+            class="w-full flex items-center justify-between rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 cursor-pointer">
+            <span class="truncate">{{ optionName(priorities, priorityFilter) || 'All priorities' }}</span>
+            <svg class="h-3.5 w-3.5 text-gray-400 shrink-0 ml-2 transition-transform"
+              [class.rotate-180]="openFilterDropdown === 'priorityFilter'"
+              fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+            </svg>
+          </button>
 
-            <div class="mb-4 flex items-center justify-between pb-2 border-b border-gray-100">
-              <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Filter Orders</span>
+          <div *ngIf="openFilterDropdown === 'priorityFilter'"
+            class="absolute left-0 z-30 mt-2 w-full min-w-[200px] max-h-56 overflow-y-auto rounded-lg bg-white shadow-lg ring-1 ring-gray-200 p-1.5">
+            <button type="button" (click)="selectFilterDropdown('priorityFilter', null)"
+              class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors"
+              [class.bg-gray-100]="priorityFilter === null" [class.font-medium]="priorityFilter === null">
+              All priorities
+            </button>
+            <button *ngFor="let priority of priorities" type="button" (click)="selectFilterDropdown('priorityFilter', priority.id)"
+              class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors"
+              [class.bg-gray-100]="priorityFilter === priority.id" [class.font-medium]="priorityFilter === priority.id">
+              {{ priority.name }}
+            </button>
+          </div>
+        </div>
 
-              <button type="button" (click)="clearFilters()"
-                class="text-xs text-blue-600 hover:text-blue-800 cursor-pointer">
-                Clear all
-              </button>
+        <!-- Customer (non-customer) -->
+        <div *ngIf="!isCustomer" class="relative" data-dd="customerFilter">
+          <label class="mb-1.5 block text-xs font-medium text-gray-500">Customer</label>
+          <button type="button" (click)="toggleFilterDropdown('customerFilter')"
+            class="w-full flex items-center justify-between rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 cursor-pointer">
+            <span class="truncate">{{ optionName(customerOptions, customerFilter) || 'All customers' }}</span>
+            <svg class="h-3.5 w-3.5 text-gray-400 shrink-0 ml-2 transition-transform"
+              [class.rotate-180]="openFilterDropdown === 'customerFilter'"
+              fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+            </svg>
+          </button>
+
+          <div *ngIf="openFilterDropdown === 'customerFilter'"
+            class="absolute left-0 z-30 mt-2 w-full min-w-[220px] rounded-lg bg-white shadow-lg ring-1 ring-gray-200">
+            <div class="p-2 border-b border-gray-100">
+              <input type="text" placeholder="Search customer..."
+                (input)="onCustomerFilterSearch($any($event.target).value)"
+                class="w-full rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-gray-500" />
             </div>
-
-            <div class="space-y-4">
-
-              <!-- Status -->
-              <div class="relative" data-dd="statusFilter">
-                <label class="mb-1.5 block text-xs font-medium text-gray-500">Status</label>
-
-                <button type="button" (click)="toggleFilterDropdown('statusFilter')"
-                  class="w-full flex items-center justify-between rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 cursor-pointer">
-                  <span>{{ optionName(statuses, statusFilter) || 'All statuses' }}</span>
-                  <svg class="h-3.5 w-3.5 text-gray-400 transition-transform" [class.rotate-180]="openFilterDropdown === 'statusFilter'"
-                    fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                  </svg>
-                </button>
-
-                <div *ngIf="openFilterDropdown === 'statusFilter'"
-                  class="absolute left-0 right-0 z-30 mt-2 max-h-56 overflow-y-auto rounded-lg bg-white shadow-lg ring-1 ring-gray-200 p-1.5">
-                  <button type="button" (click)="selectFilterDropdown('statusFilter', null)"
-                    class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors"
-                    [class.bg-gray-100]="statusFilter === null" [class.font-medium]="statusFilter === null">
-                    All statuses
-                  </button>
-                  <button *ngFor="let status of statuses" type="button" (click)="selectFilterDropdown('statusFilter', status.id)"
-                    class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors"
-                    [class.bg-gray-100]="statusFilter === status.id" [class.font-medium]="statusFilter === status.id">
-                    {{ status.name }}
-                  </button>
-                </div>
-              </div>
-
-              <!-- Priority -->
-              <div class="relative" data-dd="priorityFilter">
-                <label class="mb-1.5 block text-xs font-medium text-gray-500">Priority</label>
-
-                <button type="button" (click)="toggleFilterDropdown('priorityFilter')"
-                  class="w-full flex items-center justify-between rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 cursor-pointer">
-                  <span>{{ optionName(priorities, priorityFilter) || 'All priorities' }}</span>
-                  <svg class="h-3.5 w-3.5 text-gray-400 transition-transform" [class.rotate-180]="openFilterDropdown === 'priorityFilter'"
-                    fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                  </svg>
-                </button>
-
-                <div *ngIf="openFilterDropdown === 'priorityFilter'"
-                  class="absolute left-0 right-0 z-30 mt-2 max-h-56 overflow-y-auto rounded-lg bg-white shadow-lg ring-1 ring-gray-200 p-1.5">
-                  <button type="button" (click)="selectFilterDropdown('priorityFilter', null)"
-                    class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors"
-                    [class.bg-gray-100]="priorityFilter === null" [class.font-medium]="priorityFilter === null">
-                    All priorities
-                  </button>
-                  <button *ngFor="let priority of priorities" type="button" (click)="selectFilterDropdown('priorityFilter', priority.id)"
-                    class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors"
-                    [class.bg-gray-100]="priorityFilter === priority.id" [class.font-medium]="priorityFilter === priority.id">
-                    {{ priority.name }}
-                  </button>
-                </div>
-              </div>
-
-              <!-- Customer -->
-              <div class="relative" data-dd="customerFilter">
-                <label class="mb-1.5 block text-xs font-medium text-gray-500">Customer</label>
-
-                <input type="text" placeholder="Search customer to narrow list..."
-                  (input)="onCustomerFilterSearch($any($event.target).value)"
-                  class="mb-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-gray-500" />
-
-                <button type="button" (click)="toggleFilterDropdown('customerFilter')"
-                  class="w-full flex items-center justify-between rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 cursor-pointer">
-                  <span>{{ optionName(customerOptions, customerFilter) || 'All customers' }}</span>
-                  <svg class="h-3.5 w-3.5 text-gray-400 transition-transform" [class.rotate-180]="openFilterDropdown === 'customerFilter'"
-                    fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                  </svg>
-                </button>
-
-                <div *ngIf="openFilterDropdown === 'customerFilter'"
-                  class="absolute left-0 right-0 z-30 mt-2 max-h-56 overflow-y-auto rounded-lg bg-white shadow-lg ring-1 ring-gray-200 p-1.5">
-                  <button type="button" (click)="selectFilterDropdown('customerFilter', null)"
-                    class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors"
-                    [class.bg-gray-100]="customerFilter === null" [class.font-medium]="customerFilter === null">
-                    All customers
-                  </button>
-                  <button *ngFor="let customer of customerOptions" type="button" (click)="selectFilterDropdown('customerFilter', customer.id)"
-                    class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors"
-                    [class.bg-gray-100]="customerFilter === customer.id" [class.font-medium]="customerFilter === customer.id">
-                    {{ customer.name }}
-                  </button>
-                </div>
-              </div>
-
-              <!-- Gender -->
-              <div class="relative" data-dd="genderFilter">
-                <label class="mb-1.5 block text-xs font-medium text-gray-500">Gender</label>
-
-                <button type="button" (click)="toggleFilterDropdown('genderFilter')"
-                  class="w-full flex items-center justify-between rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 cursor-pointer">
-                  <span>{{ optionName(genders, genderFilter) || 'All genders' }}</span>
-                  <svg class="h-3.5 w-3.5 text-gray-400 transition-transform" [class.rotate-180]="openFilterDropdown === 'genderFilter'"
-                    fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                  </svg>
-                </button>
-
-                <div *ngIf="openFilterDropdown === 'genderFilter'"
-                  class="absolute left-0 right-0 z-30 mt-2 max-h-56 overflow-y-auto rounded-lg bg-white shadow-lg ring-1 ring-gray-200 p-1.5">
-                  <button type="button" (click)="selectFilterDropdown('genderFilter', null)"
-                    class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors"
-                    [class.bg-gray-100]="genderFilter === null" [class.font-medium]="genderFilter === null">
-                    All genders
-                  </button>
-                  <button *ngFor="let gender of genders" type="button" (click)="selectFilterDropdown('genderFilter', gender.id)"
-                    class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors"
-                    [class.bg-gray-100]="genderFilter === gender.id" [class.font-medium]="genderFilter === gender.id">
-                    {{ gender.name }}
-                  </button>
-                </div>
-              </div>
-
-              <!-- Material -->
-              <div class="relative" data-dd="materialFilter">
-                <label class="mb-1.5 block text-xs font-medium text-gray-500">Material</label>
-
-                <button type="button" (click)="toggleFilterDropdown('materialFilter')"
-                  class="w-full flex items-center justify-between rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 cursor-pointer">
-                  <span>{{ optionName(materials, materialFilter) || 'All materials' }}</span>
-                  <svg class="h-3.5 w-3.5 text-gray-400 transition-transform" [class.rotate-180]="openFilterDropdown === 'materialFilter'"
-                    fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                  </svg>
-                </button>
-
-                <div *ngIf="openFilterDropdown === 'materialFilter'"
-                  class="absolute left-0 right-0 z-30 mt-2 max-h-56 overflow-y-auto rounded-lg bg-white shadow-lg ring-1 ring-gray-200 p-1.5">
-                  <button type="button" (click)="selectFilterDropdown('materialFilter', null)"
-                    class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors"
-                    [class.bg-gray-100]="materialFilter === null" [class.font-medium]="materialFilter === null">
-                    All materials
-                  </button>
-                  <button *ngFor="let material of materials" type="button" (click)="selectFilterDropdown('materialFilter', material.id)"
-                    class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors"
-                    [class.bg-gray-100]="materialFilter === material.id" [class.font-medium]="materialFilter === material.id">
-                    {{ material.name }}
-                  </button>
-                </div>
-              </div>
-
-              <!-- Dates -->
-              <div class="grid grid-cols-2 gap-3">
-                <div>
-                  <label class="mb-1.5 block text-xs font-medium text-gray-500">From</label>
-                  <input type="date" [(ngModel)]="dateFrom"
-                    class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-gray-500" />
-                </div>
-                <div>
-                  <label class="mb-1.5 block text-xs font-medium text-gray-500">To</label>
-                  <input type="date" [(ngModel)]="dateTo"
-                    class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-gray-500" />
-                </div>
-              </div>
-
-              <button type="button" (click)="applyFilters()"
-                class="w-full rounded-lg bg-gray-800 px-4 py-2.5 text-sm font-medium text-white hover:bg-gray-900 cursor-pointer transition-colors">
-                Apply Filters
+            <div class="max-h-56 overflow-y-auto p-1.5">
+              <button type="button" (click)="selectFilterDropdown('customerFilter', null)"
+                class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors"
+                [class.bg-gray-100]="customerFilter === null" [class.font-medium]="customerFilter === null">
+                All customers
               </button>
-
+              <button *ngFor="let customer of customerOptions" type="button" (click)="selectFilterDropdown('customerFilter', customer.id)"
+                class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors truncate"
+                [class.bg-gray-100]="customerFilter === customer.id" [class.font-medium]="customerFilter === customer.id">
+                {{ customer.name }}
+              </button>
             </div>
           </div>
         </div>
 
+        <!-- Gender (non-customer) -->
+        <div *ngIf="!isCustomer" class="relative" data-dd="genderFilter">
+          <label class="mb-1.5 block text-xs font-medium text-gray-500">Gender</label>
+          <button type="button" (click)="toggleFilterDropdown('genderFilter')"
+            class="w-full flex items-center justify-between rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 cursor-pointer">
+            <span class="truncate">{{ optionName(genders, genderFilter) || 'All genders' }}</span>
+            <svg class="h-3.5 w-3.5 text-gray-400 shrink-0 ml-2 transition-transform"
+              [class.rotate-180]="openFilterDropdown === 'genderFilter'"
+              fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+            </svg>
+          </button>
+
+          <div *ngIf="openFilterDropdown === 'genderFilter'"
+            class="absolute left-0 z-30 mt-2 w-full min-w-[180px] max-h-56 overflow-y-auto rounded-lg bg-white shadow-lg ring-1 ring-gray-200 p-1.5">
+            <button type="button" (click)="selectFilterDropdown('genderFilter', null)"
+              class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors"
+              [class.bg-gray-100]="genderFilter === null" [class.font-medium]="genderFilter === null">
+              All genders
+            </button>
+            <button *ngFor="let gender of genders" type="button" (click)="selectFilterDropdown('genderFilter', gender.id)"
+              class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors"
+              [class.bg-gray-100]="genderFilter === gender.id" [class.font-medium]="genderFilter === gender.id">
+              {{ gender.name }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Material (non-customer) -->
+        <div *ngIf="!isCustomer" class="relative" data-dd="materialFilter">
+          <label class="mb-1.5 block text-xs font-medium text-gray-500">Material</label>
+          <button type="button" (click)="toggleFilterDropdown('materialFilter')"
+            class="w-full flex items-center justify-between rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 cursor-pointer">
+            <span class="truncate">{{ optionName(materials, materialFilter) || 'All materials' }}</span>
+            <svg class="h-3.5 w-3.5 text-gray-400 shrink-0 ml-2 transition-transform"
+              [class.rotate-180]="openFilterDropdown === 'materialFilter'"
+              fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+            </svg>
+          </button>
+
+          <div *ngIf="openFilterDropdown === 'materialFilter'"
+            class="absolute left-0 z-30 mt-2 w-full min-w-[180px] max-h-56 overflow-y-auto rounded-lg bg-white shadow-lg ring-1 ring-gray-200 p-1.5">
+            <button type="button" (click)="selectFilterDropdown('materialFilter', null)"
+              class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors"
+              [class.bg-gray-100]="materialFilter === null" [class.font-medium]="materialFilter === null">
+              All materials
+            </button>
+            <button *ngFor="let material of materials" type="button" (click)="selectFilterDropdown('materialFilter', material.id)"
+              class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors"
+              [class.bg-gray-100]="materialFilter === material.id" [class.font-medium]="materialFilter === material.id">
+              {{ material.name }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Date From -->
+        <div>
+          <label class="mb-1.5 block text-xs font-medium text-gray-500">From</label>
+          <input type="date" [(ngModel)]="dateFrom" (ngModelChange)="onDateFilterChange()"
+            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-gray-500" />
+        </div>
+
+        <!-- Date To -->
+        <div>
+          <label class="mb-1.5 block text-xs font-medium text-gray-500">To</label>
+          <input type="date" [(ngModel)]="dateTo" (ngModelChange)="onDateFilterChange()"
+            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-gray-500" />
+        </div>
 
         <!-- Columns -->
         <div class="relative" data-column-menu>
           <label class="mb-1.5 block text-xs font-medium text-gray-500">View</label>
-
           <button type="button" (click)="toggleColumnMenu()"
-            class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer">
-
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24"
-              stroke-width="1.8" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round"
-                d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25A2.25 2.25 0 018.25 10.5H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
-            </svg>
-
-            Columns
-            <span class="text-xs text-gray-400">({{ visibleColumnCount() }}/{{ columnOptions.length }})</span>
-
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-gray-400 transition-transform"
+            class="w-full inline-flex items-center justify-between gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer">
+            <span class="inline-flex items-center gap-2 min-w-0">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500 shrink-0" fill="none" viewBox="0 0 24 24"
+                stroke-width="1.8" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25A2.25 2.25 0 018.25 10.5H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+              </svg>
+              <span class="truncate">Columns ({{ visibleColumnCount() }}/{{ columnOptions.length }})</span>
+            </span>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-gray-400 shrink-0 transition-transform"
               [class.rotate-180]="showColumnMenu" fill="none" viewBox="0 0 24 24" stroke-width="2"
               stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
@@ -282,11 +232,9 @@
           </button>
 
           <div *ngIf="showColumnMenu"
-            class="absolute right-0 z-20 mt-2 w-64 rounded-lg bg-white shadow-lg ring-1 ring-gray-200 p-3">
-
+            class="absolute right-0 z-30 mt-2 w-64 rounded-lg bg-white shadow-lg ring-1 ring-gray-200 p-3">
             <div class="flex items-center justify-between mb-2 pb-2 border-b border-gray-100">
               <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Show columns</span>
-
               <div class="flex gap-2">
                 <button type="button" (click)="resetColumns()"
                   class="text-xs text-blue-600 hover:text-blue-800 cursor-pointer">All</button>
@@ -294,31 +242,24 @@
                   class="text-xs text-gray-500 hover:text-gray-700 cursor-pointer">None</button>
               </div>
             </div>
-
             <div class="max-h-64 overflow-y-auto space-y-1">
               <label *ngFor="let column of columnOptions"
                 class="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer select-none">
-
                 <input type="checkbox" [checked]="isColumnVisible(column.key)" (change)="toggleColumn(column.key)"
                   class="h-4 w-4 rounded border-gray-300 text-gray-800 focus:ring-gray-800 accent-gray-800 cursor-pointer" />
-
                 {{ column.label }}
               </label>
             </div>
           </div>
         </div>
 
-
         <!-- Page Size -->
         <div class="relative" data-pagesize-menu>
           <label class="mb-1.5 block text-xs font-medium text-gray-500">Rows per page</label>
-
           <button type="button" (click)="togglePageSizeMenu()"
-            class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer">
-
-            {{ pageSize }} rows
-
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-gray-400 transition-transform"
+            class="w-full inline-flex items-center justify-between gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer">
+            <span class="truncate">{{ pageSize }} rows</span>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-gray-400 shrink-0 transition-transform"
               [class.rotate-180]="showPageSizeMenu" fill="none" viewBox="0 0 24 24" stroke-width="2"
               stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
@@ -326,8 +267,7 @@
           </button>
 
           <div *ngIf="showPageSizeMenu"
-            class="absolute right-0 z-20 mt-2 w-32 rounded-lg bg-white shadow-lg ring-1 ring-gray-200 p-1.5">
-
+            class="absolute right-0 z-30 mt-2 w-32 rounded-lg bg-white shadow-lg ring-1 ring-gray-200 p-1.5">
             <button *ngFor="let size of pageSizeOptions" type="button" (click)="selectPageSize(size)"
               class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors"
               [class.bg-gray-100]="pageSize === size" [class.font-medium]="pageSize === size">
@@ -337,6 +277,18 @@
         </div>
 
       </div>
+
+      <!-- Active filters summary -->
+      <div *ngIf="activeFilterCount > 0" class="mt-3 flex items-center justify-between border-t border-gray-100 pt-3">
+        <span class="text-xs text-gray-500">
+          {{ activeFilterCount }} filter{{ activeFilterCount === 1 ? '' : 's' }} active
+        </span>
+        <button type="button" (click)="clearFilters()"
+          class="text-xs font-medium text-blue-600 hover:text-blue-800 cursor-pointer">
+          Clear all filters
+        </button>
+      </div>
+
     </div>
 
 
@@ -349,17 +301,22 @@
 
       <div *ngIf="!loading" class="overflow-x-auto">
 
-        <table class="min-w-[1200px] w-full divide-y divide-gray-200 text-sm">
+        <table class="min-w-[1260px] w-full divide-y divide-gray-200 text-sm">
 
           <thead class="bg-gray-50">
             <tr>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                Image
+              </th>
+
               <th (click)="sort('ManufacturerOrderNumber')"
                 class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-800">
                 Manufacturer Order #
                 <span class="ml-1">{{ sortIcon('ManufacturerOrderNumber') }}</span>
               </th>
 
-              <th (click)="sort('Customer')"
+              <!-- Customer header — sirf non-customer -->
+              <th *ngIf="!isCustomer" (click)="sort('Customer')"
                 class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-800">
                 Customer
                 <span class="ml-1">{{ sortIcon('Customer') }}</span>
@@ -420,7 +377,7 @@
             <!-- Loading skeleton -->
             <ng-container *ngIf="loading">
               <tr *ngFor="let row of [1,2,3,4,5]">
-                <td [attr.colspan]="7 + visibleColumnCount()" class="px-4 py-4">
+                <td [attr.colspan]="(isCustomer ? 7 : 8) + visibleColumnCount()" class="px-4 py-4">
                   <div class="h-5 w-full animate-pulse rounded bg-gray-100"></div>
                 </td>
               </tr>
@@ -428,7 +385,7 @@
 
             <!-- Empty -->
             <tr *ngIf="!loading && orders.length === 0">
-              <td [attr.colspan]="7 + visibleColumnCount()" class="px-6 py-10 text-center text-sm text-gray-400">
+              <td [attr.colspan]="(isCustomer ? 7 : 8) + visibleColumnCount()" class="px-6 py-10 text-center text-sm text-gray-400">
                 No orders found.
               </td>
             </tr>
@@ -437,11 +394,34 @@
             <tr *ngFor="let order of orders" (click)="viewOrder(order)"
               class="bg-gray-50 transition-colors hover:bg-gray-100 cursor-pointer">
 
+              <!-- Image thumbnail -->
+              <td class="px-4 py-4 whitespace-nowrap" (click)="$event.stopPropagation()">
+
+                <button *ngIf="order.images?.length" type="button" (click)="openImageModal(order, $event)"
+                  class="group relative h-16 w-16 overflow-hidden rounded-lg ring-1 ring-gray-200 cursor-pointer">
+                  <img [src]="getImageUrl(order.images?.[0]?.imageURL)" [alt]="order.customerProductTitle"
+                    class="h-full w-full object-cover transition-transform duration-200 group-hover:scale-110" />
+                  <span *ngIf="(order.images?.length ?? 0) > 1"
+                    class="absolute bottom-0 right-0 rounded-tl-md bg-gray-900/70 px-1 text-[10px] font-medium text-white">
+                    +{{ (order.images?.length ?? 1) - 1 }}
+                  </span>
+                </button>
+
+                <div *ngIf="!order.images?.length"
+                  class="flex h-16 w-16 items-center justify-center rounded-lg bg-gray-100 text-gray-300">
+                  <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                  </svg>
+                </div>
+              </td>
+
               <td class="px-4 py-4 whitespace-nowrap font-medium text-gray-900">
                 {{ order.manufacturerOrderNumber }}
               </td>
 
-              <td class="px-4 py-4 whitespace-nowrap font-medium text-gray-900">
+              <!-- Customer cell — sirf non-customer -->
+              <td *ngIf="!isCustomer" class="px-4 py-4 whitespace-nowrap font-medium text-gray-900">
                 {{ order.customerName }}
               </td>
 
@@ -560,38 +540,94 @@
       </div>
 
       <!-- Delete Order Modal -->
-<div *ngIf="showDeleteModal" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 p-4"
-  (click)="closeDeleteModal()">
+      <div *ngIf="showDeleteModal" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 p-4"
+        (click)="closeDeleteModal()">
 
-  <div class="bg-white rounded-xl shadow-xl ring-1 ring-gray-200 w-full max-w-sm p-6"
-    (click)="$event.stopPropagation()">
+        <div class="bg-white rounded-xl shadow-xl ring-1 ring-gray-200 w-full max-w-sm p-6"
+          (click)="$event.stopPropagation()">
 
-    <h2 class="text-lg font-semibold text-gray-900 mb-2">Delete Order</h2>
+          <h2 class="text-lg font-semibold text-gray-900 mb-2">Delete Order</h2>
 
-    <p class="text-sm text-gray-500 mb-6">
-      Are you sure you want to delete
-      <span class="font-medium text-gray-700">{{ deleteOrderItem?.manufacturerOrderNumber }}</span>?
-      This order will be removed from the active order list.
-    </p>
+          <p class="text-sm text-gray-500 mb-6">
+            Are you sure you want to delete
+            <span class="font-medium text-gray-700">{{ deleteOrderItem?.manufacturerOrderNumber }}</span>?
+            This order will be removed from the active order list.
+          </p>
 
-    <div *ngIf="deleteError" class="mb-4 rounded-lg bg-red-50 ring-1 ring-red-200 px-3 py-2 text-sm text-red-700">
-      {{ deleteError }}
-    </div>
+          <div *ngIf="deleteError" class="mb-4 rounded-lg bg-red-50 ring-1 ring-red-200 px-3 py-2 text-sm text-red-700">
+            {{ deleteError }}
+          </div>
 
-    <div class="flex justify-end gap-2">
-      <button type="button" (click)="closeDeleteModal()" [disabled]="deletingOrder"
-        class="px-4 py-2 text-sm rounded-lg border border-gray-300 cursor-pointer text-gray-700 hover:bg-gray-50 disabled:opacity-50">
-        Cancel
-      </button>
+          <div class="flex justify-end gap-2">
+            <button type="button" (click)="closeDeleteModal()" [disabled]="deletingOrder"
+              class="px-4 py-2 text-sm rounded-lg border border-gray-300 cursor-pointer text-gray-700 hover:bg-gray-50 disabled:opacity-50">
+              Cancel
+            </button>
 
-      <button type="button" (click)="confirmDeleteOrder()" [disabled]="deletingOrder"
-        class="px-4 py-2 text-sm rounded-lg bg-red-500 cursor-pointer text-white hover:bg-red-800 disabled:opacity-50">
-        {{ deletingOrder ? 'Deleting...' : 'Delete' }}
-      </button>
-    </div>
+            <button type="button" (click)="confirmDeleteOrder()" [disabled]="deletingOrder"
+              class="px-4 py-2 text-sm rounded-lg bg-red-500 cursor-pointer text-white hover:bg-red-800 disabled:opacity-50">
+              {{ deletingOrder ? 'Deleting...' : 'Delete' }}
+            </button>
+          </div>
 
-  </div>
-</div>
+        </div>
+      </div>
+
+      <!-- Image Gallery Modal -->
+      <div *ngIf="showImageModal" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/70 p-4"
+        (click)="closeImageModal()">
+
+        <div class="relative w-full max-w-2xl rounded-xl bg-white shadow-xl ring-1 ring-gray-200"
+          (click)="$event.stopPropagation()">
+
+          <!-- Header -->
+          <div class="flex items-center justify-between border-b border-gray-100 px-5 py-3">
+            <h2 class="text-sm font-semibold text-gray-900">
+              Product Images
+              <span class="ml-1 font-normal text-gray-400">
+                ({{ activeImageIndex + 1 }}/{{ selectedOrderImages.length }})
+              </span>
+            </h2>
+
+            <button type="button" (click)="closeImageModal()"
+              class="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 cursor-pointer">
+              <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Main image with prev/next controls -->
+          <div class="relative bg-gray-50 rounded-xl">
+            <img [src]="getImageUrl(selectedOrderImages[activeImageIndex].imageURL)" alt="Product image"
+              class="mx-auto max-h-[60vh] w-auto object-contain p-4" />
+
+            <button *ngIf="selectedOrderImages.length > 1" type="button" (click)="prevImage()"
+              class="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 shadow ring-1 ring-gray-200 hover:bg-white cursor-pointer">
+              <svg class="h-4 w-4 text-gray-700" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+              </svg>
+            </button>
+
+            <button *ngIf="selectedOrderImages.length > 1" type="button" (click)="nextImage()"
+              class="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 shadow ring-1 ring-gray-200 hover:bg-white cursor-pointer">
+              <svg class="h-4 w-4 text-gray-700" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Thumbnail strip -->
+          <div *ngIf="selectedOrderImages.length > 1" class="flex gap-2 overflow-x-auto p-3">
+            <button *ngFor="let img of selectedOrderImages; let i = index" type="button" (click)="setActiveImage(i)"
+              class="h-14 w-14 shrink-0 overflow-hidden rounded-lg ring-2 cursor-pointer"
+              [class.ring-gray-800]="i === activeImageIndex" [class.ring-transparent]="i !== activeImageIndex">
+              <img [src]="getImageUrl(img.imageURL)" alt="Thumbnail" class="h-full w-full object-cover" />
+            </button>
+          </div>
+
+        </div>
+      </div>
 
     </div>
   </div>

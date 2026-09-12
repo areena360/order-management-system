@@ -24,26 +24,9 @@ import { environment } from '../../environments/environment';
 })
 export class OrdersService {
 
-  /**
-   * API URL
-   * https://localhost:44370/api/orders
-   */
   private readonly apiUrl =
     `${environment.apiUrl}/orders`;
 
-  /**
-   * Backend base URL
-   * https://localhost:44370
-   *
-   * Files are stored in:
-   * wwwroot/uploads/...
-   *
-   * So a database URL such as:
-   * /uploads/orders/1/image.jpg
-   *
-   * will become:
-   * https://localhost:44370/uploads/orders/1/image.jpg
-   */
   private readonly backendUrl =
     environment.apiUrl.replace(/\/api\/?$/, '');
 
@@ -51,22 +34,6 @@ export class OrdersService {
     private http: HttpClient
   ) {}
 
-  // =========================================================
-  // FILE / IMAGE URL
-  // =========================================================
-
-  /**
-   * Converts a relative backend file URL into
-   * an absolute backend URL.
-   *
-   * Example:
-   *
-   * /uploads/orders/1/image.jpg
-   *
-   * becomes:
-   *
-   * https://localhost:44370/uploads/orders/1/image.jpg
-   */
   getFileUrl(
     fileUrl: string | null | undefined
   ): string {
@@ -75,7 +42,6 @@ export class OrdersService {
       return '';
     }
 
-    // Already an absolute URL
     if (
       fileUrl.startsWith('http://') ||
       fileUrl.startsWith('https://')
@@ -83,16 +49,9 @@ export class OrdersService {
       return fileUrl;
     }
 
-    // Relative URL
     return `${this.backendUrl}${fileUrl.startsWith('/') ? '' : '/'}${fileUrl}`;
   }
 
-  /**
-   * Alias for image URLs.
-   *
-   * Keeps the component code clean:
-   * getImageUrl(image.imageURL)
-   */
   getImageUrl(
     imageUrl: string | null | undefined
   ): string {
@@ -100,97 +59,26 @@ export class OrdersService {
     return this.getFileUrl(imageUrl);
   }
 
-  // =========================================================
-  // ORDERS
-  // =========================================================
-
   getOrders(
     query: OrderQuery
   ): Observable<PagedResult<OrderListItem>> {
 
     let params = new HttpParams()
-      .set(
-        'pageNumber',
-        query.pageNumber
-      )
-      .set(
-        'pageSize',
-        query.pageSize
-      );
+      .set('pageNumber', query.pageNumber)
+      .set('pageSize', query.pageSize);
 
-    if (query.search) {
-      params = params.set(
-        'search',
-        query.search
-      );
-    }
+    if (query.search) params = params.set('search', query.search);
+    if (query.sortBy) params = params.set('sortBy', query.sortBy);
+    if (query.sortDirection) params = params.set('sortDirection', query.sortDirection);
+    if (query.statusId) params = params.set('statusId', query.statusId);
+    if (query.priorityId) params = params.set('priorityId', query.priorityId);
+    if (query.customerId) params = params.set('customerId', query.customerId);
+    if (query.genderId) params = params.set('genderId', query.genderId);
+    if (query.materialId) params = params.set('materialId', query.materialId);
+    if (query.dateFrom) params = params.set('dateFrom', query.dateFrom);
+    if (query.dateTo) params = params.set('dateTo', query.dateTo);
 
-    if (query.sortBy) {
-      params = params.set(
-        'sortBy',
-        query.sortBy
-      );
-    }
-
-    if (query.sortDirection) {
-      params = params.set(
-        'sortDirection',
-        query.sortDirection
-      );
-    }
-
-    if (query.statusId) {
-      params = params.set(
-        'statusId',
-        query.statusId
-      );
-    }
-
-    if (query.priorityId) {
-      params = params.set(
-        'priorityId',
-        query.priorityId
-      );
-    }
-
-    if (query.customerId) {
-      params = params.set(
-        'customerId',
-        query.customerId
-      );
-    }
-
-    if (query.genderId) {
-      params = params.set(
-        'genderId',
-        query.genderId
-      );
-    }
-
-    if (query.materialId) {
-      params = params.set(
-        'materialId',
-        query.materialId
-      );
-    }
-
-    if (query.dateFrom) {
-      params = params.set(
-        'dateFrom',
-        query.dateFrom
-      );
-    }
-
-    if (query.dateTo) {
-      params = params.set(
-        'dateTo',
-        query.dateTo
-      );
-    }
-
-    return this.http.get<
-      PagedResult<OrderListItem>
-    >(
+    return this.http.get<PagedResult<OrderListItem>>(
       this.apiUrl,
       { params }
     );
@@ -242,15 +130,9 @@ export class OrdersService {
 
     return this.http.patch<OrderDetails>(
       `${this.apiUrl}/${id}/status`,
-      {
-        statusId
-      }
+      { statusId }
     );
   }
-
-  // =========================================================
-  // ORDER IMAGES
-  // =========================================================
 
   uploadImages(
     id: number,
@@ -260,10 +142,7 @@ export class OrdersService {
     const formData = new FormData();
 
     files.forEach(file => {
-      formData.append(
-        'files',
-        file
-      );
+      formData.append('files', file);
     });
 
     return this.http.post<OrderImageItem[]>(
@@ -281,10 +160,6 @@ export class OrdersService {
       `${this.apiUrl}/${orderId}/images/${imageId}`
     );
   }
-
-  // =========================================================
-  // INVENTORY BILLS
-  // =========================================================
 
   getInventoryBills(
     orderId: number
@@ -316,21 +191,59 @@ export class OrdersService {
       );
     }
 
-    formData.append(
-      'billDetails',
-      dto.billDetails
-    );
+    formData.append('billDetails', dto.billDetails);
 
     if (dto.billImageFile) {
-      formData.append(
-        'billImageFile',
-        dto.billImageFile
-      );
+      formData.append('billImageFile', dto.billImageFile);
     }
 
     return this.http.post<InventoryBillItem>(
       `${this.apiUrl}/${orderId}/inventory-bill`,
       formData
+    );
+  }
+
+  updateInventoryBill(
+    orderId: number,
+    billId: number,
+    dto: {
+      billNumber: number | null;
+      billDetails: string;
+      billImageFile?: File | null;
+    }
+  ): Observable<InventoryBillItem> {
+
+    const formData = new FormData();
+
+    if (
+      dto.billNumber !== null &&
+      dto.billNumber !== undefined
+    ) {
+      formData.append(
+        'billNumber',
+        String(dto.billNumber)
+      );
+    }
+
+    formData.append('billDetails', dto.billDetails);
+
+    if (dto.billImageFile) {
+      formData.append('billImageFile', dto.billImageFile);
+    }
+
+    return this.http.put<InventoryBillItem>(
+      `${this.apiUrl}/${orderId}/inventory-bill/${billId}`,
+      formData
+    );
+  }
+
+  deleteInventoryBill(
+    orderId: number,
+    billId: number
+  ): Observable<void> {
+
+    return this.http.delete<void>(
+      `${this.apiUrl}/${orderId}/inventory-bill/${billId}`
     );
   }
 }

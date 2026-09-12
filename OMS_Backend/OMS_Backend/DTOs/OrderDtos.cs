@@ -42,6 +42,7 @@ namespace OMS_Backend.DTOs
         public int DaysForMaking { get; set; }
         public string? TrackingNumber { get; set; }
         public DateTime CreatedDate { get; set; }
+        public List<OrderImageDto> Images { get; set; } = new();
     }
 
     public class OrderDetailsDto

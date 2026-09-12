@@ -26,6 +26,9 @@ namespace OMS_Backend.Data
         {
             base.OnModelCreating(modelBuilder);
 
+            modelBuilder.Entity<OrderImage>().HasQueryFilter(x => !x.IsDeleted);
+            modelBuilder.Entity<InventoryBill>().HasQueryFilter(x => !x.IsDeleted);
+
             foreach (var entityType in modelBuilder.Model.GetEntityTypes())
             {
                 if (typeof(BaseEntity).IsAssignableFrom(entityType.ClrType))

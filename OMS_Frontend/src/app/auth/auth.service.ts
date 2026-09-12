@@ -52,10 +52,6 @@ export class AuthService {
 
   constructor(private http: HttpClient) {}
 
-  // ============================================================
-  // REGISTER
-  // ============================================================
-
   register(payload: {
     firstName: string;
     lastName: string;
@@ -79,10 +75,6 @@ export class AuthService {
       );
   }
 
-  // ============================================================
-  // LOGIN
-  // ============================================================
-
   login(
     email: string,
     password: string,
@@ -103,25 +95,15 @@ export class AuthService {
       );
   }
 
-  // ============================================================
-  // FORGOT PASSWORD
-  // ============================================================
-
   forgotPassword(
     email: string
   ): Observable<{ message: string }> {
 
     return this.http.post<{ message: string }>(
       `${this.apiUrl}/forgot-password`,
-      {
-        email
-      }
+      { email }
     );
   }
-
-  // ============================================================
-  // RESET PASSWORD
-  // ============================================================
 
   resetPassword(payload: {
     token: string;
@@ -136,10 +118,6 @@ export class AuthService {
     );
   }
 
-  // ============================================================
-  // CHANGE PASSWORD
-  // ============================================================
-
   changePassword(payload: {
     oldPassword: string;
     newPassword: string;
@@ -151,20 +129,12 @@ export class AuthService {
     );
   }
 
-  // ============================================================
-  // GET PROFILE
-  // ============================================================
-
   getProfile(): Observable<UserProfile> {
 
     return this.http.get<UserProfile>(
       `${environment.apiUrl}/profile/me`
     );
   }
-
-  // ============================================================
-  // UPDATE PROFILE
-  // ============================================================
 
   updateProfile(payload: {
     firstName: string;
@@ -182,10 +152,6 @@ export class AuthService {
     );
   }
 
-  // ============================================================
-  // LOGOUT
-  // ============================================================
-
   logout(): void {
 
     localStorage.removeItem(this.tokenKey);
@@ -196,18 +162,10 @@ export class AuthService {
     this.currentUser.set(null);
   }
 
-  // ============================================================
-  // GET TOKEN
-  // ============================================================
-
   getToken(): string | null {
 
     return localStorage.getItem(this.tokenKey);
   }
-
-  // ============================================================
-  // GET CURRENT USER
-  // ============================================================
 
   getCurrentUser(): AuthResponse | null {
 
@@ -217,10 +175,6 @@ export class AuthService {
       ? JSON.parse(raw)
       : null;
   }
-
-  // ============================================================
-  // UPDATE LOCAL USER (after profile edit)
-  // ============================================================
 
   updateLocalUser(patch: Partial<AuthResponse>): void {
 
@@ -237,18 +191,14 @@ export class AuthService {
     this.currentUser.set(updated);
   }
 
-  // ============================================================
-  // CHECK SUPER ADMIN
-  // ============================================================
-
   isSuperAdmin(): boolean {
 
     return this.getCurrentUser()?.role === 'Super Admin';
   }
 
-  // ============================================================
-  // SAVE AUTH SESSION
-  // ============================================================
+  isCustomer(): boolean {
+    return this.currentRole() === 'Customer';
+  }
 
   private persistSession(res: AuthResponse): void {
 
@@ -263,9 +213,7 @@ export class AuthService {
     );
 
     this.isAuthenticated.set(true);
-
     this.currentRole.set(res.role);
-
     this.currentUser.set(res);
   }
 }

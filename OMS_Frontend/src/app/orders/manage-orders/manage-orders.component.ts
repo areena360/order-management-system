@@ -1,756 +1,386 @@
-import {
-  Component,
-  HostListener,
-  OnDestroy,
-  OnInit
-} from '@angular/core';
-
+import { Component, HostListener, OnDestroy, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-
-import {
-  debounceTime,
-  distinctUntilChanged,
-  Subject,
-  takeUntil
-} from 'rxjs';
+import { debounceTime, distinctUntilChanged, Subject, takeUntil } from 'rxjs';
 
 import { FooterComponent } from '../../footer/footer.component';
-
 import { PermissionService } from '../../auth/permission.service';
-
+import { AuthService } from '../../auth/auth.service';
 import { OrdersService } from '../orders.service';
+import { LookupService, LOOKUP_TYPE } from '../lookup.service';
+import { PollingService } from '../../core/polling/polling.service';
 
-import {
-  LookupService,
-  LOOKUP_TYPE
-} from '../lookup.service';
+import { CustomerOption, LookupItem, OrderImageItem, OrderListItem, OrderQuery } from '../order.models';
+import { statusBadgeClass, priorityBadgeClass } from '../order-badge.util';
 
-import {
-  CustomerOption,
-  LookupItem,
-  OrderListItem,
-  OrderQuery
-} from '../order.models';
-
-import {
-  statusBadgeClass,
-  priorityBadgeClass
-} from '../order-badge.util';
-
-interface ColumnOption {
-  key: string;
-  label: string;
-}
+interface ColumnOption { key: string; label: string; }
 
 @Component({
   selector: 'app-manage-orders',
-
   standalone: true,
-
-  imports: [
-    CommonModule,
-    FormsModule,
-    FooterComponent
-  ],
-
+  imports: [CommonModule, FormsModule, FooterComponent],
   templateUrl: './manage-orders.component.html'
 })
-export class ManageOrdersComponent
-  implements OnInit, OnDestroy {
+export class ManageOrdersComponent implements OnInit, OnDestroy {
+
+  private readonly polling = inject(PollingService);
 
   orders: OrderListItem[] = [];
-
   totalCount = 0;
-
   loading = true;
-
   errorMsg = '';
-
   searchTerm = '';
 
-  // Delete Modal state
   deleteOrderItem: OrderListItem | null = null;
   showDeleteModal = false;
   deletingOrder = false;
   deleteError = '';
 
-  private searchInput$ =
-    new Subject<string>();
+  showImageModal = false;
+  selectedOrderImages: OrderImageItem[] = [];
+  activeImageIndex = 0;
 
-  private destroy$ =
-    new Subject<void>();
+  private searchInput$ = new Subject<string>();
+  private destroy$ = new Subject<void>();
 
   statuses: LookupItem[] = [];
-
   priorities: LookupItem[] = [];
-
   genders: LookupItem[] = [];
-
   materials: LookupItem[] = [];
-
   customerOptions: CustomerOption[] = [];
-
-  private customerFilterSearch$ =
-    new Subject<string>();
+  private customerFilterSearch$ = new Subject<string>();
 
   statusFilter: number | null = null;
-
   priorityFilter: number | null = null;
-
   genderFilter: number | null = null;
-
   materialFilter: number | null = null;
-
   customerFilter: number | null = null;
-
   dateFrom: string | null = null;
-
   dateTo: string | null = null;
 
-  showFilters = false;
-
-  /** Key of the currently open filter dropdown, or null when none is open. */
   openFilterDropdown: string | null = null;
 
   sortBy = 'CreatedDate';
-
   sortDirection: 'asc' | 'desc' = 'desc';
-
   currentPage = 1;
-
   pageSize = 25;
-
-  pageSizeOptions = [
-    10,
-    25,
-    50,
-    100
-  ];
-
+  pageSizeOptions = [10, 25, 50, 100];
   showPageSizeMenu = false;
-
   showColumnMenu = false;
 
   columnOptions: ColumnOption[] = [
-
-    {
-      key: 'customerOrderNumber',
-      label: 'Customer Order #'
-    },
-
-    {
-      key: 'manufacturerProductTitle',
-      label: 'Manufacturer Product'
-    },
-
-    {
-      key: 'priority',
-      label: 'Priority'
-    },
-
-    {
-      key: 'daysForMaking',
-      label: 'Days for Making'
-    },
-
-    {
-      key: 'trackingNumber',
-      label: 'Tracking Number'
-    },
-
-    {
-      key: 'createdDate',
-      label: 'Created Date'
-    }
-
+    { key: 'customerOrderNumber', label: 'Customer Order #' },
+    { key: 'manufacturerProductTitle', label: 'Manufacturer Product' },
+    { key: 'priority', label: 'Priority' },
+    { key: 'daysForMaking', label: 'Days for Making' },
+    { key: 'trackingNumber', label: 'Tracking Number' },
+    { key: 'createdDate', label: 'Created Date' }
   ];
 
-  hiddenColumns =
-    new Set<string>([
-      'manufacturerProductTitle'
-    ]);
+  hiddenColumns = new Set<string>(['manufacturerProductTitle']);
 
   canView = false;
-
   canAdd = false;
-
   canEdit = false;
-
   canDelete = false;
 
-  // Delete state (keeping for backward compatibility)
+  isCustomer = false;
+
   deletingOrderId: number | null = null;
 
-  statusBadgeClass =
-    statusBadgeClass;
+  statusBadgeClass = statusBadgeClass;
+  priorityBadgeClass = priorityBadgeClass;
 
-  priorityBadgeClass =
-    priorityBadgeClass;
+  private silentRefreshBusy = false;
 
   constructor(
     private ordersService: OrdersService,
-
     private lookupService: LookupService,
-
     private permissionService: PermissionService,
-
+    private authService: AuthService,
     private router: Router
   ) { }
 
   ngOnInit(): void {
+    this.canView = this.permissionService.canView('Orders');
+    this.canAdd = this.permissionService.canAdd('Orders');
+    this.canEdit = this.permissionService.canEdit('Orders');
+    this.canDelete = this.permissionService.canDelete('Orders');
 
-    this.canView =
-      this.permissionService.canView(
-        'Orders'
+    this.isCustomer = this.authService.isCustomer();
+
+    if (this.isCustomer) {
+      this.columnOptions = this.columnOptions.filter(c =>
+        c.key !== 'manufacturerProductTitle' &&
+        c.key !== 'priority' &&
+        c.key !== 'daysForMaking'
       );
+      this.hiddenColumns = new Set<string>(['manufacturerProductTitle']);
+    }
 
-    this.canAdd =
-      this.permissionService.canAdd(
-        'Orders'
-      );
+    this.searchInput$.pipe(
+      debounceTime(350),
+      distinctUntilChanged(),
+      takeUntil(this.destroy$)
+    ).subscribe(() => {
+      this.currentPage = 1;
+      this.fetchOrders();
+    });
 
-    this.canEdit =
-      this.permissionService.canEdit(
-        'Orders'
-      );
-
-    this.canDelete =
-      this.permissionService.canDelete(
-        'Orders'
-      );
-
-    this.searchInput$
-      .pipe(
-        debounceTime(350),
-        distinctUntilChanged(),
-        takeUntil(this.destroy$)
-      )
-      .subscribe(() => {
-
-        this.currentPage = 1;
-
-        this.fetchOrders();
-
-      });
-
-    this.customerFilterSearch$
-      .pipe(
-        debounceTime(300),
-        distinctUntilChanged(),
-        takeUntil(this.destroy$)
-      )
-      .subscribe(term => {
-
-        this.lookupService
-          .getCustomers(term)
-          .pipe(takeUntil(this.destroy$))
-          .subscribe({
-            next: result => {
-              this.customerOptions = result;
-            }
-          });
-
-      });
+    this.customerFilterSearch$.pipe(
+      debounceTime(300),
+      distinctUntilChanged(),
+      takeUntil(this.destroy$)
+    ).subscribe(term => {
+      this.lookupService.getCustomers(term)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({ next: r => this.customerOptions = r });
+    });
 
     this.loadLookups();
-
     this.fetchOrders();
+    this.setupPolling();
   }
 
   ngOnDestroy(): void {
-
     this.destroy$.next();
-
     this.destroy$.complete();
   }
 
-  private loadLookups(): void {
-
-    this.lookupService
-      .getByType(
-        LOOKUP_TYPE.OrderStatus
-      )
+  // Poll every 10 seconds. Silent refresh, no spinner flicker.
+  private setupPolling(): void {
+    this.polling.poll(10000)
       .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: result => {
-          this.statuses = result;
-        }
-      });
-
-    this.lookupService
-      .getByType(
-        LOOKUP_TYPE.Priority
-      )
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: result => {
-          this.priorities = result;
-        }
-      });
-
-    this.lookupService
-      .getByType(
-        LOOKUP_TYPE.Gender
-      )
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: result => {
-          this.genders = result;
-        }
-      });
-
-    this.lookupService
-      .getByType(
-        LOOKUP_TYPE.Material
-      )
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: result => {
-          this.materials = result;
-        }
-      });
-
-    this.lookupService
-      .getCustomers()
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: result => {
-          this.customerOptions = result;
-        }
-      });
+      .subscribe(() => this.silentRefresh());
   }
 
-  onSearchChange(): void {
+  private silentRefresh(): void {
+    if (this.silentRefreshBusy) return;
+    if (this.showDeleteModal || this.showImageModal) return;
+    if (this.loading) return;
 
-    this.searchInput$.next(
-      this.searchTerm
-    );
-  }
+    this.silentRefreshBusy = true;
 
-  onCustomerFilterSearch(
-    term: string
-  ): void {
-
-    this.customerFilterSearch$.next(
-      term
-    );
-  }
-
-  fetchOrders(): void {
-
-    this.loading = true;
-
-    this.errorMsg = '';
-
-    const query: OrderQuery = {
-
-      pageNumber:
-        this.currentPage,
-
-      pageSize:
-        this.pageSize,
-
-      search:
-        this.searchTerm || undefined,
-
-      sortBy:
-        this.sortBy,
-
-      sortDirection:
-        this.sortDirection,
-
-      statusId:
-        this.statusFilter,
-
-      priorityId:
-        this.priorityFilter,
-
-      genderId:
-        this.genderFilter,
-
-      materialId:
-        this.materialFilter,
-
-      customerId:
-        this.customerFilter,
-
-      dateFrom:
-        this.dateFrom,
-
-      dateTo:
-        this.dateTo
-    };
-
-    this.ordersService
-      .getOrders(query)
+    this.ordersService.getOrders(this.buildQuery())
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-
         next: response => {
-
-          this.orders =
-            response.items;
-
-          this.totalCount =
-            response.totalCount;
-
-          this.loading = false;
+          this.orders = response.items;
+          this.totalCount = response.totalCount;
+          this.silentRefreshBusy = false;
         },
-
-        error: error => {
-
-          this.errorMsg =
-            error?.error?.message ??
-            'Unable to load orders. Please try again.';
-
-          this.loading = false;
+        error: () => {
+          this.silentRefreshBusy = false;
         }
-
       });
   }
 
-  applyFilters(): void {
+  private buildQuery(): OrderQuery {
+    return {
+      pageNumber: this.currentPage,
+      pageSize: this.pageSize,
+      search: this.searchTerm || undefined,
+      sortBy: this.sortBy,
+      sortDirection: this.sortDirection,
+      statusId: this.statusFilter,
+      priorityId: this.isCustomer ? null : this.priorityFilter,
+      genderId: this.isCustomer ? null : this.genderFilter,
+      materialId: this.isCustomer ? null : this.materialFilter,
+      customerId: this.isCustomer ? null : this.customerFilter,
+      dateFrom: this.dateFrom,
+      dateTo: this.dateTo
+    };
+  }
 
+  private loadLookups(): void {
+    this.lookupService.getByType(LOOKUP_TYPE.OrderStatus)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({ next: r => this.statuses = r });
+
+    if (this.isCustomer) return;
+
+    this.lookupService.getByType(LOOKUP_TYPE.Priority)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({ next: r => this.priorities = r });
+
+    this.lookupService.getByType(LOOKUP_TYPE.Gender)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({ next: r => this.genders = r });
+
+    this.lookupService.getByType(LOOKUP_TYPE.Material)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({ next: r => this.materials = r });
+
+    this.lookupService.getCustomers()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({ next: r => this.customerOptions = r });
+  }
+
+  onSearchChange(): void { this.searchInput$.next(this.searchTerm); }
+
+  onCustomerFilterSearch(term: string): void { this.customerFilterSearch$.next(term); }
+
+  onDateFilterChange(): void {
     this.currentPage = 1;
-
-    this.showFilters = false;
-    this.openFilterDropdown = null;
-
     this.fetchOrders();
   }
 
+  fetchOrders(): void {
+    this.loading = true;
+    this.errorMsg = '';
+
+    this.ordersService.getOrders(this.buildQuery())
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: response => {
+          this.orders = response.items;
+          this.totalCount = response.totalCount;
+          this.loading = false;
+        },
+        error: error => {
+          this.errorMsg = error?.error?.message ?? 'Unable to load orders. Please try again.';
+          this.loading = false;
+        }
+      });
+  }
+
   clearFilters(): void {
-
     this.statusFilter = null;
-
     this.priorityFilter = null;
-
     this.genderFilter = null;
-
     this.materialFilter = null;
-
     this.customerFilter = null;
-
     this.dateFrom = null;
-
     this.dateTo = null;
     this.openFilterDropdown = null;
-
     this.currentPage = 1;
-
-    this.showFilters = false;
-
     this.fetchOrders();
   }
 
   get activeFilterCount(): number {
+    const vals = this.isCustomer
+      ? [this.statusFilter, this.dateFrom, this.dateTo]
+      : [this.statusFilter, this.priorityFilter, this.genderFilter, this.materialFilter, this.customerFilter, this.dateFrom, this.dateTo];
 
-    return [
-
-      this.statusFilter,
-
-      this.priorityFilter,
-
-      this.genderFilter,
-
-      this.materialFilter,
-
-      this.customerFilter,
-
-      this.dateFrom,
-
-      this.dateTo
-
-    ].filter(
-      value =>
-        value !== null &&
-        value !== undefined &&
-        value !== ''
-    ).length;
+    return vals.filter(v => v !== null && v !== undefined && v !== '').length;
   }
 
   toggleFilterDropdown(key: string): void {
-    this.openFilterDropdown =
-      this.openFilterDropdown === key
-        ? null
-        : key;
+    this.openFilterDropdown = this.openFilterDropdown === key ? null : key;
   }
 
-  selectFilterDropdown(
-    filterName: string,
-    value: number | null
-  ): void {
+  selectFilterDropdown(filterName: string, value: number | null): void {
     switch (filterName) {
-      case 'statusFilter':
-        this.statusFilter = value;
-        break;
-
-      case 'priorityFilter':
-        this.priorityFilter = value;
-        break;
-
-      case 'customerFilter':
-        this.customerFilter = value;
-        break;
-
-      case 'genderFilter':
-        this.genderFilter = value;
-        break;
-
-      case 'materialFilter':
-        this.materialFilter = value;
-        break;
-
-      default:
-        return;
+      case 'statusFilter': this.statusFilter = value; break;
+      case 'priorityFilter': this.priorityFilter = value; break;
+      case 'customerFilter': this.customerFilter = value; break;
+      case 'genderFilter': this.genderFilter = value; break;
+      case 'materialFilter': this.materialFilter = value; break;
+      default: return;
     }
-
     this.openFilterDropdown = null;
+    this.currentPage = 1;
+    this.fetchOrders();
   }
 
-  optionName(
-    options: LookupItem[],
-    id: number | null | undefined
-  ): string {
-    if (id === null || id === undefined) {
-      return '';
-    }
-
-    return (
-      options.find(
-        option => option.id === id
-      )?.name ?? ''
-    );
+  optionName(options: LookupItem[], id: number | null | undefined): string {
+    if (id === null || id === undefined) return '';
+    return options.find(o => o.id === id)?.name ?? '';
   }
 
   sort(column: string): void {
-
     if (this.sortBy === column) {
-
-      this.sortDirection =
-        this.sortDirection === 'asc'
-          ? 'desc'
-          : 'asc';
-
+      this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
     } else {
-
       this.sortBy = column;
-
       this.sortDirection = 'asc';
     }
-
     this.fetchOrders();
   }
 
   sortIcon(column: string): string {
-
-    if (this.sortBy !== column) {
-      return '';
-    }
-
+    if (this.sortBy !== column) return '';
     return this.sortDirection === 'asc' ? '▲' : '▼';
   }
 
   get totalPages(): number {
-
-    return Math.max(
-      1,
-      Math.ceil(
-        this.totalCount /
-        this.pageSize
-      )
-    );
+    return Math.max(1, Math.ceil(this.totalCount / this.pageSize));
   }
 
   get pageNumbers(): number[] {
-
-    const total =
-      this.totalPages;
-
-    const current =
-      this.currentPage;
-
+    const total = this.totalPages;
+    const current = this.currentPage;
     const pages: number[] = [];
-
-    const start =
-      Math.max(
-        1,
-        current - 2
-      );
-
-    const end =
-      Math.min(
-        total,
-        current + 2
-      );
-
-    for (
-      let page = start;
-      page <= end;
-      page++
-    ) {
-      pages.push(page);
-    }
-
+    const start = Math.max(1, current - 2);
+    const end = Math.min(total, current + 2);
+    for (let p = start; p <= end; p++) pages.push(p);
     return pages;
   }
 
   goToPage(page: number): void {
-
-    if (
-      page >= 1 &&
-      page <= this.totalPages &&
-      page !== this.currentPage
-    ) {
-
+    if (page >= 1 && page <= this.totalPages && page !== this.currentPage) {
       this.currentPage = page;
-
       this.fetchOrders();
     }
   }
 
-  togglePageSizeMenu(): void {
-
-    this.showPageSizeMenu =
-      !this.showPageSizeMenu;
-  }
+  togglePageSizeMenu(): void { this.showPageSizeMenu = !this.showPageSizeMenu; }
 
   selectPageSize(size: number): void {
-
     this.pageSize = size;
-
     this.currentPage = 1;
-
     this.showPageSizeMenu = false;
-
     this.fetchOrders();
   }
 
-  toggleColumnMenu(): void {
+  toggleColumnMenu(): void { this.showColumnMenu = !this.showColumnMenu; }
 
-    this.showColumnMenu =
-      !this.showColumnMenu;
-  }
-
-  isColumnVisible(
-    key: string
-  ): boolean {
-
-    return !this.hiddenColumns.has(
-      key
-    );
-  }
+  isColumnVisible(key: string): boolean { return !this.hiddenColumns.has(key); }
 
   toggleColumn(key: string): void {
-
-    if (
-      this.hiddenColumns.has(key)
-    ) {
-
-      this.hiddenColumns.delete(key);
-
-    } else {
-
-      this.hiddenColumns.add(key);
-    }
+    if (this.hiddenColumns.has(key)) this.hiddenColumns.delete(key);
+    else this.hiddenColumns.add(key);
   }
 
-  resetColumns(): void {
-
-    this.hiddenColumns.clear();
-  }
+  resetColumns(): void { this.hiddenColumns.clear(); }
 
   hideAllOptionalColumns(): void {
-
-    this.hiddenColumns =
-      new Set(
-        this.columnOptions.map(
-          column => column.key
-        )
-      );
+    this.hiddenColumns = new Set(this.columnOptions.map(c => c.key));
   }
 
   visibleColumnCount(): number {
-
-    return (
-      this.columnOptions.length -
-      this.hiddenColumns.size
-    );
+    return this.columnOptions.length - this.hiddenColumns.size;
   }
 
-  addOrder(): void {
-
-    this.router.navigate([
-      '/dashboard/orders/add'
-    ]);
-  }
+  addOrder(): void { this.router.navigate(['/dashboard/orders/add']); }
 
   viewOrder(order: OrderListItem): void {
-
-    this.router.navigate([
-      '/dashboard/orders',
-      order.id
-    ]);
+    this.router.navigate(['/dashboard/orders', order.id]);
   }
 
-  editOrder(
-    order: OrderListItem,
-    event: Event
-  ): void {
-
+  editOrder(order: OrderListItem, event: Event): void {
     event.stopPropagation();
-
-    this.router.navigate([
-      '/dashboard/orders',
-      order.id,
-      'edit'
-    ]);
+    this.router.navigate(['/dashboard/orders', order.id, 'edit']);
   }
 
-  // ============================================
-  // DELETE MODAL METHODS
-  // ============================================
-
-  /**
-   * Open delete confirmation modal
-   */
-  openDeleteModal(
-    order: OrderListItem,
-    event: Event
-  ): void {
+  openDeleteModal(order: OrderListItem, event: Event): void {
     event.stopPropagation();
-
-    if (this.deletingOrder) {
-      return;
-    }
-
+    if (this.deletingOrder) return;
     this.deleteOrderItem = order;
     this.deleteError = '';
     this.showDeleteModal = true;
   }
 
-  /**
-   * Close delete confirmation modal
-   */
   closeDeleteModal(): void {
-    if (this.deletingOrder) {
-      return;
-    }
-
+    if (this.deletingOrder) return;
     this.showDeleteModal = false;
     this.deleteOrderItem = null;
     this.deleteError = '';
   }
 
-  /**
-   * Confirm and execute order deletion
-   */
   confirmDeleteOrder(): void {
-    if (!this.deleteOrderItem || this.deletingOrder) {
-      return;
-    }
+    if (!this.deleteOrderItem || this.deletingOrder) return;
 
     this.deletingOrder = true;
     this.deletingOrderId = this.deleteOrderItem.id;
@@ -762,90 +392,63 @@ export class ManageOrdersComponent
         this.deletingOrderId = null;
         this.showDeleteModal = false;
         this.deleteOrderItem = null;
-
-        // Refetch so pagination/totals stay correct
         this.fetchOrders();
       },
-
       error: (error) => {
         console.error('Failed to delete order:', error);
         this.deletingOrder = false;
         this.deletingOrderId = null;
-
-        this.deleteError =
-          error?.error?.message ??
-          'Unable to delete order. Please try again.';
+        this.deleteError = error?.error?.message ?? 'Unable to delete order. Please try again.';
       }
     });
   }
 
+  openImageModal(order: OrderListItem, event: Event): void {
+    event.stopPropagation();
+    if (!order.images || order.images.length === 0) return;
+    this.selectedOrderImages = order.images ?? [];
+    this.activeImageIndex = 0;
+    this.showImageModal = true;
+  }
+
+  closeImageModal(): void {
+    this.showImageModal = false;
+    this.selectedOrderImages = [];
+    this.activeImageIndex = 0;
+  }
+
+  setActiveImage(index: number): void { this.activeImageIndex = index; }
+
+  prevImage(): void {
+    this.activeImageIndex = this.activeImageIndex === 0
+      ? this.selectedOrderImages.length - 1
+      : this.activeImageIndex - 1;
+  }
+
+  nextImage(): void {
+    this.activeImageIndex = (this.activeImageIndex + 1) % this.selectedOrderImages.length;
+  }
+
+  getImageUrl(imageUrl: string | null | undefined): string {
+    return this.ordersService.getImageUrl(imageUrl);
+  }
+
   get showingFrom(): number {
-
-    if (this.totalCount === 0) {
-      return 0;
-    }
-
-    return (
-      (this.currentPage - 1) *
-      this.pageSize
-    ) + 1;
+    if (this.totalCount === 0) return 0;
+    return (this.currentPage - 1) * this.pageSize + 1;
   }
 
   get showingTo(): number {
-
-    return Math.min(
-      this.currentPage *
-      this.pageSize,
-      this.totalCount
-    );
+    return Math.min(this.currentPage * this.pageSize, this.totalCount);
   }
 
-  @HostListener(
-    'document:click',
-    ['$event']
-  )
-  onDocumentClick(
-    event: Event
-  ): void {
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: Event): void {
+    const target = event.target as HTMLElement;
+    if (this.showDeleteModal || this.showImageModal) return;
 
-    const target =
-      event.target as HTMLElement;
-
-    // Don't close anything if delete modal is open
-    if (this.showDeleteModal) {
-      return;
-    }
-
-    if (
-      !target.closest(
-        '[data-column-menu]'
-      )
-    ) {
-
-      this.showColumnMenu = false;
-    }
-
-    if (
-      !target.closest(
-        '[data-pagesize-menu]'
-      )
-    ) {
-
-      this.showPageSizeMenu = false;
-    }
-
-    if (
-      !target.closest(
-        '[data-filters-menu]'
-      )
-    ) {
-
-      this.showFilters = false;
-      this.openFilterDropdown = null;
-    }
-
-    if (!target.closest('[data-dd]')) {
-      this.openFilterDropdown = null;
-    }
+    if (!target.closest('[data-column-menu]')) this.showColumnMenu = false;
+    if (!target.closest('[data-pagesize-menu]')) this.showPageSizeMenu = false;
+    if (!target.closest('[data-dd]')) this.openFilterDropdown = null;
   }
 }

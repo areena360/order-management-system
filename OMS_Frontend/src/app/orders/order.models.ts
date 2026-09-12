@@ -32,6 +32,8 @@ export interface OrderListItem {
   trackingNumber: string | null;
 
   createdDate: string;
+
+  images?: OrderImageItem[];
 }
 
 export interface OrderStatusHistoryItem {

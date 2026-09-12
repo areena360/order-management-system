@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using OMS_Backend.Common.ExceptionHandling;   // NEW
+using OMS_Backend.Common.ExceptionHandling;
 using OMS_Backend.Data;
 using OMS_Backend.Services;
 using System.Security.Claims;
@@ -12,18 +12,19 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 
-// ---- DbContext ----
+// DbContext
 builder.Services.AddDbContext<OMSDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// ---- Auth services ----
+// Auth services
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 
-// ---- JWT Bearer authentication ----
+// JWT Bearer authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secretKey = Encoding.UTF8.GetBytes(jwtSettings["Secret"]);
+
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -46,9 +47,10 @@ builder.Services.AddAuthentication(options =>
         ClockSkew = TimeSpan.Zero,
     };
 });
+
 builder.Services.AddAuthorization();
 
-// ---- CORS for Angular dev server ----
+// CORS for Angular dev server
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AngularClient", policy =>
@@ -57,7 +59,7 @@ builder.Services.AddCors(options =>
               .AllowAnyMethod());
 });
 
-// ---- Global exception handling (NEW) ----
+// Global exception handling
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
@@ -73,15 +75,12 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
-    // NOTE: UseDeveloperExceptionPage() removed GlobalExceptionHandler now
-    // handles all exceptions (dev + prod) via ProblemDetails.
 }
 
-// Global exception handler MUST be first in the pipeline
-app.UseExceptionHandler();   // NEW
+app.UseExceptionHandler();
 
 app.UseHttpsRedirection();
-app.UseStaticFiles(); // serves wwwroot/uploads/orders/... (Order Images)
+app.UseStaticFiles();
 app.UseCors("AngularClient");
 app.UseAuthentication();
 app.UseAuthorization();

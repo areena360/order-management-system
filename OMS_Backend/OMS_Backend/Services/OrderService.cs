@@ -10,8 +10,6 @@ namespace OMS_Backend.Services
     {
         private readonly OMSDbContext _db;
         private readonly IWebHostEnvironment _env;
-
-        // LookupType Ids, matching seeded LookupType table (OrderStatus, Priority, Gender, Material, Size, SizeChart)
         private const int LT_OrderStatus = 1;
 
         public OrderService(OMSDbContext db, IWebHostEnvironment env)
@@ -20,9 +18,22 @@ namespace OMS_Backend.Services
             _env = env;
         }
 
-        public async Task<PagedResult<OrderListDto>> GetOrdersAsync(OrderQueryDto q)
+        // OWNERSHIP GUARD
+        private static void EnsureOwnership(Order order, int userId, bool isCustomer)
+        {
+            if (isCustomer && order.CustomerId != userId)
+                throw new NotFoundException(nameof(Order), order.Id);
+        }
+
+        // GET ORDERS
+        public async Task<PagedResult<OrderListDto>> GetOrdersAsync(OrderQueryDto q, int userId, bool isCustomer)
         {
             var query = _db.Orders.AsNoTracking().Where(o => !o.IsDeleted);
+
+            if (isCustomer)
+            {
+                query = query.Where(o => o.CustomerId == userId);
+            }
 
             if (!string.IsNullOrWhiteSpace(q.Search))
             {
@@ -40,7 +51,10 @@ namespace OMS_Backend.Services
 
             if (q.StatusId.HasValue) query = query.Where(o => o.OrderStatusId == q.StatusId);
             if (q.PriorityId.HasValue) query = query.Where(o => o.PriorityId == q.PriorityId);
-            if (q.CustomerId.HasValue) query = query.Where(o => o.CustomerId == q.CustomerId);
+
+            if (!isCustomer && q.CustomerId.HasValue)
+                query = query.Where(o => o.CustomerId == q.CustomerId);
+
             if (q.GenderId.HasValue) query = query.Where(o => o.GenderId == q.GenderId);
             if (q.MaterialId.HasValue)
                 query = query.Where(o => o.CustomerMaterialId == q.MaterialId || o.ManufacturerMaterialId == q.MaterialId);
@@ -72,7 +86,12 @@ namespace OMS_Backend.Services
                         : null,
                     DaysForMaking = o.DaysForMaking,
                     TrackingNumber = o.TrackingNumber,
-                    CreatedDate = o.CreatedDate
+                    CreatedDate = o.CreatedDate,
+                    Images = o.OrderImages
+                        .Where(i => !i.IsDeleted)
+                        .OrderBy(i => i.Id)
+                        .Select(i => new OrderImageDto { Id = i.Id, ImageURL = i.ImageURL })
+                        .ToList()
                 })
                 .ToListAsync();
 
@@ -101,7 +120,8 @@ namespace OMS_Backend.Services
             return orderFn(query);
         }
 
-        public async Task<OrderDetailsDto> GetOrderByIdAsync(int id)
+        // GET ONE
+        public async Task<OrderDetailsDto> GetOrderByIdAsync(int id, int userId, bool isCustomer)
         {
             var order = await _db.Orders
                 .Include(o => o.Customer)
@@ -110,6 +130,8 @@ namespace OMS_Backend.Services
                 .Include(o => o.InventoryBills)
                 .FirstOrDefaultAsync(o => o.Id == id && !o.IsDeleted)
                 ?? throw new NotFoundException(nameof(Order), id);
+
+            EnsureOwnership(order, userId, isCustomer);
 
             return await MapDetailsAsync(order);
         }
@@ -187,8 +209,20 @@ namespace OMS_Backend.Services
             };
         }
 
-        public async Task<OrderDetailsDto> CreateOrderAsync(CreateOrderDto dto, int userId)
+        // CREATE
+        public async Task<OrderDetailsDto> CreateOrderAsync(CreateOrderDto dto, int userId, bool isCustomer)
         {
+            if (isCustomer)
+            {
+                dto.CustomerId = userId;
+                dto.ManufacturerProductTitle = null;
+                dto.PriorityId = null;
+                dto.TrackingNumber = null;
+                dto.NotesByManufacturer = null;
+                dto.ManufacturerMaterialId = dto.CustomerMaterialId;
+                if (dto.DaysForMaking < 0) dto.DaysForMaking = 0;
+            }
+
             await ValidateReferencesAsync(dto.CustomerId, dto.GenderId, dto.CustomerMaterialId,
                 dto.ManufacturerMaterialId, dto.PriorityId, dto.IsCustomSize, dto.SizeId, dto.SizeChartId, dto.SizeDetails);
 
@@ -243,7 +277,7 @@ namespace OMS_Backend.Services
 
             await tx.CommitAsync();
 
-            return await GetOrderByIdAsync(order.Id);
+            return await GetOrderByIdAsync(order.Id, userId, isCustomer);
         }
 
         private async Task<string> GenerateOrderNumberAsync()
@@ -264,10 +298,24 @@ namespace OMS_Backend.Services
             return $"{prefix}{next}";
         }
 
-        public async Task<OrderDetailsDto> UpdateOrderAsync(int id, UpdateOrderDto dto, int userId)
+        // UPDATE
+        public async Task<OrderDetailsDto> UpdateOrderAsync(int id, UpdateOrderDto dto, int userId, bool isCustomer)
         {
             var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == id && !o.IsDeleted)
                 ?? throw new NotFoundException(nameof(Order), id);
+
+            EnsureOwnership(order, userId, isCustomer);
+
+            if (isCustomer)
+            {
+                dto.CustomerId = order.CustomerId;
+                dto.ManufacturerProductTitle = order.ManufacturerProductTitle;
+                dto.PriorityId = order.PriorityId;
+                dto.DaysForMaking = order.DaysForMaking;
+                dto.TrackingNumber = order.TrackingNumber;
+                dto.NotesByManufacturer = order.NotesByManufacturer;
+                dto.ManufacturerMaterialId = dto.CustomerMaterialId;
+            }
 
             await ValidateReferencesAsync(dto.CustomerId, dto.GenderId, dto.CustomerMaterialId,
                 dto.ManufacturerMaterialId, dto.PriorityId, dto.IsCustomSize, dto.SizeId, dto.SizeChartId, dto.SizeDetails);
@@ -293,16 +341,18 @@ namespace OMS_Backend.Services
             order.PriorityId = dto.PriorityId;
             order.UpdatedBy = userId;
             order.UpdatedDate = DateTime.UtcNow;
-            // ManufacturerOrderNumber, OrderStatusId (use dedicated endpoint), CreatedBy/CreatedDate are immutable here.
 
             await _db.SaveChangesAsync();
-            return await GetOrderByIdAsync(id);
+            return await GetOrderByIdAsync(id, userId, isCustomer);
         }
 
-        public async Task<OrderDetailsDto> UpdateOrderStatusAsync(int id, UpdateOrderStatusDto dto, int userId)
+        // UPDATE STATUS
+        public async Task<OrderDetailsDto> UpdateOrderStatusAsync(int id, UpdateOrderStatusDto dto, int userId, bool isCustomer)
         {
             var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == id && !o.IsDeleted)
                 ?? throw new NotFoundException(nameof(Order), id);
+
+            EnsureOwnership(order, userId, isCustomer);
 
             var statusExists = await _db.LookupItems.AnyAsync(li => li.Id == dto.StatusId && li.LookupDataTypeId == LT_OrderStatus && !li.IsDeleted);
             if (!statusExists) throw new ValidationAppException("Invalid status.");
@@ -325,16 +375,19 @@ namespace OMS_Backend.Services
             await _db.SaveChangesAsync();
             await tx.CommitAsync();
 
-            return await GetOrderByIdAsync(id);
+            return await GetOrderByIdAsync(id, userId, isCustomer);
         }
 
-        public async Task<List<OrderImageDto>> AddOrderImagesAsync(int orderId, List<IFormFile> files)
+        // IMAGES
+        public async Task<List<OrderImageDto>> AddOrderImagesAsync(int orderId, List<IFormFile> files, int userId, bool isCustomer)
         {
             var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == orderId && !o.IsDeleted)
                 ?? throw new NotFoundException(nameof(Order), orderId);
 
+            EnsureOwnership(order, userId, isCustomer);
+
             var allowedExt = new[] { ".jpg", ".jpeg", ".png", ".webp" };
-            const long maxSize = 5 * 1024 * 1024; // 5 MB
+            const long maxSize = 5 * 1024 * 1024;
 
             var uploadRoot = Path.Combine(_env.ContentRootPath, "wwwroot", "uploads", "orders", orderId.ToString());
             Directory.CreateDirectory(uploadRoot);
@@ -373,22 +426,31 @@ namespace OMS_Backend.Services
             return result;
         }
 
-        public async Task DeleteOrderImageAsync(int orderId, int imageId)
+        public async Task DeleteOrderImageAsync(int orderId, int imageId, int userId, bool isCustomer)
         {
-            var image = await _db.OrderImages.FirstOrDefaultAsync(i => i.Id == imageId && i.OrderId == orderId)
-                ?? throw new NotFoundException(nameof(OrderImage), imageId);
+            var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == orderId && !o.IsDeleted)
+                ?? throw new NotFoundException(nameof(Order), orderId);
+
+            EnsureOwnership(order, userId, isCustomer);
+
+            var image = await _db.OrderImages
+                .FirstOrDefaultAsync(x => x.Id == imageId && x.OrderId == orderId);
+
+            if (image == null) throw new KeyNotFoundException("Image not found.");
 
             image.IsDeleted = true;
+            image.DeletedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
         }
 
-        public async Task DeleteOrderAsync(int id, int userId)
+        // DELETE ORDER
+        public async Task DeleteOrderAsync(int id, int userId, bool isCustomer)
         {
-            var order = await _db.Orders
-                .FirstOrDefaultAsync(o => o.Id == id && !o.IsDeleted);
+            var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == id && !o.IsDeleted);
 
-            if (order == null)
-                throw new NotFoundException(nameof(Order), id);
+            if (order == null) throw new NotFoundException(nameof(Order), id);
+
+            EnsureOwnership(order, userId, isCustomer);
 
             order.IsDeleted = true;
             order.IsActive = false;
@@ -398,8 +460,14 @@ namespace OMS_Backend.Services
             await _db.SaveChangesAsync();
         }
 
-        public async Task<List<InventoryBillDto>> GetInventoryBillsAsync(int orderId)
+        // INVENTORY BILLS
+        public async Task<List<InventoryBillDto>> GetInventoryBillsAsync(int orderId, int userId, bool isCustomer)
         {
+            var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == orderId && !o.IsDeleted)
+                ?? throw new NotFoundException(nameof(Order), orderId);
+
+            EnsureOwnership(order, userId, isCustomer);
+
             return await _db.InventoryBills
                 .Where(b => b.OrderId == orderId && !b.IsDeleted)
                 .OrderByDescending(b => b.CreatedDate)
@@ -413,17 +481,19 @@ namespace OMS_Backend.Services
                 }).ToListAsync();
         }
 
-        public async Task<InventoryBillDto> AddInventoryBillAsync(int orderId, SaveInventoryBillDto dto)
+        public async Task<InventoryBillDto> AddInventoryBillAsync(int orderId, SaveInventoryBillDto dto, int userId, bool isCustomer)
         {
             var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == orderId && !o.IsDeleted)
                 ?? throw new NotFoundException(nameof(Order), orderId);
+
+            EnsureOwnership(order, userId, isCustomer);
 
             string? billImageUrl = null;
 
             if (dto.BillImageFile != null)
             {
                 var allowedExt = new[] { ".jpg", ".jpeg", ".png", ".webp", ".pdf" };
-                const long maxSize = 10 * 1024 * 1024; // 10 MB
+                const long maxSize = 10 * 1024 * 1024;
 
                 var ext = Path.GetExtension(dto.BillImageFile.FileName).ToLowerInvariant();
                 if (!allowedExt.Contains(ext))
@@ -465,6 +535,24 @@ namespace OMS_Backend.Services
             };
         }
 
+        public async Task DeleteInventoryBillAsync(int orderId, int billId, int userId, bool isCustomer)
+        {
+            var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == orderId && !o.IsDeleted)
+                ?? throw new NotFoundException(nameof(Order), orderId);
+
+            EnsureOwnership(order, userId, isCustomer);
+
+            var bill = await _db.InventoryBills
+                .FirstOrDefaultAsync(x => x.Id == billId && x.OrderId == orderId);
+
+            if (bill == null) throw new KeyNotFoundException("Bill not found.");
+
+            bill.IsDeleted = true;
+            bill.DeletedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+        }
+
+        // VALIDATION
         private async Task ValidateReferencesAsync(int customerId, int genderId, int customerMaterialId,
             int manufacturerMaterialId, int? priorityId, bool isCustomSize, int? sizeId, int? sizeChartId, string? sizeDetails)
         {

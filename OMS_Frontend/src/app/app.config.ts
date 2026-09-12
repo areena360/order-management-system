@@ -10,7 +10,7 @@ import { errorInterceptor } from './interceptors/error.interceptor';
 export const appConfig: ApplicationConfig = {
   providers: [
     provideRouter(routes),
-    provideAnimations(), // required by ngx-toastr
+    provideAnimations(),
     provideHttpClient(withInterceptors([jwtInterceptor, errorInterceptor])),
     provideToastr({
       timeOut: 4000,

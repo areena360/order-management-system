@@ -20,11 +20,32 @@ namespace OMS_Backend.Data
         public DbSet<LookupItem> LookupItems { get; set; }
         public DbSet<PasswordResetToken> PasswordResetTokens { get; set; }
         public DbSet<RolePermission> RolePermissions { get; set; }
+        public DbSet<ChatMessage> ChatMessages { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<ChatMessage>()
+                .HasOne(m => m.Order)
+                .WithMany()
+                .HasForeignKey(m => m.OrderId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ChatMessage>()
+                .HasOne(m => m.Customer)
+                .WithMany()
+                .HasForeignKey(m => m.CustomerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<ChatMessage>()
+                .HasOne(m => m.Sender)
+                .WithMany()
+                .HasForeignKey(m => m.SenderUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<ChatMessage>()
+                .HasIndex(m => new { m.OrderId, m.CreatedDate });
 
             modelBuilder.Entity<OrderImage>().HasQueryFilter(x => !x.IsDeleted);
             modelBuilder.Entity<InventoryBill>().HasQueryFilter(x => !x.IsDeleted);

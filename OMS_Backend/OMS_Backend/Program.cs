@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using OMS_Backend.Common.ExceptionHandling;
 using OMS_Backend.Data;
+using OMS_Backend.Hubs;
 using OMS_Backend.Services;
 using System.Security.Claims;
 using System.Text;
@@ -20,6 +21,12 @@ builder.Services.AddDbContext<OMSDbContext>(options =>
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
+
+// Chat services
+builder.Services.AddScoped<IChatService, ChatService>();
+
+// SignalR
+builder.Services.AddSignalR();
 
 // JWT Bearer authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
@@ -46,6 +53,25 @@ builder.Services.AddAuthentication(options =>
         RoleClaimType = ClaimTypes.Role,
         ClockSkew = TimeSpan.Zero,
     };
+
+    // SignalR WebSocket cannot send Authorization header.
+    // Read JWT from query string for /hubs paths.
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+            var path = context.HttpContext.Request.Path;
+
+            if (!string.IsNullOrEmpty(accessToken) &&
+                path.StartsWithSegments("/hubs"))
+            {
+                context.Token = accessToken;
+            }
+
+            return Task.CompletedTask;
+        }
+    };
 });
 
 builder.Services.AddAuthorization();
@@ -56,7 +82,8 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AngularClient", policy =>
         policy.WithOrigins("http://localhost:4200")
               .AllowAnyHeader()
-              .AllowAnyMethod());
+              .AllowAnyMethod()
+              .AllowCredentials());
 });
 
 // Global exception handling
@@ -85,4 +112,8 @@ app.UseCors("AngularClient");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+
+// SignalR hubs
+app.MapHub<ChatHub>("/hubs/chat");
+
 app.Run();

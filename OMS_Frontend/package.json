@@ -8,18 +8,6 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
   },
-  "prettier": {
-    "printWidth": 100,
-    "singleQuote": true,
-    "overrides": [
-      {
-        "files": "*.html",
-        "options": {
-          "parser": "angular"
-        }
-      }
-    ]
-  },
   "private": true,
   "dependencies": {
     "@angular/animations": "^20.3.0",
@@ -29,6 +17,7 @@
     "@angular/forms": "^20.3.0",
     "@angular/platform-browser": "^20.3.0",
     "@angular/router": "^20.3.0",
+    "@microsoft/signalr": "^9.0.0",
     "@tailwindcss/postcss": "^4.3.3",
     "ngx-toastr": "^19.0.0",
     "rxjs": "~7.8.0",

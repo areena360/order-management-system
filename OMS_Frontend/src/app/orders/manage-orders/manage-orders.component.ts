@@ -10,6 +10,11 @@ import { AuthService } from '../../auth/auth.service';
 import { OrdersService } from '../orders.service';
 import { LookupService, LOOKUP_TYPE } from '../lookup.service';
 import { PollingService } from '../../core/polling/polling.service';
+import { ChatModalComponent } from '../chat/chat-modal/chat-modal.component';
+import {
+  ChatSignalrService,
+  IncomingChatMessage,
+} from '../../core/signalr/chat-signalr.service';
 
 import { CustomerOption, LookupItem, OrderImageItem, OrderListItem, OrderQuery } from '../order.models';
 import { statusBadgeClass, priorityBadgeClass } from '../order-badge.util';
@@ -19,12 +24,13 @@ interface ColumnOption { key: string; label: string; }
 @Component({
   selector: 'app-manage-orders',
   standalone: true,
-  imports: [CommonModule, FormsModule, FooterComponent],
+  imports: [CommonModule, FormsModule, FooterComponent, ChatModalComponent],
   templateUrl: './manage-orders.component.html'
 })
 export class ManageOrdersComponent implements OnInit, OnDestroy {
 
   private readonly polling = inject(PollingService);
+  private readonly chatSignalr = inject(ChatSignalrService);
 
   orders: OrderListItem[] = [];
   totalCount = 0;
@@ -41,8 +47,19 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   selectedOrderImages: OrderImageItem[] = [];
   activeImageIndex = 0;
 
+  // Chat modal state
+  showChatModal = false;
+  chatOrderId: number | null = null;
+  chatOrderNumber = '';
+  chatCustomerName = '';
+
+  // Unread message counters, keyed by orderId
+  unreadMessages = new Map<number, number>();
+  currentUserId = 0;
+
   private searchInput$ = new Subject<string>();
   private destroy$ = new Subject<void>();
+  private unregisterChatListener: (() => void) | null = null;
 
   statuses: LookupItem[] = [];
   priorities: LookupItem[] = [];
@@ -109,6 +126,7 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
     this.canDelete = this.permissionService.canDelete('Orders');
 
     this.isCustomer = this.authService.isCustomer();
+    this.currentUserId = this.readUserIdFromToken();
 
     if (this.isCustomer) {
       this.columnOptions = this.columnOptions.filter(c =>
@@ -138,17 +156,64 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
         .subscribe({ next: r => this.customerOptions = r });
     });
 
+    this.setupChatNotifications();
     this.loadLookups();
     this.fetchOrders();
     this.setupPolling();
   }
 
   ngOnDestroy(): void {
+    if (this.unregisterChatListener) this.unregisterChatListener();
     this.destroy$.next();
     this.destroy$.complete();
   }
 
-  // Poll every 10 seconds. Silent refresh, no spinner flicker.
+  // Listen for incoming chat messages and mark orders with unread badges.
+  private setupChatNotifications(): void {
+    this.unregisterChatListener = this.chatSignalr.onMessage(
+      (msg: IncomingChatMessage) => this.onIncomingChatMessage(msg)
+    );
+  }
+
+  private onIncomingChatMessage(msg: IncomingChatMessage): void {
+    // Ignore messages sent by ourselves (e.g. from another tab).
+    if (msg.senderUserId === this.currentUserId) return;
+
+    // If the chat modal is currently open for this order, no unread badge.
+    if (this.showChatModal && this.chatOrderId === msg.orderId) return;
+
+    const current = this.unreadMessages.get(msg.orderId) ?? 0;
+    this.unreadMessages.set(msg.orderId, current + 1);
+
+    // Replace map instance so Angular change detection picks it up.
+    this.unreadMessages = new Map(this.unreadMessages);
+  }
+
+  private readUserIdFromToken(): number {
+    const token = this.authService.getToken();
+    if (!token) return 0;
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return Number(payload.userId ?? 0);
+    } catch {
+      return 0;
+    }
+  }
+
+  getUnreadCount(orderId: number): number {
+    return this.unreadMessages.get(orderId) ?? 0;
+  }
+
+  hasUnread(orderId: number): boolean {
+    return this.getUnreadCount(orderId) > 0;
+  }
+
+  get totalUnread(): number {
+    let total = 0;
+    this.unreadMessages.forEach(v => total += v);
+    return total;
+  }
+
   private setupPolling(): void {
     this.polling.poll(10000)
       .pipe(takeUntil(this.destroy$))
@@ -157,7 +222,7 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
 
   private silentRefresh(): void {
     if (this.silentRefreshBusy) return;
-    if (this.showDeleteModal || this.showImageModal) return;
+    if (this.showDeleteModal || this.showImageModal || this.showChatModal) return;
     if (this.loading) return;
 
     this.silentRefreshBusy = true;
@@ -442,10 +507,36 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
     return Math.min(this.currentPage * this.pageSize, this.totalCount);
   }
 
+  // ---------- CHAT ----------
+
+  openChatForOrder(order: OrderListItem, event: Event): void {
+    event.stopPropagation();
+
+    if (!order.id) return;
+
+    // Clear unread for this order as soon as the modal opens.
+    if (this.unreadMessages.has(order.id)) {
+      this.unreadMessages.delete(order.id);
+      this.unreadMessages = new Map(this.unreadMessages);
+    }
+
+    this.chatOrderId = order.id;
+    this.chatOrderNumber = order.manufacturerOrderNumber ?? '';
+    this.chatCustomerName = order.customerName ?? '';
+    this.showChatModal = true;
+  }
+
+  closeChatModal(): void {
+    this.showChatModal = false;
+    this.chatOrderId = null;
+    this.chatOrderNumber = '';
+    this.chatCustomerName = '';
+  }
+
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: Event): void {
     const target = event.target as HTMLElement;
-    if (this.showDeleteModal || this.showImageModal) return;
+    if (this.showDeleteModal || this.showImageModal || this.showChatModal) return;
 
     if (!target.closest('[data-column-menu]')) this.showColumnMenu = false;
     if (!target.closest('[data-pagesize-menu]')) this.showPageSizeMenu = false;

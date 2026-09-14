@@ -1,6 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, tap } from 'rxjs';
+import { Observable, Subject, tap } from 'rxjs';
 import { environment } from '../../environments/environment';
 
 export interface AuthResponse {
@@ -37,6 +37,8 @@ export class AuthService {
 
   private readonly tokenKey = 'oms_token';
   private readonly userKey = 'oms_user';
+  private readonly sessionChangedSubject = new Subject<boolean>();
+  readonly sessionChanged$ = this.sessionChangedSubject.asObservable();
 
   isAuthenticated = signal<boolean>(
     !!this.getToken()
@@ -50,7 +52,7 @@ export class AuthService {
     this.getCurrentUser()
   );
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
 
   register(payload: {
     firstName: string;
@@ -160,6 +162,7 @@ export class AuthService {
     this.isAuthenticated.set(false);
     this.currentRole.set(null);
     this.currentUser.set(null);
+    this.sessionChangedSubject.next(false);
   }
 
   getToken(): string | null {
@@ -215,5 +218,6 @@ export class AuthService {
     this.isAuthenticated.set(true);
     this.currentRole.set(res.role);
     this.currentUser.set(res);
+    this.sessionChangedSubject.next(true);
   }
 }

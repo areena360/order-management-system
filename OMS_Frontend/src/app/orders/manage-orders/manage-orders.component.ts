@@ -1,4 +1,7 @@
-import { Component, HostListener, OnDestroy, OnInit, inject } from '@angular/core';
+import {
+  Component, HostListener, OnDestroy, OnInit, ViewChild, ElementRef,
+  ChangeDetectorRef, inject
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -31,6 +34,19 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
 
   private readonly polling = inject(PollingService);
   private readonly chatSignalr = inject(ChatSignalrService);
+  private readonly cdr = inject(ChangeDetectorRef);
+
+  // ---- Scroll container reference (setter reattaches ResizeObserver) ----
+  @ViewChild('tableScroll')
+  set tableScrollRef(ref: ElementRef<HTMLDivElement> | undefined) {
+    this.tableScrollEl = ref;
+    this.setupTableResizeObserver();
+  }
+
+  tableScrollEl?: ElementRef<HTMLDivElement>;
+  private tableResizeObserver?: ResizeObserver;
+
+  hasHorizontalScroll = false;
 
   orders: OrderListItem[] = [];
   totalCount = 0;
@@ -78,6 +94,10 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
 
   openFilterDropdown: string | null = null;
 
+  // Inline status dropdown state
+  openStatusId: number | null = null;
+  statusSavingId: number | null = null;
+
   sortBy = 'CreatedDate';
   sortDirection: 'asc' | 'desc' = 'desc';
   currentPage = 1;
@@ -108,6 +128,12 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
 
   statusBadgeClass = statusBadgeClass;
   priorityBadgeClass = priorityBadgeClass;
+
+    // Excel-style alternating rows: light blue / white
+  private readonly rowColors = [
+    'bg-blue-50 hover:bg-blue-100',
+    'bg-white hover:bg-gray-100'
+  ];
 
   private silentRefreshBusy = false;
 
@@ -164,11 +190,162 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     if (this.unregisterChatListener) this.unregisterChatListener();
+    this.tableResizeObserver?.disconnect();
     this.destroy$.next();
     this.destroy$.complete();
   }
 
-  // Listen for incoming chat messages and mark orders with unread badges.
+  // =================== Horizontal overflow detection ===================
+
+  private setupTableResizeObserver(): void {
+    this.tableResizeObserver?.disconnect();
+    const el = this.tableScrollEl?.nativeElement;
+
+    if (!el) {
+      this.hasHorizontalScroll = false;
+      return;
+    }
+
+    this.tableResizeObserver = new ResizeObserver(() => this.updateHorizontalScrollState());
+    this.tableResizeObserver.observe(el);
+
+    setTimeout(() => this.updateHorizontalScrollState(), 0);
+  }
+
+  private updateHorizontalScrollState(): void {
+    const el = this.tableScrollEl?.nativeElement;
+    const hasOverflow = !!el && el.scrollWidth > el.clientWidth + 2;
+
+    if (hasOverflow !== this.hasHorizontalScroll) {
+      this.hasHorizontalScroll = hasOverflow;
+      this.cdr.detectChanges();
+    }
+  }
+
+  @HostListener('window:resize')
+  onWindowResize(): void {
+    this.updateHorizontalScrollState();
+  }
+
+  // =================== Horizontal scroll — one click = full end ===================
+
+  /**
+   * Single click jumps the table all the way to the left or right end.
+   * Uses smooth behavior for a nice animation. Works reliably on all devices
+   * (mobile, tablet, 1x/2x DPR) since it goes straight to the boundary.
+   */
+  scrollTable(direction: 'left' | 'right'): void {
+    const el = this.tableScrollEl?.nativeElement;
+    if (!el) return;
+
+    const maxScroll = Math.max(0, el.scrollWidth - el.clientWidth);
+    if (maxScroll === 0) return;
+
+    const target = direction === 'left' ? 0 : maxScroll;
+
+    el.scrollTo({ left: target, behavior: 'smooth' });
+  }
+
+  // =================== Multi-color rows ===================
+
+  rowColorClass(index: number): string {
+    return this.rowColors[index % this.rowColors.length];
+  }
+
+  // =================== Inline Status Dropdown ===================
+
+  toggleStatusMenu(orderId: number): void {
+    if (this.statusSavingId === orderId) return;
+    this.openStatusId = this.openStatusId === orderId ? null : orderId;
+  }
+
+  isCurrentStatus(order: OrderListItem, status: LookupItem): boolean {
+    const id = (order as any).statusId;
+    if (id !== undefined && id !== null) return id === status.id;
+    return order.status === status.name;
+  }
+
+  changeOrderStatus(order: OrderListItem, statusId: number): void {
+    if (!this.canEdit) return;
+
+    const targetStatus = this.statuses.find(s => s.id === statusId);
+    if (!targetStatus) return;
+
+    if (this.isCurrentStatus(order, targetStatus)) {
+      this.openStatusId = null;
+      return;
+    }
+
+    this.statusSavingId = order.id;
+    this.openStatusId = null;
+
+    this.ordersService.updateStatus(order.id, statusId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => {
+          order.status = targetStatus.name;
+          (order as any).statusId = statusId;
+          this.statusSavingId = null;
+        },
+        error: (error) => {
+          this.statusSavingId = null;
+          this.errorMsg = error?.error?.message ?? 'Unable to update status. Please try again.';
+        }
+      });
+  }
+
+  // =================== Inline Tracking Number Edit ===================
+
+  onTrackingChange(order: OrderListItem, value: string): void {
+    const newVal = (value ?? '').trim();
+    const oldVal = (order.trackingNumber ?? '').trim();
+    if (newVal === oldVal) return;
+
+    this.ordersService.getOrder(order.id)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (full: any) => {
+          const payload: any = {
+            customerProductTitle: full.customerProductTitle,
+            manufacturerProductTitle: full.manufacturerProductTitle,
+            customerOrderNumber: full.customerOrderNumber,
+            customerId: full.customerId,
+            amount: full.amount,
+            genderId: full.genderId,
+            customerMaterialId: full.customerMaterialId,
+            manufacturerMaterialId: full.manufacturerMaterialId,
+            isCustomSize: full.isCustomSize,
+            sizeId: full.sizeId,
+            sizeChartId: full.sizeChartId,
+            sizeDetails: full.sizeDetails,
+            daysForMaking: full.daysForMaking,
+            priorityId: full.priorityId,
+            consigneeName: full.consigneeName,
+            consigneeAddress: full.consigneeAddress,
+            trackingNumber: newVal || null,
+            notesByCustomer: full.notesByCustomer,
+            notesByManufacturer: full.notesByManufacturer
+          };
+
+          this.ordersService.updateOrder(order.id, payload)
+            .pipe(takeUntil(this.destroy$))
+            .subscribe({
+              next: () => {
+                order.trackingNumber = newVal || null;
+              },
+              error: (error) => {
+                this.errorMsg = error?.error?.message ?? 'Unable to update tracking number.';
+              }
+            });
+        },
+        error: () => {
+          this.errorMsg = 'Unable to load order for tracking update.';
+        }
+      });
+  }
+
+  // =================== Chat notifications ===================
+
   private setupChatNotifications(): void {
     this.unregisterChatListener = this.chatSignalr.onMessage(
       (msg: IncomingChatMessage) => this.onIncomingChatMessage(msg)
@@ -176,16 +353,11 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   }
 
   private onIncomingChatMessage(msg: IncomingChatMessage): void {
-    // Ignore messages sent by ourselves (e.g. from another tab).
     if (msg.senderUserId === this.currentUserId) return;
-
-    // If the chat modal is currently open for this order, no unread badge.
     if (this.showChatModal && this.chatOrderId === msg.orderId) return;
 
     const current = this.unreadMessages.get(msg.orderId) ?? 0;
     this.unreadMessages.set(msg.orderId, current + 1);
-
-    // Replace map instance so Angular change detection picks it up.
     this.unreadMessages = new Map(this.unreadMessages);
   }
 
@@ -214,6 +386,8 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
     return total;
   }
 
+  // =================== Polling / fetching ===================
+
   private setupPolling(): void {
     this.polling.poll(10000)
       .pipe(takeUntil(this.destroy$))
@@ -224,6 +398,8 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
     if (this.silentRefreshBusy) return;
     if (this.showDeleteModal || this.showImageModal || this.showChatModal) return;
     if (this.loading) return;
+    if (this.openStatusId !== null) return;
+    if (this.statusSavingId !== null) return;
 
     this.silentRefreshBusy = true;
 
@@ -234,6 +410,7 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
           this.orders = response.items;
           this.totalCount = response.totalCount;
           this.silentRefreshBusy = false;
+          setTimeout(() => this.updateHorizontalScrollState(), 0);
         },
         error: () => {
           this.silentRefreshBusy = false;
@@ -283,7 +460,6 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   }
 
   onSearchChange(): void { this.searchInput$.next(this.searchTerm); }
-
   onCustomerFilterSearch(term: string): void { this.customerFilterSearch$.next(term); }
 
   onDateFilterChange(): void {
@@ -302,6 +478,7 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
           this.orders = response.items;
           this.totalCount = response.totalCount;
           this.loading = false;
+          setTimeout(() => this.updateHorizontalScrollState(), 0);
         },
         error: error => {
           this.errorMsg = error?.error?.message ?? 'Unable to load orders. Please try again.';
@@ -406,17 +583,24 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   toggleColumn(key: string): void {
     if (this.hiddenColumns.has(key)) this.hiddenColumns.delete(key);
     else this.hiddenColumns.add(key);
+    setTimeout(() => this.updateHorizontalScrollState(), 0);
   }
 
-  resetColumns(): void { this.hiddenColumns.clear(); }
+  resetColumns(): void {
+    this.hiddenColumns.clear();
+    setTimeout(() => this.updateHorizontalScrollState(), 0);
+  }
 
   hideAllOptionalColumns(): void {
     this.hiddenColumns = new Set(this.columnOptions.map(c => c.key));
+    setTimeout(() => this.updateHorizontalScrollState(), 0);
   }
 
   visibleColumnCount(): number {
     return this.columnOptions.length - this.hiddenColumns.size;
   }
+
+  // =================== Navigation / Actions ===================
 
   addOrder(): void { this.router.navigate(['/dashboard/orders/add']); }
 
@@ -460,13 +644,14 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
         this.fetchOrders();
       },
       error: (error) => {
-        console.error('Failed to delete order:', error);
         this.deletingOrder = false;
         this.deletingOrderId = null;
         this.deleteError = error?.error?.message ?? 'Unable to delete order. Please try again.';
       }
     });
   }
+
+  // =================== Image modal ===================
 
   openImageModal(order: OrderListItem, event: Event): void {
     event.stopPropagation();
@@ -507,14 +692,13 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
     return Math.min(this.currentPage * this.pageSize, this.totalCount);
   }
 
-  // ---------- CHAT ----------
+  // =================== CHAT ===================
 
   openChatForOrder(order: OrderListItem, event: Event): void {
     event.stopPropagation();
 
     if (!order.id) return;
 
-    // Clear unread for this order as soon as the modal opens.
     if (this.unreadMessages.has(order.id)) {
       this.unreadMessages.delete(order.id);
       this.unreadMessages = new Map(this.unreadMessages);
@@ -541,5 +725,6 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
     if (!target.closest('[data-column-menu]')) this.showColumnMenu = false;
     if (!target.closest('[data-pagesize-menu]')) this.showPageSizeMenu = false;
     if (!target.closest('[data-dd]')) this.openFilterDropdown = null;
+    if (!target.closest('[data-order-status-menu]')) this.openStatusId = null;
   }
 }

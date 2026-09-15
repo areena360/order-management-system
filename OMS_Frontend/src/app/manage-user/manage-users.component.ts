@@ -1,4 +1,7 @@
-import { Component, OnInit, HostListener } from '@angular/core';
+import {
+  Component, OnInit, OnDestroy, HostListener, ViewChild, ElementRef,
+  ChangeDetectorRef, inject
+} from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { FormsModule, NgForm } from '@angular/forms';
@@ -52,7 +55,21 @@ interface ColumnOption {
   imports: [CommonModule, FormsModule, FooterComponent],
   templateUrl: './manage-users.component.html'
 })
-export class ManageUsersComponent implements OnInit {
+export class ManageUsersComponent implements OnInit, OnDestroy {
+
+  private readonly cdr = inject(ChangeDetectorRef);
+
+  // ---- Scroll container reference (setter reattaches ResizeObserver) ----
+  @ViewChild('tableScroll')
+  set tableScrollRef(ref: ElementRef<HTMLDivElement> | undefined) {
+    this.tableScrollEl = ref;
+    this.setupTableResizeObserver();
+  }
+
+  tableScrollEl?: ElementRef<HTMLDivElement>;
+  private tableResizeObserver?: ResizeObserver;
+  hasHorizontalScroll = false;
+
   users: AppUser[] = [];
   filteredUsers: AppUser[] = [];
   loading = true;
@@ -136,6 +153,8 @@ export class ManageUsersComponent implements OnInit {
 
   toggleColumn(key: string): void {
     this.visibleColumns[key] = !this.visibleColumns[key];
+    // Column visibility changed → overflow may have changed
+    setTimeout(() => this.updateHorizontalScrollState(), 0);
   }
 
   isColumnVisible(key: string): boolean {
@@ -148,10 +167,12 @@ export class ManageUsersComponent implements OnInit {
 
   resetColumns(): void {
     this.columnOptions.forEach((c) => (this.visibleColumns[c.key] = true));
+    setTimeout(() => this.updateHorizontalScrollState(), 0);
   }
 
   hideAllOptionalColumns(): void {
     this.columnOptions.forEach((c) => (this.visibleColumns[c.key] = false));
+    setTimeout(() => this.updateHorizontalScrollState(), 0);
   }
 
   visibleColumnCount(): number {
@@ -159,14 +180,61 @@ export class ManageUsersComponent implements OnInit {
   }
 
   togglePageSizeMenu(): void {
-  this.showPageSizeMenu = !this.showPageSizeMenu;
-}
+    this.showPageSizeMenu = !this.showPageSizeMenu;
+  }
 
-selectPageSize(size: number): void {
-  this.pageSize = size;
-  this.showPageSizeMenu = false;
-  this.currentPage = 1;
-}
+  selectPageSize(size: number): void {
+    this.pageSize = size;
+    this.showPageSizeMenu = false;
+    this.currentPage = 1;
+    setTimeout(() => this.updateHorizontalScrollState(), 0);
+  }
+
+  // =================== Horizontal overflow detection ===================
+
+  private setupTableResizeObserver(): void {
+    this.tableResizeObserver?.disconnect();
+    const el = this.tableScrollEl?.nativeElement;
+
+    if (!el) {
+      this.hasHorizontalScroll = false;
+      return;
+    }
+
+    this.tableResizeObserver = new ResizeObserver(() => this.updateHorizontalScrollState());
+    this.tableResizeObserver.observe(el);
+
+    setTimeout(() => this.updateHorizontalScrollState(), 0);
+  }
+
+  private updateHorizontalScrollState(): void {
+    const el = this.tableScrollEl?.nativeElement;
+    const hasOverflow = !!el && el.scrollWidth > el.clientWidth + 2;
+
+    if (hasOverflow !== this.hasHorizontalScroll) {
+      this.hasHorizontalScroll = hasOverflow;
+      this.cdr.detectChanges();
+    }
+  }
+
+  @HostListener('window:resize')
+  onWindowResize(): void {
+    this.updateHorizontalScrollState();
+  }
+
+  // =================== Horizontal scroll — one click = full end ===================
+
+  scrollTable(direction: 'left' | 'right'): void {
+    const el = this.tableScrollEl?.nativeElement;
+    if (!el) return;
+
+    const maxScroll = Math.max(0, el.scrollWidth - el.clientWidth);
+    if (maxScroll === 0) return;
+
+    const target = direction === 'left' ? 0 : maxScroll;
+
+    el.scrollTo({ left: target, behavior: 'smooth' });
+  }
 
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent): void {
@@ -197,6 +265,10 @@ selectPageSize(size: number): void {
 
   ngOnInit(): void {
     this.fetchUsers();
+  }
+
+  ngOnDestroy(): void {
+    this.tableResizeObserver?.disconnect();
   }
 
   get canAdd(): boolean {
@@ -236,6 +308,8 @@ selectPageSize(size: number): void {
         this.roles = ['All', ...Array.from(new Set(data.map(u => u.role)))];
         this.applyFilters();
         this.loading = false;
+        // After table renders, check if horizontal scroll appeared
+        setTimeout(() => this.updateHorizontalScrollState(), 0);
       },
       error: () => {
         this.loading = false;
@@ -294,6 +368,7 @@ selectPageSize(size: number): void {
 
     this.filteredUsers = list;
     this.currentPage = 1;
+    setTimeout(() => this.updateHorizontalScrollState(), 0);
   }
 
   get paginatedUsers(): AppUser[] {

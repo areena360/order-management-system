@@ -25,7 +25,6 @@
       </button>
     </div>
 
-
     <!-- Error -->
     <div *ngIf="errorMsg"
       class="mb-4 flex items-start gap-3 rounded-xl bg-red-50 ring-1 ring-red-200 px-4 py-3 text-sm text-red-700">
@@ -36,14 +35,13 @@
       <span>{{ errorMsg }}</span>
     </div>
 
-
     <!-- Toolbar -->
     <div class="bg-white rounded-xl shadow-sm ring-1 ring-gray-200 p-4 mb-4">
 
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
 
         <!-- Search -->
-        <div class="sm:col-span-2">
+        <div>
           <label class="mb-1.5 block text-xs font-medium text-gray-500">Search</label>
           <div class="relative">
             <svg class="absolute left-3 top-2.5 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="2"
@@ -224,19 +222,37 @@
             class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-gray-500" />
         </div>
 
-        <!-- Columns -->
+      </div>
+
+      <!-- Active filters summary -->
+      <div *ngIf="activeFilterCount > 0" class="mt-3 flex items-center justify-between border-t border-gray-100 pt-3">
+        <span class="text-xs text-gray-500">
+          {{ activeFilterCount }} filter{{ activeFilterCount === 1 ? '' : 's' }} active
+        </span>
+        <button type="button" (click)="clearFilters()"
+          class="text-xs font-medium text-blue-600 hover:text-blue-800 cursor-pointer">
+          Clear all filters
+        </button>
+      </div>
+
+    </div>
+
+    <!-- Table Card -->
+    <div class="bg-white rounded-xl shadow-sm ring-1 ring-gray-200 overflow-hidden">
+
+      <!-- Top bar: Columns dropdown (left) + Scroll heading & arrows (right) -->
+      <div *ngIf="!loading" class="flex items-center justify-between border-b border-gray-100 px-4 py-2 bg-gray-50/70">
+
+        <!-- Left: Columns visibility dropdown -->
         <div class="relative" data-column-menu>
-          <label class="mb-1.5 block text-xs font-medium text-gray-500">View</label>
           <button type="button" (click)="toggleColumnMenu()"
-            class="w-full inline-flex items-center justify-between gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer">
-            <span class="inline-flex items-center gap-2 min-w-0">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500 shrink-0" fill="none"
-                viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round"
-                  d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25A2.25 2.25 0 018.25 10.5H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
-              </svg>
-              <span class="truncate">Columns ({{ visibleColumnCount() }}/{{ columnOptions.length }})</span>
-            </span>
+            class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500 shrink-0" fill="none"
+              viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25A2.25 2.25 0 018.25 10.5H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+            </svg>
+            <span class="truncate">Columns ({{ visibleColumnCount() }}/{{ columnOptions.length }})</span>
             <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-gray-400 shrink-0 transition-transform"
               [class.rotate-180]="showColumnMenu" fill="none" viewBox="0 0 24 24" stroke-width="2"
               stroke="currentColor">
@@ -245,7 +261,7 @@
           </button>
 
           <div *ngIf="showColumnMenu"
-            class="absolute right-0 z-30 mt-2 w-64 rounded-lg bg-white shadow-lg ring-1 ring-gray-200 p-3">
+            class="absolute left-0 z-30 mt-2 w-64 rounded-lg bg-white shadow-lg ring-1 ring-gray-200 p-3">
             <div class="flex items-center justify-between mb-2 pb-2 border-b border-gray-100">
               <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Show columns</span>
               <div class="flex gap-2">
@@ -266,126 +282,106 @@
           </div>
         </div>
 
-        <!-- Page Size -->
-        <div class="relative" data-pagesize-menu>
-          <label class="mb-1.5 block text-xs font-medium text-gray-500">Rows per page</label>
-          <button type="button" (click)="togglePageSizeMenu()"
-            class="w-full inline-flex items-center justify-between gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer">
-            <span class="truncate">{{ pageSize }} rows</span>
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-gray-400 shrink-0 transition-transform"
-              [class.rotate-180]="showPageSizeMenu" fill="none" viewBox="0 0 24 24" stroke-width="2"
-              stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-            </svg>
-          </button>
-
-          <div *ngIf="showPageSizeMenu"
-            class="absolute right-0 z-30 mt-2 w-32 rounded-lg bg-white shadow-lg ring-1 ring-gray-200 p-1.5">
-            <button *ngFor="let size of pageSizeOptions" type="button" (click)="selectPageSize(size)"
-              class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors"
-              [class.bg-gray-100]="pageSize === size" [class.font-medium]="pageSize === size">
-              {{ size }} rows
+        <!-- Right: heading + arrow buttons -->
+        <div class="flex items-center gap-3">
+          <span class="text-xs font-medium text-gray-500 hidden sm:inline">Scroll table horizontally</span>
+          <div class="flex gap-1">
+            <button type="button" (click)="scrollTable('left')" [disabled]="!hasHorizontalScroll"
+              title="Scroll to start"
+              class="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white p-1.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-gray-600">
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+              </svg>
+            </button>
+            <button type="button" (click)="scrollTable('right')" [disabled]="!hasHorizontalScroll"
+              title="Scroll to end"
+              class="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white p-1.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-gray-600">
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+              </svg>
             </button>
           </div>
         </div>
 
       </div>
 
-      <!-- Active filters summary -->
-      <div *ngIf="activeFilterCount > 0" class="mt-3 flex items-center justify-between border-t border-gray-100 pt-3">
-        <span class="text-xs text-gray-500">
-          {{ activeFilterCount }} filter{{ activeFilterCount === 1 ? '' : 's' }} active
-        </span>
-        <button type="button" (click)="clearFilters()"
-          class="text-xs font-medium text-blue-600 hover:text-blue-800 cursor-pointer">
-          Clear all filters
-        </button>
-      </div>
-
-    </div>
-
-
-    <!-- Table Card -->
-    <div class="bg-white rounded-xl shadow-sm ring-1 ring-gray-200 overflow-hidden">
-
       <div *ngIf="loading && orders.length === 0" class="p-10 text-center text-gray-500 text-sm">
         Loading orders...
       </div>
 
-      <div *ngIf="!loading" class="overflow-x-auto">
+      <div #tableScroll *ngIf="!loading" class="overflow-x-auto">
 
         <table class="min-w-[1260px] w-full divide-y divide-gray-200 text-sm">
 
-          <thead class="bg-gray-50">
+          <!-- Dark themed header -->
+          <thead class="bg-gray-800">
             <tr>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-100 uppercase tracking-wider">
                 Image
               </th>
 
               <th (click)="sort('ManufacturerOrderNumber')"
-                class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-800">
+                class="px-4 py-3 text-left text-xs font-semibold text-gray-100 uppercase tracking-wider cursor-pointer select-none hover:text-white">
                 Manufacturer Order #
                 <span class="ml-1">{{ sortIcon('ManufacturerOrderNumber') }}</span>
               </th>
 
-              <!-- Customer header — sirf non-customer -->
               <th *ngIf="!isCustomer" (click)="sort('Customer')"
-                class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-800">
+                class="px-4 py-3 text-left text-xs font-semibold text-gray-100 uppercase tracking-wider cursor-pointer select-none hover:text-white">
                 Customer
                 <span class="ml-1">{{ sortIcon('Customer') }}</span>
               </th>
 
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-100 uppercase tracking-wider">
                 Product
               </th>
 
               <th *ngIf="isColumnVisible('customerOrderNumber')"
-                class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                class="px-4 py-3 text-left text-xs font-semibold text-gray-100 uppercase tracking-wider">
                 Customer Order #
               </th>
 
               <th *ngIf="isColumnVisible('manufacturerProductTitle')"
-                class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                class="px-4 py-3 text-left text-xs font-semibold text-gray-100 uppercase tracking-wider">
                 Manufacturer Product
               </th>
 
               <th (click)="sort('Status')"
-                class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-800">
+                class="px-4 py-3 text-left text-xs font-semibold text-gray-100 uppercase tracking-wider cursor-pointer select-none hover:text-white">
                 Status
                 <span class="ml-1">{{ sortIcon('Status') }}</span>
               </th>
 
               <th *ngIf="isColumnVisible('priority')" (click)="sort('Priority')"
-                class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-800">
+                class="px-4 py-3 text-left text-xs font-semibold text-gray-100 uppercase tracking-wider cursor-pointer select-none hover:text-white">
                 Priority
                 <span class="ml-1">{{ sortIcon('Priority') }}</span>
               </th>
 
               <th *ngIf="isColumnVisible('daysForMaking')" (click)="sort('DaysForMaking')"
-                class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-800">
+                class="px-4 py-3 text-left text-xs font-semibold text-gray-100 uppercase tracking-wider cursor-pointer select-none hover:text-white">
                 Days
                 <span class="ml-1">{{ sortIcon('DaysForMaking') }}</span>
               </th>
 
               <th *ngIf="isColumnVisible('trackingNumber')"
-                class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                class="px-4 py-3 text-left text-xs font-semibold text-gray-100 uppercase tracking-wider">
                 Tracking
               </th>
 
               <th *ngIf="isColumnVisible('createdDate')" (click)="sort('CreatedDate')"
-                class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-800">
-                Created
+                class="px-4 py-3 text-left text-xs font-semibold text-gray-100 uppercase tracking-wider cursor-pointer select-none hover:text-white">
+                Created Date
                 <span class="ml-1">{{ sortIcon('CreatedDate') }}</span>
               </th>
 
-              <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              <th class="px-4 py-3 text-right text-xs font-semibold text-gray-100 uppercase tracking-wider">
                 Actions
               </th>
             </tr>
           </thead>
 
-
-          <tbody class="divide-y divide-gray-100">
+          <tbody class="divide-y divide-gray-200">
 
             <!-- Loading skeleton -->
             <ng-container *ngIf="loading">
@@ -404,9 +400,10 @@
               </td>
             </tr>
 
-            <!-- Orders -->
-            <tr *ngFor="let order of orders" (click)="viewOrder(order)"
-              class="bg-gray-50 transition-colors hover:bg-gray-100 cursor-pointer">
+            <!-- Orders — multi-color rows -->
+            <tr *ngFor="let order of orders; let i = index" (click)="viewOrder(order)"
+              class="transition-colors cursor-pointer"
+              [ngClass]="rowColorClass(i)">
 
               <!-- Image thumbnail -->
               <td class="px-4 py-4 whitespace-nowrap" (click)="$event.stopPropagation()">
@@ -422,7 +419,7 @@
                 </button>
 
                 <div *ngIf="!order.images?.length"
-                  class="flex h-16 w-16 items-center justify-center rounded-lg bg-gray-100 text-gray-300">
+                  class="flex h-16 w-16 items-center justify-center rounded-lg bg-white/60 text-gray-300 ring-1 ring-gray-200">
                   <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round"
                       d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
@@ -434,7 +431,6 @@
                 {{ order.manufacturerOrderNumber }}
               </td>
 
-              <!-- Customer cell — sirf non-customer -->
               <td *ngIf="!isCustomer" class="px-4 py-4 whitespace-nowrap font-medium text-gray-900">
                 {{ order.customerName }}
               </td>
@@ -443,26 +439,57 @@
                 <div class="truncate font-medium text-gray-900" [title]="order.customerProductTitle">
                   {{ order.customerProductTitle }}
                 </div>
-                <div *ngIf="order.amount !== null" class="mt-0.5 text-xs text-gray-500">
+                <div *ngIf="order.amount !== null" class="mt-0.5 text-xs text-gray-600">
                   Amount: {{ order.amount }}
                 </div>
               </td>
 
-              <td *ngIf="isColumnVisible('customerOrderNumber')" class="px-4 py-4 whitespace-nowrap text-gray-500">
+              <td *ngIf="isColumnVisible('customerOrderNumber')" class="px-4 py-4 whitespace-nowrap text-gray-600">
                 {{ order.customerOrderNumber || '—' }}
               </td>
 
               <td *ngIf="isColumnVisible('manufacturerProductTitle')" class="max-w-[200px] px-4 py-4">
-                <span class="block truncate text-gray-500" [title]="order.manufacturerProductTitle || ''">
+                <span class="block truncate text-gray-600" [title]="order.manufacturerProductTitle || ''">
                   {{ order.manufacturerProductTitle || '—' }}
                 </span>
               </td>
 
-              <td class="px-4 py-4 whitespace-nowrap">
-                <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset"
-                  [ngClass]="statusBadgeClass(order.status)">
-                  {{ order.status }}
-                </span>
+              <!-- STATUS — inline dropdown -->
+              <td class="px-4 py-4 whitespace-nowrap" (click)="$event.stopPropagation()">
+                <div class="relative inline-block" data-order-status-menu>
+                  <button type="button"
+                    (click)="toggleStatusMenu(order.id)"
+                    [disabled]="!canEdit || statusSavingId === order.id"
+                    class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset transition-all cursor-pointer hover:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    [ngClass]="statusBadgeClass(order.status)">
+                    {{ order.status }}
+                    <svg xmlns="http://www.w3.org/2000/svg"
+                      class="h-3 w-3 transition-transform"
+                      [class.rotate-180]="openStatusId === order.id"
+                      fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6" />
+                    </svg>
+                  </button>
+
+                  <div *ngIf="openStatusId === order.id"
+                    class="absolute left-0 top-full z-30 mt-2 min-w-44 max-h-64 overflow-y-auto rounded-lg bg-white p-1.5 shadow-lg ring-1 ring-gray-200">
+                    <button *ngFor="let status of statuses"
+                      type="button"
+                      (click)="changeOrderStatus(order, status.id)"
+                      [disabled]="statusSavingId === order.id"
+                      class="flex w-full items-center justify-between gap-3 rounded-md px-2.5 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-50 cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      [class.bg-gray-100]="isCurrentStatus(order, status)"
+                      [class.font-medium]="isCurrentStatus(order, status)">
+                      <span>{{ status.name }}</span>
+                      <svg *ngIf="isCurrentStatus(order, status)"
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-3.5 w-3.5 text-gray-600 shrink-0"
+                        fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m5 12 4 4L19 7" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
               </td>
 
               <td *ngIf="isColumnVisible('priority')" class="px-4 py-4 whitespace-nowrap">
@@ -474,29 +501,35 @@
                 <span *ngIf="!order.priority" class="text-gray-400">—</span>
               </td>
 
-              <td *ngIf="isColumnVisible('daysForMaking')" class="px-4 py-4 whitespace-nowrap text-gray-500">
+              <td *ngIf="isColumnVisible('daysForMaking')" class="px-4 py-4 whitespace-nowrap text-gray-600">
                 {{ order.daysForMaking }}
               </td>
 
-              <td *ngIf="isColumnVisible('trackingNumber')" class="max-w-[150px] px-4 py-4">
-                <span class="block truncate text-gray-500" [title]="order.trackingNumber || ''">
-                  {{ order.trackingNumber || '—' }}
-                </span>
+              <!-- TRACKING — auto-save inline input (no save button) -->
+              <td *ngIf="isColumnVisible('trackingNumber')" class="px-4 py-4" (click)="$event.stopPropagation()">
+                <input #trackingInput type="text"
+                  [value]="order.trackingNumber || ''"
+                  (keydown.enter)="$event.preventDefault(); trackingInput.blur()"
+                  (blur)="onTrackingChange(order, trackingInput.value)"
+                  placeholder="Add tracking"
+                  maxlength="200"
+                  class="w-44 rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-700 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-gray-500 focus:border-gray-500" />
               </td>
 
-              <td *ngIf="isColumnVisible('createdDate')" class="px-4 py-4 whitespace-nowrap text-gray-500">
+              <td *ngIf="isColumnVisible('createdDate')" class="px-4 py-4 whitespace-nowrap text-gray-600">
                 {{ order.createdDate | date:'MMM d, y' }}
               </td>
 
+              <!-- Actions — no View button -->
               <td class="px-4 py-4 whitespace-nowrap text-right" (click)="$event.stopPropagation()">
                 <div class="flex items-center justify-end gap-2">
 
-                  <!-- Per-order chat button with unread badge -->
+                  <!-- Chat -->
                   <button type="button" (click)="openChatForOrder(order, $event)"
                     class="relative inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer"
                     [ngClass]="hasUnread(order.id)
-    ? 'border-emerald-300 bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
-    : 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300'"
+                      ? 'border-emerald-300 bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                      : 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300'"
                     [title]="isCustomer ? 'Chat with admin about this order' : 'Chat with customer about this order'">
 
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
@@ -506,23 +539,19 @@
 
                     Chat
 
-                    <!-- Unread badge -->
                     <span *ngIf="hasUnread(order.id)"
                       class="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1 ring-2 ring-white">
                       {{ getUnreadCount(order.id) > 9 ? '9+' : getUnreadCount(order.id) }}
                     </span>
                   </button>
 
-                  <button *ngIf="canView" type="button" (click)="viewOrder(order)"
-                    class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer">
-                    View
-                  </button>
-
+                  <!-- Edit -->
                   <button *ngIf="canEdit" type="button" (click)="editOrder(order, $event)"
                     class="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100 hover:border-blue-300 transition-colors cursor-pointer">
                     Edit
                   </button>
 
+                  <!-- Delete -->
                   <button *ngIf="canDelete" type="button" [disabled]="deletingOrderId === order.id"
                     (click)="openDeleteModal(order, $event)"
                     class="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-100 hover:border-red-300 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
@@ -539,23 +568,45 @@
         </table>
       </div>
 
-
       <!-- Pagination -->
       <div *ngIf="!loading && totalCount > 0"
-        class="flex items-center justify-between border-t border-gray-100 px-6 py-3">
+        class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-t border-gray-100 px-6 py-3">
 
-        <p class="text-sm text-gray-500">
-          Showing
-          <span class="font-medium text-gray-700">{{ showingFrom }}</span>
-          -
-          <span class="font-medium text-gray-700">{{ showingTo }}</span>
-          of
-          <span class="font-medium text-gray-700">{{ totalCount }}</span>
-          orders
-        </p>
+        <div class="flex items-center gap-4">
+          <p class="text-sm text-gray-500">
+            Showing
+            <span class="font-medium text-gray-700">{{ showingFrom }}</span>
+            -
+            <span class="font-medium text-gray-700">{{ showingTo }}</span>
+            of
+            <span class="font-medium text-gray-700">{{ totalCount }}</span>
+            orders
+          </p>
+
+          <!-- Rows per page -->
+          <div class="relative" data-pagesize-menu>
+            <button type="button" (click)="togglePageSizeMenu()"
+              class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer">
+              <span class="truncate">{{ pageSize }} rows</span>
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-gray-400 shrink-0 transition-transform"
+                [class.rotate-180]="showPageSizeMenu" fill="none" viewBox="0 0 24 24" stroke-width="2"
+                stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+              </svg>
+            </button>
+
+            <div *ngIf="showPageSizeMenu"
+              class="absolute left-0 bottom-full z-30 mb-2 w-32 rounded-lg bg-white shadow-lg ring-1 ring-gray-200 p-1.5">
+              <button *ngFor="let size of pageSizeOptions" type="button" (click)="selectPageSize(size)"
+                class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors"
+                [class.bg-gray-100]="pageSize === size" [class.font-medium]="pageSize === size">
+                {{ size }} rows
+              </button>
+            </div>
+          </div>
+        </div>
 
         <div class="flex gap-1">
-
           <button type="button" [disabled]="currentPage === 1" (click)="goToPage(currentPage - 1)"
             class="px-3 py-1.5 text-sm rounded-md border border-gray-300 text-gray-600 disabled:opacity-40 hover:bg-gray-50 cursor-pointer disabled:cursor-not-allowed">
             Prev
@@ -571,7 +622,6 @@
             class="px-3 py-1.5 text-sm rounded-md border border-gray-300 text-gray-600 disabled:opacity-40 hover:bg-gray-50 cursor-pointer disabled:cursor-not-allowed">
             Next
           </button>
-
         </div>
       </div>
 
@@ -616,7 +666,6 @@
         <div class="relative w-full max-w-2xl rounded-xl bg-white shadow-xl ring-1 ring-gray-200"
           (click)="$event.stopPropagation()">
 
-          <!-- Header -->
           <div class="flex items-center justify-between border-b border-gray-100 px-5 py-3">
             <h2 class="text-sm font-semibold text-gray-900">
               Product Images
@@ -633,7 +682,6 @@
             </button>
           </div>
 
-          <!-- Main image with prev/next controls -->
           <div class="relative bg-gray-50 rounded-xl">
             <img [src]="getImageUrl(selectedOrderImages[activeImageIndex].imageURL)" alt="Product image"
               class="mx-auto max-h-[60vh] w-auto object-contain p-4" />
@@ -653,7 +701,6 @@
             </button>
           </div>
 
-          <!-- Thumbnail strip -->
           <div *ngIf="selectedOrderImages.length > 1" class="flex gap-2 overflow-x-auto p-3">
             <button *ngFor="let img of selectedOrderImages; let i = index" type="button" (click)="setActiveImage(i)"
               class="h-14 w-14 shrink-0 overflow-hidden rounded-lg ring-2 cursor-pointer"

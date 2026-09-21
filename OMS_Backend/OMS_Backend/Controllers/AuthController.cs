@@ -49,12 +49,6 @@ namespace OMS_Backend.Controllers
             if (emailExists)
                 throw new ConflictException("An account with this email already exists.");
 
-            var customerRole = await _db.Roles
-                .FirstOrDefaultAsync(r => r.Name == "Customer");
-
-            if (customerRole == null)
-                throw new AppConfigurationException("Default Customer role is not configured.");
-
             var user = new User
             {
                 FirstName = dto.FirstName,
@@ -65,7 +59,8 @@ namespace OMS_Backend.Controllers
                 HomeAddress = dto.HomeAddress,
                 OfficeAddress = dto.OfficeAddress,
                 WebsiteUrl = dto.WebsiteUrl,
-                RoleId = customerRole.Id,
+                RoleId = null,
+                ApprovalStatus = "Pending",
                 IsActive = false,
                 IsDeleted = false,
                 CreatedDate = DateTime.UtcNow,
@@ -77,7 +72,7 @@ namespace OMS_Backend.Controllers
             _db.Users.Add(user);
             await _db.SaveChangesAsync();
 
-            var (token, expiresAt) = _jwtService.GenerateToken(user, customerRole.Name);
+            var (token, expiresAt) = _jwtService.GenerateToken(user, "No Role");
 
             return Ok(new AuthResponseDto
             {
@@ -86,7 +81,7 @@ namespace OMS_Backend.Controllers
                 FirstName = user.FirstName,
                 LastName = user.LastName,
                 Email = user.Email,
-                Role = customerRole.Name,
+                Role = "No Role",
                 IsActive = user.IsActive
             });
         }
@@ -114,6 +109,9 @@ namespace OMS_Backend.Controllers
             if (result == PasswordVerificationResult.Failed)
                 throw new UnauthorizedAppException("Invalid email or password.");
 
+            if (user.ApprovalStatus == "Rejected")
+                throw new UnauthorizedAppException("Your account registration has been rejected. Please contact an administrator.");
+
             // Pending users are allowed to login.
             // Their IsActive status is returned to frontend
             // so profile/dashboard can show verification status.
@@ -124,7 +122,7 @@ namespace OMS_Backend.Controllers
                 await _db.SaveChangesAsync();
             }
 
-            var (token, expiresAt) = _jwtService.GenerateToken(user, user.Role.Name);
+            var (token, expiresAt) = _jwtService.GenerateToken(user, user.Role?.Name ?? "No Role");
 
             return Ok(new AuthResponseDto
             {
@@ -135,7 +133,7 @@ namespace OMS_Backend.Controllers
                 FirstName = user.FirstName,
                 LastName = user.LastName,
                 Email = user.Email,
-                Role = user.Role.Name,
+                Role = user.Role?.Name ?? "No Role",
                 IsActive = user.IsActive
             });
         }

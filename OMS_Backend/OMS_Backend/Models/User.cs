@@ -8,7 +8,8 @@
     public string? HomeAddress { get; set; }
     public string? OfficeAddress { get; set; }
     public string? WebsiteUrl { get; set; }
+    public string ApprovalStatus { get; set; } = "Approved";
     public string Password { get; set; }
-    public int RoleId { get; set; }
-    public Role Role { get; set; }
+    public int? RoleId { get; set; }
+    public Role? Role { get; set; }
 }

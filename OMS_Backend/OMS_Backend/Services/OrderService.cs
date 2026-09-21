@@ -11,11 +11,13 @@ namespace OMS_Backend.Services
         private readonly OMSDbContext _db;
         private readonly IWebHostEnvironment _env;
         private const int LT_OrderStatus = 1;
+        private readonly bool _wooEnabled;
 
-        public OrderService(OMSDbContext db, IWebHostEnvironment env)
+        public OrderService(OMSDbContext db, IWebHostEnvironment env, IConfiguration configuration)
         {
             _db = db;
             _env = env;
+            _wooEnabled = WooCommerceSecurity.Enabled(configuration) || configuration.GetValue<bool>("Shopify:Enabled");
         }
 
         // OWNERSHIP GUARD
@@ -29,6 +31,10 @@ namespace OMS_Backend.Services
         public async Task<PagedResult<OrderListDto>> GetOrdersAsync(OrderQueryDto q, int userId, bool isCustomer)
         {
             var query = _db.Orders.AsNoTracking().Where(o => !o.IsDeleted);
+            if (q.Source == "WooCommerce" || q.Source == "Shopify")
+                query = _wooEnabled ? query.Where(o => _db.Set<WooCommerceOrder>().Any(w => w.OrderId == o.Id && w.Connection.Provider == q.Source)) : query.Where(o => false);
+            else if (q.Source == "Manual" && _wooEnabled)
+                query = query.Where(o => !_db.Set<WooCommerceOrder>().Any(w => w.OrderId == o.Id));
 
             if (isCustomer)
             {
@@ -95,6 +101,15 @@ namespace OMS_Backend.Services
                 })
                 .ToListAsync();
 
+            if (_wooEnabled && items.Count > 0)
+            {
+                var ids = items.Select(x => x.Id).ToArray();
+                var imported = await _db.Set<WooCommerceOrder>().AsNoTracking().Include(x=>x.Connection).Where(x => ids.Contains(x.OrderId)).ToDictionaryAsync(x => x.OrderId);
+                foreach (var item in items) if (imported.TryGetValue(item.Id, out var link)) {
+                    item.Source = link.Connection.Provider;
+                    AddStoreImages(item.Images, link);
+                }
+            }
             return new PagedResult<OrderListDto>
             {
                 Items = items,
@@ -138,6 +153,9 @@ namespace OMS_Backend.Services
 
         private async Task<OrderDetailsDto> MapDetailsAsync(Order o)
         {
+            var store = _wooEnabled ? await _db.Set<WooCommerceOrder>().AsNoTracking().Include(x=>x.Connection).SingleOrDefaultAsync(x => x.OrderId == o.Id) : null;
+            var images = o.OrderImages.Where(i => !i.IsDeleted).Select(i => new OrderImageDto { Id = i.Id, ImageURL = i.ImageURL }).ToList();
+            if (store != null) AddStoreImages(images, store);
             var lookupIds = new[] { o.OrderStatusId, o.GenderId, o.CustomerMaterialId, o.ManufacturerMaterialId }
                 .Concat(o.PriorityId.HasValue ? new[] { o.PriorityId.Value } : Array.Empty<int>())
                 .Concat(o.SizeId.HasValue ? new[] { o.SizeId.Value } : Array.Empty<int>())
@@ -154,6 +172,7 @@ namespace OMS_Backend.Services
 
             return new OrderDetailsDto
             {
+                Source = store != null ? store.Connection.Provider : "Manual",
                 Id = o.Id,
                 ManufacturerOrderNumber = o.ManufacturerOrderNumber,
                 CustomerOrderNumber = o.CustomerOrderNumber,
@@ -186,8 +205,7 @@ namespace OMS_Backend.Services
                 Status = Name(o.OrderStatusId) ?? "Unknown",
                 CreatedDate = o.CreatedDate,
                 UpdatedDate = o.UpdatedDate,
-                Images = o.OrderImages.Where(i => !i.IsDeleted)
-                    .Select(i => new OrderImageDto { Id = i.Id, ImageURL = i.ImageURL }).ToList(),
+                Images = images,
                 StatusHistory = o.StatusHistories
                     .OrderBy(h => h.CreatedDate)
                     .Select(h => new OrderStatusHistoryDto
@@ -207,6 +225,17 @@ namespace OMS_Backend.Services
                         CreatedDate = b.CreatedDate
                     }).ToList()
             };
+        }
+
+        // Store images are read-only references, not uploaded OMS attachments.
+        private static void AddStoreImages(List<OrderImageDto> images, WooCommerceOrder link)
+        {
+            var lines = System.Text.Json.JsonSerializer.Deserialize<List<WooLineDto>>(link.ItemsJson) ?? new();
+            foreach (var line in lines.Where(x => link.ExternalLineId == 0 || x.Id == link.ExternalLineId))
+                foreach (var url in new[] { line.ImageUrl }.Concat(line.ImageUrls ?? new()).Distinct())
+                    if (Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == "https" &&
+                        string.IsNullOrEmpty(uri.UserInfo) && !images.Any(x => x.ImageURL == url))
+                        images.Add(new OrderImageDto { Id = 0, ImageURL = url });
         }
 
         // CREATE
@@ -305,6 +334,10 @@ namespace OMS_Backend.Services
                 ?? throw new NotFoundException(nameof(Order), id);
 
             EnsureOwnership(order, userId, isCustomer);
+
+            if (_wooEnabled && dto.CustomerId != order.CustomerId &&
+                await _db.Set<WooCommerceOrder>().AnyAsync(x => x.OrderId == id))
+                throw new ValidationAppException("A store order must remain assigned to its connected store owner.");
 
             if (isCustomer)
             {

@@ -10,6 +10,7 @@ export interface CustomerOption {
 }
 
 export interface OrderListItem {
+  source?: string;
   id: number;
 
   manufacturerOrderNumber: string;
@@ -58,6 +59,7 @@ export interface InventoryBillItem {
 }
 
 export interface OrderDetails {
+  source?: string;
   id: number;
 
   manufacturerOrderNumber: string;
@@ -162,6 +164,7 @@ export interface PagedResult<T> {
 }
 
 export interface OrderQuery {
+  source?: string;
   pageNumber: number;
   pageSize: number;
 

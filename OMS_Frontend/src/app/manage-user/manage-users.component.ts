@@ -9,6 +9,8 @@ import { FooterComponent } from "../footer/footer.component";
 import { AuthService } from '../auth/auth.service';
 import { PermissionService } from '../auth/permission.service';
 
+type UserStatus = 'Pending' | 'Approved' | 'Rejected';
+
 export interface AppUser {
   id: number;
   firstName: string;
@@ -19,10 +21,11 @@ export interface AppUser {
   homeAddress: string;
   officeAddress: string;
   websiteUrl: string;
-  roleId: number;
+  roleId: number | null;
   role: string;
   isActive: boolean;
   isDeleted: boolean;
+  status: UserStatus;
   createdDate: string;
   createdBy: string;
   updatedDate: string;
@@ -39,7 +42,7 @@ export interface UserForm {
   homeAddress: string;
   officeAddress: string;
   websiteUrl: string;
-  roleId: number;
+  roleId: number | null;
   isActive?: boolean;
   password?: string;
 }
@@ -74,6 +77,14 @@ export class ManageUsersComponent implements OnInit, OnDestroy {
   filteredUsers: AppUser[] = [];
   loading = true;
   errorMsg = '';
+
+  sortBy = 'createdDate';
+  sortDirection: 'asc' | 'desc' = 'desc';
+  targetStatus: UserStatus = 'Pending';
+  approvalRoleId: number | null = null;
+  showApprovalRoleMenu = false;
+  statusError = '';
+  readonly userStatuses: UserStatus[] = ['Pending', 'Approved', 'Rejected'];
 
   searchTerm = '';
   roleFilter = 'All';
@@ -239,6 +250,7 @@ export class ManageUsersComponent implements OnInit, OnDestroy {
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent): void {
     const target = event.target as HTMLElement;
+    if (!target.closest('[data-approval-role-menu]')) this.showApprovalRoleMenu = false;
     if (!target.closest('[data-column-menu]')) this.showColumnMenu = false;
     if (!target.closest('[data-role-menu]')) this.showRoleMenu = false;
     if (!target.closest('[data-form-role-menu]') && !target.closest('[data-form-role-menu-edit]')) this.showFormRoleMenu = false;
@@ -352,7 +364,7 @@ export class ManageUsersComponent implements OnInit, OnDestroy {
           u.websiteUrl,
           u.roleId,
           u.role,
-          u.isActive ? 'active' : 'inactive',
+          u.status,
           u.isDeleted ? 'deleted' : 'not deleted',
           u.createdDate,
           u.createdBy,
@@ -366,9 +378,31 @@ export class ManageUsersComponent implements OnInit, OnDestroy {
       });
     }
 
-    this.filteredUsers = list;
+    this.filteredUsers = list.sort((a, b) => {
+      const value = (u: AppUser): string | number => {
+        if (this.sortBy === 'fullName') return this.fullName(u);
+        if (this.sortBy === 'createdDate' || this.sortBy === 'updatedDate')
+          return Date.parse(u[this.sortBy]) || 0;
+        const v = u[this.sortBy as keyof AppUser];
+        return typeof v === 'boolean' ? Number(v) : String(v ?? '');
+      };
+      const av = value(a), bv = value(b);
+      const result = typeof av === 'number' && typeof bv === 'number'
+        ? av - bv : String(av).localeCompare(String(bv), undefined, { numeric: true, sensitivity: 'base' });
+      return (this.sortDirection === 'asc' ? result : -result) || b.id - a.id;
+    });
     this.currentPage = 1;
     setTimeout(() => this.updateHorizontalScrollState(), 0);
+  }
+
+  sort(column: string): void {
+    this.sortDirection = this.sortBy === column && this.sortDirection === 'asc' ? 'desc' : 'asc';
+    this.sortBy = column;
+    this.applyFilters();
+  }
+
+  sortIcon(column: string): string {
+    return this.sortBy === column ? (this.sortDirection === 'asc' ? '▲' : '▼') : '';
   }
 
   get paginatedUsers(): AppUser[] {
@@ -399,7 +433,7 @@ export class ManageUsersComponent implements OnInit, OnDestroy {
     return map[role] || 'bg-gray-100 text-gray-700 ring-gray-600/20';
   }
 
-  roleName(roleId: number): string {
+  roleName(roleId: number | null): string {
     return this.roleOptions.find(r => r.id === roleId)?.name || 'Unknown';
   }
 
@@ -412,7 +446,7 @@ export class ManageUsersComponent implements OnInit, OnDestroy {
   }
 
   changeUserRole(user: AppUser, roleId: number): void {
-    if (!this.canEdit || user.isDeleted || this.isRowSuperAdmin(user)) return;
+    if (!this.canEdit || user.isDeleted || user.roleId == null || this.isRowSuperAdmin(user)) return;
     if (user.roleId === roleId) {
       this.openUserRoleId = null;
       return;
@@ -458,13 +492,14 @@ export class ManageUsersComponent implements OnInit, OnDestroy {
     this.openUserStatusId = this.openUserStatusId === userId ? null : userId;
   }
 
-  selectUserStatus(user: AppUser, isActive: boolean): void {
+  selectUserStatus(user: AppUser, status: UserStatus): void {
     this.openUserStatusId = null;
-    if (!this.canEdit || user.isDeleted || this.isSuperAdmin(user)) return;
-    if (user.isActive === isActive) return;
-
-    // Open the existing confirmation modal; confirmToggleActive() does the API call.
+    if (!this.canEdit || user.isDeleted || this.isSuperAdmin(user) || user.status === status) return;
     this.selectedUser = user;
+    this.targetStatus = status;
+    this.approvalRoleId = null;
+    this.showApprovalRoleMenu = false;
+    this.statusError = '';
     this.showToggleActiveModal = true;
   }
 
@@ -552,42 +587,37 @@ export class ManageUsersComponent implements OnInit, OnDestroy {
     });
   }
 
-  restoreUser(user: AppUser): void {
-    this.http.post(`${this.apiUrl}/${user.id}/restore`, {}).subscribe({
-      next: () => {
-        user.isDeleted = false;
-        this.applyFilters();
-      },
-      error: () => {}
-    });
-  }
-
   confirmToggleActive(): void {
-    if (!this.selectedUser) return;
+    if (!this.selectedUser || this.saving) return;
+    if (this.targetStatus === 'Approved' && !this.approvalRoleId) {
+      this.statusError = 'Select a role before approving this user.';
+      return;
+    }
     this.saving = true;
-    this.http.patch<{ isActive: boolean }>(`${this.apiUrl}/${this.selectedUser.id}/toggle-active`, {}).subscribe({
-      next: (res) => {
-        if (this.selectedUser) this.selectedUser.isActive = res.isActive;
+    this.statusError = '';
+    this.http.patch(`${this.apiUrl}/${this.selectedUser.id}/status`, {
+      status: this.targetStatus,
+      roleId: this.targetStatus === 'Approved' ? this.approvalRoleId : null
+    }).subscribe({
+      next: () => {
         this.saving = false;
-        this.showToggleActiveModal = false;
-        this.selectedUser = null;
+        this.closeModals();
+        this.fetchUsers();
       },
-      error: () => {
+      error: (err) => {
         this.saving = false;
+        this.statusError = err.error?.message || 'Could not update status. Please try again.';
       }
     });
   }
 
-  openToggleActiveModal(user: AppUser): void {
-    this.selectedUser = user;
-    this.showToggleActiveModal = true;
-  }
-
   closeModals(): void {
+    if (this.saving) return;
     this.showAddModal = false;
     this.showEditModal = false;
     this.showDeleteModal = false;
     this.showToggleActiveModal = false;
+    this.showApprovalRoleMenu = false;
     this.selectedUser = null;
   }
 

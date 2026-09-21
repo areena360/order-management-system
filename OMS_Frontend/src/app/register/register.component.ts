@@ -38,10 +38,10 @@ export class RegisterComponent {
       {
         firstName: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(50)]],
         lastName: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(50)]],
-        websiteUrl: ['', [Validators.pattern(/^https?:\/\/.+\..+/)]],
+        websiteUrl: ['https://', [Validators.pattern(/^https:\/\/(?:$|(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(?::\d+)?(?:[/?#].*)?)$/)]],
         email: ['', [Validators.required, Validators.pattern(/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/)]],
-        firstContact: ['', [Validators.required, Validators.pattern(/^[0-9+\-\s()]{7,15}$/)]],
-        secondContact: ['', [Validators.pattern(/^[0-9+\-\s()]{7,15}$/)]],
+        firstContact: ['', [Validators.required, Validators.pattern(/^(?:03\d{2} \d{7}|\+92 3\d{2} \d{7})$/)]],
+        secondContact: ['', [Validators.pattern(/^(?:03\d{2} \d{7}|\+92 3\d{2} \d{7})$/)]],
         homeAddress: ['', [Validators.maxLength(250)]],
         officeAddress: ['', [Validators.maxLength(250)]],
         password: ['', [Validators.required, Validators.minLength(8), Validators.maxLength(32), this.passwordFormatValidator]],
@@ -88,8 +88,8 @@ export class RegisterComponent {
     if (control.hasError('required')) return 'This field is required.';
     if (name === 'email' && control.hasError('pattern')) return 'Enter a valid email address.';
     if (name === 'websiteUrl' && control.hasError('pattern')) return 'Enter a valid website URL.';
-    if (name === 'firstContact' && control.hasError('pattern')) return 'Enter a valid phone number.';
-    if (name === 'secondContact' && control.hasError('pattern')) return 'Enter a valid phone number.';
+    if (name === 'firstContact' && control.hasError('pattern')) return 'Use 0300 1234567 or +92 300 1234567 format.';
+    if (name === 'secondContact' && control.hasError('pattern')) return 'Use 0300 1234567 or +92 300 1234567 format.';
     if (control.hasError('minlength')) return `Minimum ${control.errors?.['minlength'].requiredLength} characters required.`;
     if (control.hasError('maxlength')) return `Maximum ${control.errors?.['maxlength'].requiredLength} characters allowed.`;
     if (name === 'password' && control.hasError('passwordFormat'))
@@ -102,6 +102,39 @@ export class RegisterComponent {
     return this.registerForm.hasError('passwordsMismatch') && !!this.registerForm.get('confirmPassword')?.touched;
   }
 
+  formatPakistanPhone(controlName: 'firstContact' | 'secondContact'): void {
+    const control = this.registerForm.get(controlName);
+    if (!control) return;
+
+    const raw = String(control.value ?? '');
+    let digits = raw.replace(/\D/g, '');
+    const international = raw.trim().startsWith('+') || digits.startsWith('92');
+    let formatted = '';
+
+    if (international) {
+      if (digits.startsWith('92')) digits = digits.slice(2);
+      if (digits.startsWith('0')) digits = digits.slice(1);
+      digits = digits.slice(0, 10);
+      formatted = '+92';
+      if (digits.length) formatted += ` ${digits.slice(0, 3)}`;
+      if (digits.length > 3) formatted += ` ${digits.slice(3)}`;
+    } else {
+      digits = digits.slice(0, 11);
+      formatted = digits.length > 4 ? `${digits.slice(0, 4)} ${digits.slice(4)}` : digits;
+    }
+
+    control.setValue(formatted, { emitEvent: false });
+    control.updateValueAndValidity({ emitEvent: false });
+  }
+
+  normalizeWebsiteUrl(): void {
+    const control = this.registerForm.get('websiteUrl');
+    if (!control) return;
+    const value = String(control.value ?? '').trim();
+    if (!value) control.setValue('https://');
+    else if (!/^https:\/\//i.test(value)) control.setValue(`https://${value.replace(/^https?:\/\//i, '')}`);
+  }
+
   onSubmit(): void {
     if (this.registerForm.invalid) {
       this.registerForm.markAllAsTouched();
@@ -110,7 +143,14 @@ export class RegisterComponent {
 
     this.isSubmitting.set(true);
 
-    this.authService.register(this.registerForm.value).subscribe({
+    const value = this.registerForm.value;
+    const payload = {
+      ...value,
+      websiteUrl: value.websiteUrl === 'https://' ? undefined : value.websiteUrl,
+      secondContact: value.secondContact || undefined
+    };
+
+    this.authService.register(payload).subscribe({
       next: () => {
         this.isSubmitting.set(false);
         this.router.navigate(['/dashboard/profile']);

@@ -9,9 +9,12 @@ namespace OMS_Backend.DTOs
         public string LastName { get; set; }
         [Required, EmailAddress]
         public string Email { get; set; }
-        [Required, Phone]
+        [Required]
+        [RegularExpression(@"^(?:03\d{2} \d{7}|\+92 3\d{2} \d{7})$",
+            ErrorMessage = "Use 0300 1234567 or +92 300 1234567 format.")]
         public string FirstContact { get; set; }
-        [Phone]
+        [RegularExpression(@"^(?:03\d{2} \d{7}|\+92 3\d{2} \d{7})$",
+            ErrorMessage = "Use 0300 1234567 or +92 300 1234567 format.")]
         public string? SecondContact { get; set; }
         [StringLength(250)]
         public string? HomeAddress { get; set; }

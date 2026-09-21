@@ -20,6 +20,14 @@
 
     <!-- Navigation -->
     <nav class="flex-1 px-2 py-4 space-y-1">
+      <a *ngIf="isAdminOrSuperAdmin() || user()?.role === 'Customer'" routerLink="/dashboard/integrations/shopify" routerLinkActive="bg-gray-800 text-white"
+        class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:bg-gray-800 hover:text-white" title="Shopify integrations">
+        <span aria-hidden="true">↔</span><span *ngIf="sidebarOpen()">Shopify</span>
+      </a>
+      <a *ngIf="isAdminOrSuperAdmin() || user()?.role === 'Customer'" routerLink="/dashboard/integrations/woocommerce" routerLinkActive="bg-gray-800 text-white"
+        class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:bg-gray-800 hover:text-white" title="WooCommerce integrations">
+        <span aria-hidden="true">↔</span><span *ngIf="sidebarOpen()">WooCommerce</span>
+      </a>
 
       <!-- Dashboard -->
       <a *ngIf="canView('Dashboard')" routerLink="/dashboard" routerLinkActive="bg-gray-800 text-white"

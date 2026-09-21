@@ -53,7 +53,8 @@
           <div>
             <label for="websiteUrl" class="block text-sm font-medium text-gray-700 mb-1">Website URL <span
                 class="text-gray-400">(optional)</span></label>
-            <input id="websiteUrl" type="text" formControlName="websiteUrl" placeholder="https://example.com" class="w-full rounded-lg border bg-gray-50 px-3 py-2 text-sm text-gray-900 placeholder-gray-400
+            <input id="websiteUrl" type="url" formControlName="websiteUrl" placeholder="https://example.com"
+              autocomplete="url" (blur)="normalizeWebsiteUrl()" class="w-full rounded-lg border bg-gray-50 px-3 py-2 text-sm text-gray-900 placeholder-gray-400
                      focus:outline-none focus:ring-2 focus:ring-gray-800 focus:border-gray-800 transition"
               [class.border-gray-300]="!(f['websiteUrl'].invalid && f['websiteUrl'].touched)"
               [class.border-red-400]="f['websiteUrl'].invalid && f['websiteUrl'].touched" />
@@ -66,7 +67,7 @@
         <!-- Row 2: Email, WhatsApp, Call (3 columns) -->
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
-            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email address <span
+            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email <span
                 class="text-red-500">*</span></label>
             <input id="email" type="email" formControlName="email" autocomplete="email" placeholder="you@example.com"
               class="w-full rounded-lg border bg-gray-50 px-3 py-2 text-sm text-gray-900 placeholder-gray-400
@@ -79,9 +80,10 @@
           </div>
 
           <div>
-            <label for="firstContact" class="block text-sm font-medium text-gray-700 mb-1">WhatsApp Number <span
+            <label for="firstContact" class="block text-sm font-medium text-gray-700 mb-1">WhatsApp <span
                 class="text-red-500">*</span></label>
-            <input id="firstContact" type="text" formControlName="firstContact" placeholder="+1 555 000 1234" class="w-full rounded-lg border bg-gray-50 px-3 py-2 text-sm text-gray-900 placeholder-gray-400
+            <input id="firstContact" type="tel" formControlName="firstContact" placeholder="0300 1234567"
+              inputmode="tel" autocomplete="tel" maxlength="15" (input)="formatPakistanPhone('firstContact')" class="w-full rounded-lg border bg-gray-50 px-3 py-2 text-sm text-gray-900 placeholder-gray-400
                      focus:outline-none focus:ring-2 focus:ring-gray-800 focus:border-gray-800 transition"
               [class.border-gray-300]="!(f['firstContact'].invalid && f['firstContact'].touched)"
               [class.border-red-400]="f['firstContact'].invalid && f['firstContact'].touched" />
@@ -91,9 +93,10 @@
           </div>
 
           <div>
-            <label for="secondContact" class="block text-sm font-medium text-gray-700 mb-1">Call Number <span
+            <label for="secondContact" class="block text-sm font-medium text-gray-700 mb-1">Call <span
                 class="text-gray-400">(optional)</span></label>
-            <input id="secondContact" type="text" formControlName="secondContact" placeholder="+1 555 000 5678" class="w-full rounded-lg border bg-gray-50 px-3 py-2 text-sm text-gray-900 placeholder-gray-400
+            <input id="secondContact" type="tel" formControlName="secondContact" placeholder="0300 1234567"
+              inputmode="tel" autocomplete="tel" maxlength="15" (input)="formatPakistanPhone('secondContact')" class="w-full rounded-lg border bg-gray-50 px-3 py-2 text-sm text-gray-900 placeholder-gray-400
                      focus:outline-none focus:ring-2 focus:ring-gray-800 focus:border-gray-800 transition"
               [class.border-gray-300]="!(f['secondContact'].invalid && f['secondContact'].touched)"
               [class.border-red-400]="f['secondContact'].invalid && f['secondContact'].touched" />

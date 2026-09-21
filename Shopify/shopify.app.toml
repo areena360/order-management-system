@@ -1,0 +1,23 @@
+# Run tools/Configure-Shopify.ps1 to generate a configured copy in artifacts/shopify-app.
+client_id = "REPLACE_WITH_DEV_DASHBOARD_CLIENT_ID"
+name = "A360 OMS Connector"
+application_url = "https://REPLACE_WITH_PUBLIC_HOST/dashboard/integrations/shopify"
+embedded = false
+
+[access_scopes]
+scopes = "read_orders,read_products,read_customers"
+use_legacy_install_flow = true
+
+[auth]
+redirect_urls = ["https://REPLACE_WITH_PUBLIC_HOST/api/integrations/shopify/callback"]
+
+[webhooks]
+api_version = "2026-07"
+
+[[webhooks.subscriptions]]
+topics = ["orders/create", "orders/updated", "orders/cancelled", "products/update", "app/uninstalled"]
+uri = "https://REPLACE_WITH_PUBLIC_HOST/api/integrations/shopify/webhooks"
+
+[[webhooks.subscriptions]]
+compliance_topics = ["customers/data_request", "customers/redact", "shop/redact"]
+uri = "https://REPLACE_WITH_PUBLIC_HOST/api/integrations/shopify/webhooks"

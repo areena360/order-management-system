@@ -5,7 +5,7 @@ import { AuthService } from '../auth/auth.service';
 import { PermissionService } from '../auth/permission.service';
 
 // Blocks any route if there's no JWT in storage
-export const authGuard: CanActivateFn = () => {
+export const authGuard: CanActivateFn = (_route, state) => {
   const authService = inject(AuthService);
   const router = inject(Router);
 
@@ -13,7 +13,7 @@ export const authGuard: CanActivateFn = () => {
     return true;
   }
 
-  router.navigate(['/login']);
+  router.navigate(['/login'], { queryParams: { returnUrl: state.url } });
   return false;
 };
 

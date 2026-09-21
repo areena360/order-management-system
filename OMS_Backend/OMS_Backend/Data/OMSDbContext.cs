@@ -25,6 +25,8 @@ namespace OMS_Backend.Data
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            WooCommerceModel.Configure(modelBuilder);
+            ShopifyModel.Configure(modelBuilder);
 
             modelBuilder.Entity<ChatMessage>()
                 .HasOne(m => m.Order)

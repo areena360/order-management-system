@@ -1,5 +1,6 @@
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { WooOrderSnapshotComponent } from '../../integrations/woo-order-snapshot.component';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
@@ -19,6 +20,7 @@ import { PollingService } from '../../core/polling/polling.service';
   standalone: true,
   imports: [
     CommonModule,
+    WooOrderSnapshotComponent,
     FormsModule
   ],
   templateUrl: './order-details.component.html'

@@ -10,6 +10,8 @@ using System.Security.Claims;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
+// Private app credentials remain outside tracked appsettings files.
+builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: false).AddEnvironmentVariables();
 
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 
@@ -21,6 +23,23 @@ builder.Services.AddDbContext<OMSDbContext>(options =>
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
+builder.Services.AddScoped<WooCommerceIntegrationService>();
+builder.Services.AddDataProtection();
+builder.Services.AddHttpClient("shopify", c => c.Timeout = TimeSpan.FromSeconds(25))
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
+builder.Services.AddScoped<ShopifyApi>();
+builder.Services.AddScoped<ShopifySyncService>();
+builder.Services.AddHostedService<ShopifyWorker>();
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = 429;
+    options.AddPolicy("woo", context => System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 180, Window = TimeSpan.FromMinutes(1), QueueLimit = 0
+        }));
+});
 
 // Chat services
 builder.Services.AddScoped<IChatService, ChatService>();
@@ -74,13 +93,16 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+builder.Services.AddAuthentication().AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, WooCommerceAuthenticationHandler>(WooCommerceSecurity.Scheme, _ => { });
 builder.Services.AddAuthorization();
 
 // CORS for Angular dev server
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AngularClient", policy =>
-        policy.WithOrigins("http://localhost:4200")
+        policy.WithOrigins(builder.Environment.IsDevelopment() && builder.Configuration.GetValue<bool>("WooCommerce:AllowLocalHttp")
+                ? new[] { "http://localhost:4200", "http://localhost:4201" }
+                : new[] { "http://localhost:4200" })
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials());
@@ -106,9 +128,11 @@ if (app.Environment.IsDevelopment())
 
 app.UseExceptionHandler();
 
-app.UseHttpsRedirection();
+// Explicit loopback-only development exception; production still redirects to HTTPS.
+app.UseWhen(context => !WooCommerceSecurity.TransportAllowed(context.Request, app.Configuration, app.Environment), branch => branch.UseHttpsRedirection());
 app.UseStaticFiles();
 app.UseCors("AngularClient");
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

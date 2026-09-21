@@ -68,6 +68,7 @@ export class OrdersService {
       .set('pageSize', query.pageSize);
 
     if (query.search) params = params.set('search', query.search);
+    if (query.source) params = params.set('source', query.source);
     if (query.sortBy) params = params.set('sortBy', query.sortBy);
     if (query.sortDirection) params = params.set('sortDirection', query.sortDirection);
     if (query.statusId) params = params.set('statusId', query.statusId);

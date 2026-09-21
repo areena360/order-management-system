@@ -53,6 +53,11 @@ export const routes: Routes = [
     canActivate: [authGuard],
 
     children: [
+      { path: 'integrations/shopify', loadComponent: () => import('./integrations/shopify.component').then(m => m.ShopifyComponent) },
+      {
+        path: 'integrations/woocommerce',
+        loadComponent: () => import('./integrations/woocommerce.component').then(m => m.WooCommerceComponent)
+      },
       // Dashboard
       {
         path: '',

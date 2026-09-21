@@ -8,7 +8,7 @@ import {
   AbstractControl,
   ValidationErrors,
 } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../auth/auth.service';
 
 @Component({
@@ -25,7 +25,7 @@ export class LoginComponent {
   isSubmitting = signal(false);
   loginError = signal<string | null>(null); // kept for template binding; interceptor shows the toast now
 
-  constructor(private fb: FormBuilder, private authService: AuthService, private router: Router) {
+  constructor(private fb: FormBuilder, private authService: AuthService, private router: Router, private route: ActivatedRoute) {
     this.loginForm = this.fb.group({
       email: ['', [Validators.required, Validators.pattern(/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/)]],
       password: [
@@ -99,6 +99,12 @@ export class LoginComponent {
     this.authService.login(email, password, this.rememberMe()).subscribe({
       next: (response) => {
         this.isSubmitting.set(false);
+
+        const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
+        if (returnUrl?.startsWith('/dashboard/') && !returnUrl.includes('\\')) {
+          this.router.navigateByUrl(returnUrl);
+          return;
+        }
 
         if (response.role === 'Super Admin') {
           this.router.navigate(['/dashboard']);

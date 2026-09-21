@@ -29,6 +29,17 @@
             ]
           },
           "configurations": {
+            "woocommerce-tunnel": {
+              "optimization": true,
+              "sourceMap": false,
+              "outputPath": "../artifacts/woocommerce-tunnel-web",
+              "fileReplacements": [{"replace": "src/environments/environment.ts", "with": "src/environments/environment.woocommerce-tunnel.ts"}]
+            },
+            "woocommerce-local": {
+              "optimization": false,
+              "sourceMap": true,
+              "fileReplacements": [{"replace": "src/environments/environment.ts", "with": "src/environments/environment.woocommerce-local.ts"}]
+            },
             "production": {
               "budgets": [
                 {
@@ -61,6 +72,7 @@
         "serve": {
           "builder": "@angular/build:dev-server",
           "configurations": {
+            "woocommerce-local": { "buildTarget": "OrderManagementSystem:build:woocommerce-local" },
             "production": {
               "buildTarget": "OrderManagementSystem:build:production"
             },

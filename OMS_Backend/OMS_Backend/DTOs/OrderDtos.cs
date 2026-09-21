@@ -12,6 +12,7 @@ namespace OMS_Backend.DTOs
 
     public class OrderQueryDto
     {
+        public string? Source { get; set; }
         public int PageNumber { get; set; } = 1;
         public int PageSize { get; set; } = 25;
         public string? Search { get; set; }
@@ -29,6 +30,7 @@ namespace OMS_Backend.DTOs
 
     public class OrderListDto
     {
+        public string Source { get; set; } = "Manual";
         public int Id { get; set; }
         public string ManufacturerOrderNumber { get; set; } = default!;
         public string? CustomerOrderNumber { get; set; }
@@ -47,6 +49,7 @@ namespace OMS_Backend.DTOs
 
     public class OrderDetailsDto
     {
+        public string Source { get; set; } = "Manual";
         public int Id { get; set; }
         public string ManufacturerOrderNumber { get; set; } = default!;
         public string? CustomerOrderNumber { get; set; }

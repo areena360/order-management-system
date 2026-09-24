@@ -1,4 +1,4 @@
-<div class="min-h-screen bg-gray-50 p-4 sm:p-6">
+<div class="bg-gray-50 p-4 sm:p-6" [class.min-h-screen]="!asModal">
   <div class="max-w-7xl mx-auto">
 
     <!-- Loading -->
@@ -110,8 +110,6 @@
 
 
       <!-- Order Information (5 columns on lg) -->
-      <app-woo-order-snapshot *ngIf="order.source === 'WooCommerce' || order.source === 'Shopify'" [orderId]="order.id" [provider]="order.source || 'WooCommerce'"></app-woo-order-snapshot>
-
       <div class="bg-white rounded-xl shadow-sm ring-1 ring-gray-200">
         <div class="px-4 py-3 border-b border-gray-100">
           <h2 class="text-base font-semibold text-gray-900">Order Information</h2>

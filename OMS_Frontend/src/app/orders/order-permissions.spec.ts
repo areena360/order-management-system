@@ -161,6 +161,7 @@ describe('Order field permissions and shared bulk selection', () => {
     orders.assignOrders.and.returnValue(result);
     spyOn(component, 'fetchOrders');
     component.togglePageSelection();
+    component.openAssignModal();
     component.confirmAssign();
     expect(orders.assignOrders).toHaveBeenCalledWith([1]);
     component.openBulkDeleteModal();
@@ -169,8 +170,40 @@ describe('Order field permissions and shared bulk selection', () => {
     expect(component.selectedOrderIds.size).toBe(2);
     result.next({});
     result.complete();
-    expect(component.selectedOrderIds.size).toBe(0);
+    expect([...component.selectedOrderIds]).toEqual([2]);
     expect(component.fetchOrders).toHaveBeenCalled();
+  });
+
+  it('assigns the clicked order without assigning other selected rows', () => {
+    const fixture = listFixture();
+    const component = fixture.componentInstance;
+    component.selectedOrderIds = new Set([2]);
+    orders.assignOrders.and.returnValue(of({} as any));
+    spyOn(component, 'fetchOrders').and.callThrough();
+    const button = Array.from(fixture.nativeElement.querySelectorAll('tbody button') as NodeListOf<HTMLButtonElement>)
+      .find(button => button.textContent?.trim() === 'Assign Order')!;
+    button.click();
+    expect(component.detailsOrderId).toBeNull();
+    expect(component.pendingAssignIds).toEqual([1]);
+    component.confirmAssign();
+    expect(orders.assignOrders).toHaveBeenCalledWith([1]);
+    expect([...component.selectedOrderIds]).toEqual([2]);
+    component.openAssignModal(component.orders[1]);
+    expect(component.showAssignModal).toBeFalse();
+  });
+
+  it('opens order details in a modal and closes without navigating', () => {
+    const fixture = listFixture();
+    orders.getOrder.and.returnValue(EMPTY);
+    fixture.componentInstance.viewOrder(fixture.componentInstance.orders[0]);
+    fixture.detectChanges();
+    const dialog = fixture.nativeElement.querySelector('dialog') as HTMLDialogElement;
+    expect(dialog.open).toBeTrue();
+    expect(orders.getOrder).toHaveBeenCalledWith(1);
+    expect(TestBed.inject(Router).navigate).not.toHaveBeenCalled();
+    (dialog.querySelector('[aria-label="Close order details"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('dialog')).toBeNull();
   });
 
   it('prevents a customer inline tracking edit from sending any request', () => {

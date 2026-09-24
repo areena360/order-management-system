@@ -1,6 +1,5 @@
-import { Component, OnDestroy, OnInit, inject } from '@angular/core';
+import { Component, EventEmitter, Input, Output, OnDestroy, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { WooOrderSnapshotComponent } from '../../integrations/woo-order-snapshot.component';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
@@ -20,12 +19,15 @@ import { PollingService } from '../../core/polling/polling.service';
   standalone: true,
   imports: [
     CommonModule,
-    WooOrderSnapshotComponent,
     FormsModule
   ],
   templateUrl: './order-details.component.html'
 })
 export class OrderDetailsComponent implements OnInit, OnDestroy {
+  @Input() asModal = false;
+  @Input() selectedOrderId: number | null = null;
+  @Output() closed = new EventEmitter<void>();
+  @Output() deleted = new EventEmitter<void>();
 
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -52,7 +54,7 @@ export class OrderDetailsComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     const id = Number(
-      this.route.snapshot.paramMap.get('id')
+      this.selectedOrderId ?? this.route.snapshot.paramMap.get('id')
     );
 
     if (!id || id <= 0) {
@@ -98,7 +100,8 @@ export class OrderDetailsComponent implements OnInit, OnDestroy {
 
           // 404 means someone deleted this order — return to list.
           if (error?.status === 404) {
-            this.router.navigate(['/dashboard/orders']);
+            if (this.asModal) this.deleted.emit();
+            else this.goBack();
           }
         }
       });
@@ -135,6 +138,10 @@ export class OrderDetailsComponent implements OnInit, OnDestroy {
   }
 
   goBack(): void {
+    if (this.asModal) {
+      if (!this.deletingOrder) this.closed.emit();
+      return;
+    }
     this.router.navigate(['/dashboard/orders']);
   }
 
@@ -206,7 +213,8 @@ export class OrderDetailsComponent implements OnInit, OnDestroy {
         next: () => {
           this.deletingOrder = false;
           this.showDeleteModal = false;
-          this.router.navigate(['/dashboard/orders']);
+          if (this.asModal) this.deleted.emit();
+          else this.goBack();
         },
         error: error => {
           console.error('Failed to delete order:', error);

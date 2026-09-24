@@ -498,12 +498,15 @@
                   <button type="button" (click)="toggleUserStatusMenu(user.id)"
                     [disabled]="!canEdit || user.isDeleted || isSuperAdmin(user)"
                     class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset transition-all cursor-pointer hover:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                    [class.bg-green-100]="user.isActive" [class.text-green-700]="user.isActive"
-                    [class.ring-green-600/20]="user.isActive" [class.bg-gray-100]="!user.isActive"
-                    [class.text-gray-600]="!user.isActive" [class.ring-gray-500/20]="!user.isActive">
+                    [class.bg-green-100]="user.status === 'Approved'" [class.text-green-700]="user.status === 'Approved'"
+                    [class.ring-green-600/20]="user.status === 'Approved'"
+                    [class.bg-yellow-100]="user.status === 'Pending'" [class.text-yellow-800]="user.status === 'Pending'"
+                    [class.ring-yellow-600/20]="user.status === 'Pending'"
+                    [class.bg-red-100]="user.status === 'Rejected'" [class.text-red-700]="user.status === 'Rejected'"
+                    [class.ring-red-600/20]="user.status === 'Rejected'">
 
-                    <span class="h-1.5 w-1.5 rounded-full" [class.bg-green-500]="user.isActive"
-                      [class.bg-gray-400]="!user.isActive">
+                    <span class="h-1.5 w-1.5 rounded-full" [class.bg-green-500]="user.status === 'Approved'"
+                      [class.bg-yellow-500]="user.status === 'Pending'" [class.bg-red-500]="user.status === 'Rejected'">
                     </span>
 
                     {{ user.status }}
@@ -521,7 +524,9 @@
                     class="absolute left-0 top-full z-30 mt-2 min-w-36 rounded-lg bg-white p-1.5 shadow-lg ring-1 ring-gray-200">
 
                     <button *ngFor="let status of userStatuses" type="button" (click)="selectUserStatus(user, status)"
-                      class="flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-50 cursor-pointer"
+                      class="flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left text-sm hover:bg-gray-50 cursor-pointer"
+                      [class.text-yellow-800]="status === 'Pending'" [class.text-red-700]="status === 'Rejected'"
+                      [class.text-gray-700]="status === 'Approved'"
                       [class.bg-gray-100]="user.status === status" [class.font-medium]="user.status === status">
                       {{ status }} <span *ngIf="user.status === status">&#10003;</span>
                     </button>

@@ -643,6 +643,12 @@
                     </span>
                   </button>
 
+                  <button *ngIf="isCustomer" type="button" (click)="openAssignModal(order, $event)"
+                    [disabled]="isAssigned(order) || bulkBusy || loading"
+                    class="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-100 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
+                    {{ isAssigned(order) ? 'Assigned' : 'Assign Order' }}
+                  </button>
+
                   <button *ngIf="canEdit" type="button" (click)="editOrder(order, $event)"
                     class="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100 hover:border-blue-300 transition-colors cursor-pointer">
                     Edit
@@ -767,7 +773,7 @@
           <h2 class="text-center text-lg font-semibold text-gray-900 mb-1">Assign Orders</h2>
           <p class="text-center text-sm text-gray-500 mb-6">
             Are you sure you want to assign
-            <span class="font-medium text-gray-700">{{ selectedAssignableIds.length }} order{{ selectedAssignableIds.length === 1 ? '' : 's' }}</span>?
+            <span class="font-medium text-gray-700">{{ pendingAssignIds.length }} order{{ pendingAssignIds.length === 1 ? '' : 's' }}</span>?
             The days counter will start from today for each selected order.
           </p>
 
@@ -847,6 +853,23 @@
     </div>
   </div>
 </div>
+
+<!-- Order Details Modal -->
+<dialog *ngIf="detailsOrderId !== null" #detailsDialog
+  aria-labelledby="order-details-title"
+  class="fixed inset-0 m-auto w-[96vw] max-w-7xl max-h-[92vh] overflow-hidden rounded-2xl border-0 p-0 shadow-2xl backdrop:bg-gray-900/60"
+  (cancel)="$event.preventDefault(); !detailsView.deletingOrder && !detailsView.showDeleteModal && closeOrderDetails()">
+  <div class="flex items-center justify-between border-b border-gray-200 bg-white px-5 py-3">
+    <h2 id="order-details-title" class="text-lg font-semibold text-gray-900">Order Details</h2>
+    <button type="button" autofocus (click)="closeOrderDetails()" [disabled]="detailsView.deletingOrder"
+      aria-label="Close order details"
+      class="rounded-lg px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 cursor-pointer disabled:opacity-50">Close ✕</button>
+  </div>
+  <div class="max-h-[calc(92vh-4rem)] overflow-y-auto overscroll-contain">
+    <app-order-details #detailsView [asModal]="true" [selectedOrderId]="detailsOrderId"
+      (closed)="closeOrderDetails()" (deleted)="onDetailsDeleted()"></app-order-details>
+  </div>
+</dialog>
 
 <!-- Add Order Modal -->
 <app-order-form *ngIf="showAddOrderModal" [asModal]="true"

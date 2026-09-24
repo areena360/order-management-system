@@ -15,6 +15,7 @@ import { LookupService, LOOKUP_TYPE } from '../lookup.service';
 import { PollingService } from '../../core/polling/polling.service';
 import { ChatModalComponent } from '../chat/chat-modal/chat-modal.component';
 import { OrderFormComponent } from '../order-form/order-form.component';
+import { OrderDetailsComponent } from '../order-details/order-details.component';
 import {
   ChatSignalrService,
   IncomingChatMessage,
@@ -28,7 +29,7 @@ interface ColumnOption { key: string; label: string; }
 @Component({
   selector: 'app-manage-orders',
   standalone: true,
-  imports: [CommonModule, FormsModule, FooterComponent, ChatModalComponent, OrderFormComponent],
+  imports: [CommonModule, FormsModule, FooterComponent, ChatModalComponent, OrderFormComponent, OrderDetailsComponent],
   templateUrl: './manage-orders.component.html'
 })
 export class ManageOrdersComponent implements OnInit, OnDestroy {
@@ -71,11 +72,18 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
 
   // Add Order modal
   showAddOrderModal = false;
+  detailsOrderId: number | null = null;
+
+  @ViewChild('detailsDialog')
+  set detailsDialog(ref: ElementRef<HTMLDialogElement> | undefined) {
+    if (ref && !ref.nativeElement.open) ref.nativeElement.showModal();
+  }
 
   // ===== Assign modal state =====
   showAssignModal = false;
   assigningOrders = false;
   assignError = '';
+  pendingAssignIds: number[] = [];
 
   // Unread message counters, keyed by orderId
   unreadMessages = new Map<number, number>();
@@ -134,8 +142,12 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
     return Math.max(0, Math.floor((Date.now() - start) / 86400000));
   }
 
-  openAssignModal(): void {
-    if (!this.isCustomer || this.bulkBusy || this.loading || !this.selectedAssignableIds.length) return;
+  openAssignModal(order?: OrderListItem, event?: Event): void {
+    event?.stopPropagation();
+    if (!this.isCustomer || this.bulkBusy || this.loading) return;
+    const ids = order ? (this.isAssigned(order) ? [] : [order.id]) : this.selectedAssignableIds;
+    if (!ids.length) return;
+    this.pendingAssignIds = [...ids];
     this.assignError = '';
     this.showAssignModal = true;
   }
@@ -143,22 +155,24 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   closeAssignModal(): void {
     if (this.assigningOrders) return;
     this.showAssignModal = false;
+    this.pendingAssignIds = [];
     this.assignError = '';
   }
 
   confirmAssign(): void {
-    if (!this.isCustomer || this.bulkBusy || !this.selectedAssignableIds.length) return;
-    const ids = this.selectedAssignableIds;
+    if (!this.isCustomer || this.bulkBusy || !this.showAssignModal || !this.pendingAssignIds.length) return;
+    const ids = [...this.pendingAssignIds];
     this.assigningOrders = true;
     this.assignError = '';
     this.ordersService.assignOrders(ids)
       .pipe(takeUntil(this.destroy$), finalize(() => (this.assigningOrders = false)))
       .subscribe({
         next: () => {
-          this.selectedOrderIds = new Set();
+          this.selectedOrderIds = new Set([...this.selectedOrderIds].filter(id => !ids.includes(id)));
+          this.pendingAssignIds = [];
           this.assigningOrders = false;
           this.showAssignModal = false;
-          this.fetchOrders();
+          this.fetchOrders(true);
         },
         error: (err) => {
           this.assignError = err?.error?.message ?? 'Unable to assign orders. Please try again.';
@@ -768,7 +782,16 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   }
 
   viewOrder(order: OrderListItem): void {
-    this.router.navigate(['/dashboard/orders', order.id]);
+    this.detailsOrderId = order.id;
+  }
+
+  closeOrderDetails(): void {
+    this.detailsOrderId = null;
+  }
+
+  onDetailsDeleted(): void {
+    this.closeOrderDetails();
+    this.fetchOrders();
   }
 
   editOrder(order: OrderListItem, event: Event): void {

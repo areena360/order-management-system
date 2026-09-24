@@ -10,7 +10,6 @@ namespace OMS_Backend.Services
     {
         private readonly OMSDbContext _db;
         private readonly IWebHostEnvironment _env;
-        private const int LT_OrderStatus = 1;
         private readonly bool _wooEnabled;
 
         public OrderService(OMSDbContext db, IWebHostEnvironment env, IConfiguration configuration)
@@ -23,7 +22,7 @@ namespace OMS_Backend.Services
         // OWNERSHIP GUARD
         private static void EnsureOwnership(Order order, int userId, bool isCustomer)
         {
-            if (isCustomer && order.CustomerId != userId)
+            if (!OrderVisibility.CanAccess(order, userId, isCustomer))
                 throw new NotFoundException(nameof(Order), order.Id);
         }
 
@@ -32,7 +31,7 @@ namespace OMS_Backend.Services
         // =====================================================================
         public async Task<PagedResult<OrderListDto>> GetOrdersAsync(OrderQueryDto q, int userId, bool isCustomer)
         {
-            var query = _db.Orders.AsNoTracking().Where(o => !o.IsDeleted);
+            var query = _db.Orders.AsNoTracking().Where(OrderVisibility.ForUser(userId, isCustomer));
 
             if (q.Source == "WooCommerce" || q.Source == "Shopify")
                 query = _wooEnabled
@@ -67,8 +66,8 @@ namespace OMS_Backend.Services
             if (q.GenderId.HasValue) query = query.Where(o => o.GenderId == q.GenderId);
             if (q.MaterialId.HasValue)
                 query = query.Where(o => o.CustomerMaterialId == q.MaterialId || o.ManufacturerMaterialId == q.MaterialId);
-            if (q.DateFrom.HasValue) query = query.Where(o => o.CreatedDate >= q.DateFrom);
-            if (q.DateTo.HasValue) query = query.Where(o => o.CreatedDate <= q.DateTo.Value.AddDays(1));
+            if (q.DateFrom.HasValue) query = query.Where(o => o.AssignedDate >= q.DateFrom.Value.Date);
+            if (q.DateTo.HasValue) query = query.Where(o => o.AssignedDate < q.DateTo.Value.Date.AddDays(1));
 
             query = ApplySort(query, q.SortBy, q.SortDirection);
 
@@ -98,10 +97,10 @@ namespace OMS_Backend.Services
                         : null,
                     DaysForMaking = o.DaysForMaking,
                     TrackingNumber = o.TrackingNumber,
-                    CreatedDate = o.CreatedDate,
 
                     // Assignment
                     IsAssigned = o.IsAssigned,
+                    RequiresCustomerAssignment = o.RequiresCustomerAssignment,
                     AssignedDate = o.AssignedDate,
 
                     Images = o.OrderImages
@@ -118,6 +117,7 @@ namespace OMS_Backend.Services
             {
                 if (item.IsAssigned && item.AssignedDate.HasValue)
                 {
+                    item.AssignedDate = DateTime.SpecifyKind(item.AssignedDate.Value, DateTimeKind.Utc);
                     var elapsed = (nowUtc - item.AssignedDate.Value).TotalDays;
                     item.DaysForMaking = elapsed < 0 ? 0 : (int)elapsed;
                 }
@@ -156,7 +156,7 @@ namespace OMS_Backend.Services
             var desc = string.Equals(dir, "desc", StringComparison.OrdinalIgnoreCase);
 
             Func<IQueryable<Order>, IOrderedQueryable<Order>> orderFn =
-                (sortBy ?? "CreatedDate").ToLowerInvariant() switch
+                (sortBy ?? "AssignedDate").ToLowerInvariant() switch
                 {
                     "manufacturerordernumber" => q => desc
                         ? q.OrderByDescending(o => o.ManufacturerOrderNumber)
@@ -174,11 +174,11 @@ namespace OMS_Backend.Services
                         ? q.OrderByDescending(o => o.PriorityId)
                         : q.OrderBy(o => o.PriorityId),
                     "daysformaking" => q => desc
-                        ? q.OrderByDescending(o => o.DaysForMaking)
-                        : q.OrderBy(o => o.DaysForMaking),
+                        ? q.OrderByDescending(o => o.IsAssigned).ThenBy(o => o.AssignedDate)
+                        : q.OrderBy(o => o.IsAssigned).ThenByDescending(o => o.AssignedDate),
                     _ => q => desc
-                        ? q.OrderByDescending(o => o.CreatedDate)
-                        : q.OrderBy(o => o.CreatedDate),
+                        ? q.OrderByDescending(o => o.AssignedDate).ThenByDescending(o => o.Id)
+                        : q.OrderBy(o => o.AssignedDate).ThenBy(o => o.Id),
                 };
 
             return orderFn(query);
@@ -275,12 +275,11 @@ namespace OMS_Backend.Services
                 NotesByManufacturer = o.NotesByManufacturer,
                 OrderStatusId = o.OrderStatusId,
                 Status = Name(o.OrderStatusId) ?? "Unknown",
-                CreatedDate = o.CreatedDate,
-                UpdatedDate = o.UpdatedDate,
 
                 // Assignment
                 IsAssigned = o.IsAssigned,
-                AssignedDate = o.AssignedDate,
+                RequiresCustomerAssignment = o.RequiresCustomerAssignment,
+                AssignedDate = o.AssignedDate.HasValue ? DateTime.SpecifyKind(o.AssignedDate.Value, DateTimeKind.Utc) : null,
 
                 Images = images,
                 StatusHistory = o.StatusHistories
@@ -336,6 +335,7 @@ namespace OMS_Backend.Services
                 dto.CustomerId = userId;
                 dto.ManufacturerProductTitle = null;
                 dto.TrackingNumber = null;
+                dto.PriorityId = null;
                 dto.NotesByManufacturer = null;
                 dto.ManufacturerMaterialId = dto.CustomerMaterialId;
                 // Days auto-computed after assignment � customer cannot set it
@@ -348,10 +348,11 @@ namespace OMS_Backend.Services
                 dto.IsCustomSize, dto.SizeId, dto.SizeChartId, dto.SizeDetails);
 
             var defaultStatus = await _db.LookupItems
-                .Where(li => li.LookupDataTypeId == LT_OrderStatus && !li.IsDeleted)
+                .Where(OrderStatusCatalog.Selectable)
+                .Where(li => li.Name == OrderStatusCatalog.Assign)
                 .OrderBy(li => li.Id)
                 .FirstOrDefaultAsync()
-                ?? throw new AppConfigurationException("No OrderStatus lookup values are configured.");
+                ?? throw new AppConfigurationException("Assign order status is missing. Apply the order status catalog migration.");
 
             using var tx = await _db.Database.BeginTransactionAsync();
 
@@ -384,11 +385,11 @@ namespace OMS_Backend.Services
                 PriorityId = dto.PriorityId,
 
                 IsAssigned = false,
+                RequiresCustomerAssignment = isCustomer,
                 AssignedDate = null,
 
                 IsActive = true,
-                CreatedBy = userId,
-                CreatedDate = DateTime.UtcNow
+                CreatedBy = userId
             };
 
             _db.Orders.Add(order);
@@ -491,7 +492,6 @@ namespace OMS_Backend.Services
 
             order.PriorityId = dto.PriorityId;
             order.UpdatedBy = userId;
-            order.UpdatedDate = DateTime.UtcNow;
 
             await _db.SaveChangesAsync();
             return await GetOrderByIdAsync(id, userId, isCustomer);
@@ -508,14 +508,14 @@ namespace OMS_Backend.Services
             EnsureOwnership(order, userId, isCustomer);
 
             var statusExists = await _db.LookupItems
-                .AnyAsync(li => li.Id == dto.StatusId && li.LookupDataTypeId == LT_OrderStatus && !li.IsDeleted);
+                .Where(OrderStatusCatalog.Selectable)
+                .AnyAsync(li => li.Id == dto.StatusId);
             if (!statusExists) throw new ValidationAppException("Invalid status.");
 
             using var tx = await _db.Database.BeginTransactionAsync();
 
             order.OrderStatusId = dto.StatusId;
             order.UpdatedBy = userId;
-            order.UpdatedDate = DateTime.UtcNow;
 
             _db.OrderStatusHistories.Add(new OrderStatusHistory
             {
@@ -544,43 +544,15 @@ namespace OMS_Backend.Services
             if (ids.Count == 0)
                 throw new ValidationAppException("No valid orders selected.");
 
-            var orders = await _db.Orders
-                .Where(o => ids.Contains(o.Id) && !o.IsDeleted)
-                .ToListAsync();
-
-            if (orders.Count == 0)
-                throw new ValidationAppException("No matching orders found.");
-
+            if (!isCustomer) throw new ForbiddenAppException("Only the customer can assign their orders.");
             var now = DateTime.UtcNow;
-            var assignedCount = 0;
-            var skippedCount = 0;
-
-            foreach (var order in orders)
-            {
-                // Customer can only assign their own orders
-                if (isCustomer && order.CustomerId != userId)
-                {
-                    skippedCount++;
-                    continue;
-                }
-
-                // Skip already assigned
-                if (order.IsAssigned)
-                {
-                    skippedCount++;
-                    continue;
-                }
-
-                order.IsAssigned = true;
-                order.AssignedDate = now;
-                order.DaysForMaking = 0; // starts counting from today
-                order.UpdatedBy = userId;
-                order.UpdatedDate = now;
-                assignedCount++;
-            }
-
-            if (assignedCount > 0)
-                await _db.SaveChangesAsync();
+            // Conditional update preserves the first assignment date on retries/concurrent clicks.
+            var assignedCount = await _db.Orders
+                .Where(o => ids.Contains(o.Id) && !o.IsDeleted && o.CustomerId == userId && !o.IsAssigned)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(o => o.IsAssigned, true)
+                    .SetProperty(o => o.AssignedDate, now).SetProperty(o => o.DaysForMaking, 0)
+                    .SetProperty(o => o.UpdatedBy, userId));
+            var skippedCount = ids.Count - assignedCount;
 
             return new AssignOrdersResultDto
             {
@@ -672,7 +644,6 @@ namespace OMS_Backend.Services
 
             order.IsDeleted = true;
             order.IsActive = false;
-            order.UpdatedDate = DateTime.UtcNow;
             order.UpdatedBy = userId;
 
             await _db.SaveChangesAsync();

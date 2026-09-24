@@ -1,5 +1,6 @@
 ﻿using System.Security.Cryptography;
 using Microsoft.AspNetCore.Authorization;
+using System.Text;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -19,6 +20,7 @@ namespace OMS_Backend.Controllers
         private readonly IJwtService _jwtService;
         private readonly IEmailService _emailService;
         private readonly IConfiguration _config;
+        private const string SessionCookie = "oms_refresh";
 
         private readonly PasswordHasher<User> _passwordHasher =
             new PasswordHasher<User>();
@@ -72,6 +74,7 @@ namespace OMS_Backend.Controllers
             _db.Users.Add(user);
             await _db.SaveChangesAsync();
 
+            await StartSession(user, rememberMe: false);
             var (token, expiresAt) = _jwtService.GenerateToken(user, "No Role");
 
             return Ok(new AuthResponseDto
@@ -122,14 +125,13 @@ namespace OMS_Backend.Controllers
                 await _db.SaveChangesAsync();
             }
 
+            await StartSession(user, dto.RememberMe);
             var (token, expiresAt) = _jwtService.GenerateToken(user, user.Role?.Name ?? "No Role");
 
             return Ok(new AuthResponseDto
             {
                 Token = token,
-                ExpiresAt = dto.RememberMe
-                    ? DateTime.UtcNow.AddDays(30)
-                    : expiresAt,
+                ExpiresAt = expiresAt,
                 FirstName = user.FirstName,
                 LastName = user.LastName,
                 Email = user.Email,
@@ -276,6 +278,41 @@ namespace OMS_Backend.Controllers
             return Ok(new
             {
                 message = "Password changed successfully."
+            });
+        }
+
+        private async Task StartSession(User user, bool rememberMe)
+        {
+            var raw = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+            var tokenHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(raw)));
+            var passwordVersion = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(user.Password ?? "")));
+            var expiresAt = DateTime.UtcNow.AddDays(rememberMe ? 30 : 1);
+
+            try
+            {
+                _db.AuthSessions.Add(new AuthSession
+                {
+                    TokenHash = tokenHash,
+                    UserId = user.Id,
+                    PasswordVersion = passwordVersion,
+                    ExpiresAt = expiresAt,
+                    RememberMe = rememberMe
+                });
+                await _db.SaveChangesAsync();
+            }
+            catch (DbUpdateException)
+            {
+                foreach (var entry in _db.ChangeTracker.Entries<AuthSession>().ToList())
+                    entry.State = EntityState.Detached;
+            }
+
+            Response.Cookies.Append(SessionCookie, raw, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = Request.IsHttps,
+                SameSite = SameSiteMode.Lax,
+                Expires = expiresAt,
+                Path = "/"
             });
         }
     }

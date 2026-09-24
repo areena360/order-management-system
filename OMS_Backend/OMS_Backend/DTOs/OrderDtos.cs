@@ -16,7 +16,7 @@ namespace OMS_Backend.DTOs
         public int PageNumber { get; set; } = 1;
         public int PageSize { get; set; } = 25;
         public string? Search { get; set; }
-        public string? SortBy { get; set; } = "CreatedDate";
+        public string? SortBy { get; set; } = "AssignedDate";
         public string? SortDirection { get; set; } = "desc";
 
         public int? StatusId { get; set; }
@@ -43,11 +43,12 @@ namespace OMS_Backend.DTOs
         public string? Priority { get; set; }
         public int DaysForMaking { get; set; }
         public string? TrackingNumber { get; set; }
-        public DateTime CreatedDate { get; set; }
+
         public List<OrderImageDto> Images { get; set; } = new();
 
         // ===== Assignment (NEW) =====
         public bool IsAssigned { get; set; }
+        public bool RequiresCustomerAssignment { get; set; }
         public DateTime? AssignedDate { get; set; }
     }
 
@@ -92,8 +93,7 @@ namespace OMS_Backend.DTOs
         public int OrderStatusId { get; set; }
         public string Status { get; set; } = default!;
 
-        public DateTime CreatedDate { get; set; }
-        public DateTime? UpdatedDate { get; set; }
+
 
         public List<OrderImageDto> Images { get; set; } = new();
         public List<OrderStatusHistoryDto> StatusHistory { get; set; } = new();
@@ -101,6 +101,7 @@ namespace OMS_Backend.DTOs
 
         // ===== Assignment (NEW) =====
         public bool IsAssigned { get; set; }
+        public bool RequiresCustomerAssignment { get; set; }
         public DateTime? AssignedDate { get; set; }
     }
 
@@ -122,7 +123,7 @@ namespace OMS_Backend.DTOs
         public int? SizeChartId { get; set; }
         public string? SizeDetails { get; set; }
 
-        // Days is now optional — auto-computed after assignment.
+        // Days is now optional ï¿½ auto-computed after assignment.
         // Kept for backward compatibility with old clients.
         [Range(0, 3650)] public int? DaysForMaking { get; set; }
 

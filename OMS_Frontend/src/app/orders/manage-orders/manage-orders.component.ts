@@ -64,28 +64,25 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   selectedOrderImages: OrderImageItem[] = [];
   activeImageIndex = 0;
 
-  // Chat modal state
   showChatModal = false;
   chatOrderId: number | null = null;
   chatOrderNumber = '';
   chatCustomerName = '';
 
-  // Add Order modal
+  // Modals for Add / Edit Order
   showAddOrderModal = false;
+  showEditOrderModal = false;
+  editOrderId: number | null = null;
+
   detailsOrderId: number | null = null;
 
-  @ViewChild('detailsDialog')
-  set detailsDialog(ref: ElementRef<HTMLDialogElement> | undefined) {
-    if (ref && !ref.nativeElement.open) ref.nativeElement.showModal();
-  }
+  @ViewChild('detailsView') detailsView?: OrderDetailsComponent;
 
-  // ===== Assign modal state =====
   showAssignModal = false;
   assigningOrders = false;
   assignError = '';
   pendingAssignIds: number[] = [];
 
-  // Unread message counters, keyed by orderId
   unreadMessages = new Map<number, number>();
   currentUserId = 0;
 
@@ -120,8 +117,6 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   bulkDeleteOrderIds: number[] = [];
   get bulkBusy(): boolean { return this.bulkStatusSaving || this.deletingOrder || this.assigningOrders; }
 
-  // =================== Assign — selectors & actions ===================
-
   get selectedAssignableIds(): number[] {
     return this.orders.filter(order => this.selectedOrderIds.has(order.id) && !this.isAssigned(order)).map(order => order.id);
   }
@@ -140,6 +135,13 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
     const start = Date.parse(d);
     if (isNaN(start)) return 0;
     return Math.max(0, Math.floor((Date.now() - start) / 86400000));
+  }
+
+  isOverdue(order: OrderListItem): boolean {
+    const deadline = (order as any).deadline;
+    if (!deadline) return false;
+    const dl = Date.parse(deadline);
+    return !isNaN(dl) && Date.now() > dl;
   }
 
   openAssignModal(order?: OrderListItem, event?: Event): void {
@@ -179,8 +181,6 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
         }
       });
   }
-
-  // =================== Bulk status / delete ===================
 
   openBulkDeleteModal(): void {
     if (!this.canDelete || this.bulkBusy || this.loading || this.statusSavingId !== null) return;
@@ -284,7 +284,7 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
     });
   }
 
-  sortBy = 'CreatedDate';
+  sortBy = 'AssignedDate';
   sortDirection: 'asc' | 'desc' = 'desc';
   currentPage = 1;
   pageSize = 25;
@@ -297,9 +297,10 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
     { key: 'customerOrderNumber', label: 'Customer Order #' },
     { key: 'manufacturerProductTitle', label: 'Manufacturer Product' },
     { key: 'priority', label: 'Priority' },
-    { key: 'daysForMaking', label: 'Days' },
+    { key: 'daysForMaking', label: 'Days Passed' },
+    { key: 'deadline', label: 'Deadline' },
     { key: 'trackingNumber', label: 'Tracking Number' },
-    { key: 'createdDate', label: 'Created Date' }
+    { key: 'assignedDate', label: 'Assign Date' }
   ];
 
   hiddenColumns = new Set<string>(['manufacturerProductTitle']);
@@ -378,8 +379,6 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  // =================== Add Order Modal ===================
-
   addOrder(): void {
     this.showAddOrderModal = true;
   }
@@ -390,11 +389,33 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
 
   onOrderSaved(): void {
     this.showAddOrderModal = false;
+    this.showEditOrderModal = false;
+    this.editOrderId = null;
     this.fetchOrders();
   }
 
-  // =================== Horizontal overflow detection ===================
+  // =================== Edit Order Modal ===================
+  editOrder(order: OrderListItem, event: Event): void {
+    event.stopPropagation();
+    this.editOrderId = order.id;
+    this.showEditOrderModal = true;
+  }
 
+  closeEditOrderModal(): void {
+    this.showEditOrderModal = false;
+    this.editOrderId = null;
+  }
+
+  // =================== Order Details Backdrop Click ===================
+  // Called when clicking anywhere on the fullscreen wrapper (outside the modal card).
+  // The modal card itself has (click)="$event.stopPropagation()" so clicks inside won't reach here.
+  // =================== Order Details Backdrop Click ===================
+onDialogBackdropClick(): void {
+  if (this.detailsView?.deletingOrder || this.detailsView?.showDeleteModal) return;
+  this.closeOrderDetails();
+}
+
+  // =================== Table Resize & Scroll ===================
   private setupTableResizeObserver(): void {
     this.tableResizeObserver?.disconnect();
     const el = this.tableScrollEl?.nativeElement;
@@ -431,8 +452,6 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   rowColorClass(index: number): string {
     return this.rowColors[index % this.rowColors.length];
   }
-
-  // =================== Inline Status Dropdown ===================
 
   toggleStatusMenu(orderId: number): void {
     if (this.bulkBusy || this.statusSavingId !== null) return;
@@ -474,8 +493,6 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
       });
   }
 
-  // =================== Inline Tracking Number ===================
-
   onTrackingChange(order: OrderListItem, value: string): void {
     if (!this.canEditTracking) return;
     const newVal = (value ?? '').trim();
@@ -503,6 +520,7 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
             consigneeName: full.consigneeName,
             consigneeAddress: full.consigneeAddress,
             trackingNumber: newVal || null,
+            deadline: full.deadline,
             notesByCustomer: full.notesByCustomer,
             notesByManufacturer: full.notesByManufacturer
           };
@@ -521,8 +539,6 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
         }
       });
   }
-
-  // =================== Chat notifications ===================
 
   private setupChatNotifications(): void {
     this.unregisterChatListener = this.chatSignalr.onMessage(
@@ -555,8 +571,6 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
     return total;
   }
 
-  // =================== Polling / fetching ===================
-
   private setupPolling(): void {
     this.polling.poll(10000)
       .pipe(takeUntil(this.destroy$))
@@ -565,7 +579,7 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
 
   private silentRefresh(): void {
     if (this.silentRefreshBusy || this.bulkBusy || this.selectedOrderIds.size > 0) return;
-    if (this.showDeleteModal || this.showImageModal || this.showChatModal || this.showAddOrderModal || this.showAssignModal) return;
+    if (this.showDeleteModal || this.showImageModal || this.showChatModal || this.showAddOrderModal || this.showAssignModal || this.showEditOrderModal) return;
     if (this.loading) return;
     if (this.openStatusId !== null) return;
     if (this.statusSavingId !== null) return;
@@ -759,7 +773,9 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
 
   toggleColumnMenu(): void { this.showColumnMenu = !this.showColumnMenu; }
 
-  isColumnVisible(key: string): boolean { return !this.hiddenColumns.has(key); }
+  isColumnVisible(key: string): boolean {
+    return !(this.isCustomer && key === 'priority') && !this.hiddenColumns.has(key);
+  }
 
   toggleColumn(key: string): void {
     if (this.hiddenColumns.has(key)) this.hiddenColumns.delete(key);
@@ -792,11 +808,6 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   onDetailsDeleted(): void {
     this.closeOrderDetails();
     this.fetchOrders();
-  }
-
-  editOrder(order: OrderListItem, event: Event): void {
-    event.stopPropagation();
-    this.router.navigate(['/dashboard/orders', order.id, 'edit']);
   }
 
   openDeleteModal(order: OrderListItem, event: Event): void {
@@ -840,8 +851,6 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
     });
   }
 
-  // =================== Image modal ===================
-
   openImageModal(order: OrderListItem, event: Event): void {
     event.stopPropagation();
     if (!order.images || order.images.length === 0) return;
@@ -881,11 +890,9 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
     return Math.min(this.currentPage * this.pageSize, this.totalCount);
   }
 
-  // =================== CHAT ===================
-
   openChatForOrder(order: OrderListItem, event: Event): void {
     event.stopPropagation();
-    if (!order.id) return;
+    if (!order.id || (order.requiresCustomerAssignment && !this.isAssigned(order))) return;
 
     if (this.unreadMessages.has(order.id)) {
       this.unreadMessages.delete(order.id);
@@ -908,7 +915,7 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: Event): void {
     const target = event.target as HTMLElement;
-    if (this.showDeleteModal || this.showImageModal || this.showChatModal || this.showAddOrderModal || this.showAssignModal) return;
+    if (this.showDeleteModal || this.showImageModal || this.showChatModal || this.showAddOrderModal || this.showAssignModal || this.showEditOrderModal) return;
 
     if (!target.closest('[data-bulk-status-menu]')) this.showBulkStatusMenu = false;
     if (!target.closest('[data-column-menu]')) this.showColumnMenu = false;

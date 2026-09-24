@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OMS_Backend.Data;
 using OMS_Backend.DTOs;
+using OMS_Backend.Services;
 
 namespace OMS_Backend.Controllers
 {
@@ -30,11 +31,16 @@ namespace OMS_Backend.Controllers
         [HttpGet("by-type/{typeId}")]
         public async Task<IActionResult> GetByType(int typeId)
         {
-            var items = await _db.LookupItems
-                .Where(li => li.LookupDataTypeId == typeId && !li.IsDeleted && li.IsActive)
+            var query = _db.LookupItems
+                .Where(li => li.LookupDataTypeId == typeId && !li.IsDeleted && li.IsActive);
+            if (typeId == OrderStatusCatalog.LookupTypeId)
+                query = query.Where(OrderStatusCatalog.Selectable);
+            var items = await query
                 .OrderBy(li => li.Id)
                 .Select(li => new LookupItemDto { Id = li.Id, Name = li.Name })
                 .ToListAsync();
+            if (typeId == OrderStatusCatalog.LookupTypeId)
+                items = items.OrderBy(item => Array.IndexOf(OrderStatusCatalog.Names, item.Name)).ToList();
             return Ok(items);
         }
 

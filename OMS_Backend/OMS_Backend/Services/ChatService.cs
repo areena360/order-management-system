@@ -30,7 +30,8 @@ namespace OMS_Backend.Services
                 throw new ValidationAppException("Message is too long.");
 
             var order = await _db.Orders
-                .Where(o => o.Id == orderId && !o.IsDeleted)
+                .Where(OrderVisibility.ForUser(senderUserId, isCustomer))
+                .Where(o => o.Id == orderId && (!o.RequiresCustomerAssignment || o.IsAssigned))
                 .Select(o => new { o.Id, o.CustomerId })
                 .FirstOrDefaultAsync()
                 ?? throw new NotFoundException(nameof(Order), orderId);
@@ -71,7 +72,8 @@ namespace OMS_Backend.Services
             bool isCustomer)
         {
             var order = await _db.Orders
-                .Where(o => o.Id == orderId && !o.IsDeleted)
+                .Where(OrderVisibility.ForUser(currentUserId, isCustomer))
+                .Where(o => o.Id == orderId && (!o.RequiresCustomerAssignment || o.IsAssigned))
                 .Select(o => new { o.Id, o.CustomerId })
                 .FirstOrDefaultAsync()
                 ?? throw new NotFoundException(nameof(Order), orderId);

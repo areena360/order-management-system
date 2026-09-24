@@ -75,18 +75,19 @@ describe('Order field permissions and shared bulk selection', () => {
     expect(orders.updateOrder).toHaveBeenCalledWith(42, jasmine.objectContaining({ amount: 250, trackingNumber: 'TRACK-42' }));
   });
 
-  it('lets a customer select priority when creating an order and submits it', () => {
+  it('hides priority from customer creation and does not submit a customer-selected priority', () => {
     const fixture = TestBed.createComponent(OrderFormComponent);
     fixture.detectChanges();
     const component = fixture.componentInstance;
     expect(fixture.nativeElement.querySelector('[data-customer-select] > div.relative button')).toBeNull();
-    expect(fixture.nativeElement.querySelector('[data-dd="priorityId"] button').disabled).toBeFalse();
-    component.selectDropdown('priorityId', 12);
+    expect(fixture.nativeElement.querySelector('[data-dd="priorityId"]')).toBeNull();
+    expect(component.form.controls.priorityId.disabled).toBeTrue();
+    component.form.controls.priorityId.setValue(12);
     component.form.patchValue({ customerProductTitle: 'Shirt', genderId: 1, customerMaterialId: 1,
       isCustomSize: true, sizeDetails: 'Custom measurements' });
     orders.createOrder.and.returnValue(EMPTY);
     component.save();
-    expect(orders.createOrder).toHaveBeenCalledWith(jasmine.objectContaining({ priorityId: 12 }));
+    expect(orders.createOrder).toHaveBeenCalledWith(jasmine.objectContaining({ priorityId: null }));
   });
 
   it('lets Super Admin create with an amount and an automatically filled disabled customer product name', () => {
@@ -138,6 +139,29 @@ describe('Order field permissions and shared bulk selection', () => {
     fixture.detectChanges();
     return fixture;
   }
+
+  it('keeps priority hidden from the customer table after resetting columns', () => {
+    const fixture = listFixture();
+    const component = fixture.componentInstance;
+    component.orders[0].priority = 'Most Urgent';
+    component.resetColumns();
+    fixture.detectChanges();
+    expect(component.isColumnVisible('priority')).toBeFalse();
+    expect(component.columnOptions.some(column => column.key === 'priority')).toBeFalse();
+    expect(fixture.nativeElement.textContent).not.toContain('Most Urgent');
+  });
+
+  it('shows assignment dates and Days Passed instead of order audit dates', () => {
+    const fixture = listFixture();
+    fixture.componentInstance.orders[1].assignedDate = '2026-09-20T12:00:00Z';
+    fixture.detectChanges();
+    const content = fixture.nativeElement.textContent;
+    expect(content).toContain('Assign Date');
+    expect(content).toContain('Days Passed');
+    expect(content).toContain('Sep 20, 2026');
+    expect(content).not.toContain('Created Date');
+    expect(content).not.toContain('Updated Date');
+  });
 
   it('renders one checkbox per order and uses that selection for customer bulk delete', () => {
     const fixture = listFixture();

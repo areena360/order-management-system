@@ -29,13 +29,13 @@ export interface OrderListItem {
   priority: string | null;
 
   daysForMaking: number;
+  deadline: string | null;
 
   trackingNumber: string | null;
 
-  createdDate: string;
-
   // ===== Assignment (NEW) =====
   isAssigned?: boolean;
+  requiresCustomerAssignment?: boolean;
   assignedDate?: string | null;
 
   images?: OrderImageItem[];
@@ -100,6 +100,7 @@ export interface OrderDetails {
   sizeDetails: string | null;
 
   daysForMaking: number;
+  deadline: string | null;
 
   consigneeName: string;
   consigneeAddress: string;
@@ -112,11 +113,9 @@ export interface OrderDetails {
   orderStatusId: number;
   status: string;
 
-  createdDate: string;
-  updatedDate: string | null;
-
   // ===== Assignment (NEW) =====
   isAssigned?: boolean;
+  requiresCustomerAssignment?: boolean;
   assignedDate?: string | null;
 
   images: OrderImageItem[];
@@ -149,8 +148,8 @@ export interface OrderFormValue {
 
   sizeDetails: string | null;
 
-  // Days is now optional — auto-computed after assignment
   daysForMaking?: number | null;
+  deadline?: string | null;
 
   priorityId: number | null;
 

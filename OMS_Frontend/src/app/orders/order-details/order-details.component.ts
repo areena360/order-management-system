@@ -12,6 +12,7 @@ import {
 } from '../order-badge.util';
 
 import { PermissionService } from '../../auth/permission.service';
+import { AuthService } from '../../auth/auth.service';
 import { PollingService } from '../../core/polling/polling.service';
 
 @Component({
@@ -33,6 +34,8 @@ export class OrderDetailsComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly ordersService = inject(OrdersService);
   private readonly permissionService = inject(PermissionService);
+  private readonly authService = inject(AuthService);
+  get isCustomer(): boolean { return this.authService.isCustomer(); }
   private readonly polling = inject(PollingService);
 
   private readonly destroy$ = new Subject<void>();
@@ -45,6 +48,8 @@ export class OrderDetailsComponent implements OnInit, OnDestroy {
   showDeleteModal = false;
   deletingOrder = false;
   deleteError = '';
+
+  selectedImagePreviewUrl: string | null = null;
 
   statusBadgeClass = statusBadgeClass;
   priorityBadgeClass = priorityBadgeClass;
@@ -74,7 +79,17 @@ export class OrderDetailsComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  // Poll every 10 seconds. Silent refresh — order and history update live.
+  // =================== Backdrop click (modal only) ===================
+  // Called when clicking directly on the outer fullscreen overlay.
+  // The inner card uses (click)="$event.stopPropagation()" so clicks inside won't reach here.
+  onBackdropClick(event: MouseEvent): void {
+    if (!this.asModal) return;
+    if (this.deletingOrder || this.showDeleteModal) return;
+    if (event.target === event.currentTarget) {
+      this.closed.emit();
+    }
+  }
+
   private setupPolling(): void {
     this.polling.poll(10000)
       .pipe(takeUntil(this.destroy$))
@@ -98,7 +113,6 @@ export class OrderDetailsComponent implements OnInit, OnDestroy {
         error: error => {
           this.silentRefreshBusy = false;
 
-          // 404 means someone deleted this order — return to list.
           if (error?.status === 404) {
             if (this.asModal) this.deleted.emit();
             else this.goBack();
@@ -173,6 +187,12 @@ export class OrderDetailsComponent implements OnInit, OnDestroy {
     });
   }
 
+  isOverdue(): boolean {
+    if (!this.order?.deadline) return false;
+    const dl = Date.parse(this.order.deadline);
+    return !isNaN(dl) && Date.now() > dl;
+  }
+
   getImageUrl(imageUrl: string | null | undefined): string {
     return this.ordersService.getImageUrl(imageUrl);
   }
@@ -224,5 +244,13 @@ export class OrderDetailsComponent implements OnInit, OnDestroy {
             'Unable to delete order. Please try again.';
         }
       });
+  }
+
+  openImagePreview(url: string): void {
+    this.selectedImagePreviewUrl = url;
+  }
+
+  closeImagePreview(): void {
+    this.selectedImagePreviewUrl = null;
   }
 }

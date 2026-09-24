@@ -157,7 +157,7 @@ public class WooCommerceIntegrationController(OMSDbContext db, WooCommerceIntegr
         var allowed = new[] { "pending", "processing", "on-hold", "completed", "cancelled", "refunded", "failed" };
         if (dto.StatusMappings.Count > 100) return BadRequest();
         foreach (var pair in dto.StatusMappings)
-            if (!allowed.Contains(pair.Value) || !await db.LookupItems.AnyAsync(x => x.Id == pair.Key && x.LookupDataTypeId == 1 && !x.IsDeleted))
+            if (!allowed.Contains(pair.Value) || !await db.LookupItems.Where(OrderStatusCatalog.Selectable).AnyAsync(x => x.Id == pair.Key))
                 throw new ValidationAppException("Invalid status mapping.");
         c.DefaultGenderId = dto.DefaultGenderId; c.DefaultMaterialId = dto.DefaultMaterialId; c.DefaultStatusId = dto.DefaultStatusId;
         c.StatusMappingsJson = JsonSerializer.Serialize(dto.StatusMappings);
@@ -203,6 +203,8 @@ public class WooCommerceIntegrationController(OMSDbContext db, WooCommerceIntegr
     [Authorize, HttpGet("orders/{orderId:int}")]
     public async Task<IActionResult> OrderSnapshot(int orderId)
     {
+        if (!await db.Orders.Where(OrderVisibility.ForUser(UserId, User.IsInRole("Customer"))).AnyAsync(o => o.Id == orderId))
+            return NotFound();
         var link = await db.Set<WooCommerceOrder>().AsNoTracking().Include(x => x.Buyer).Include(x => x.Connection)
             .SingleOrDefaultAsync(x => x.OrderId == orderId && !x.Order.IsDeleted);
         if (link == null) return NotFound();

@@ -238,14 +238,14 @@
 
         <!-- Date From -->
         <div>
-          <label class="mb-1.5 block text-xs font-medium text-gray-500">From</label>
+          <label class="mb-1.5 block text-xs font-medium text-gray-500">Assign Date From</label>
           <input type="date" [(ngModel)]="dateFrom" (ngModelChange)="onDateFilterChange()"
             class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-gray-500" />
         </div>
 
         <!-- Date To -->
         <div>
-          <label class="mb-1.5 block text-xs font-medium text-gray-500">To</label>
+          <label class="mb-1.5 block text-xs font-medium text-gray-500">Assign Date To</label>
           <input type="date" [(ngModel)]="dateTo" (ngModelChange)="onDateFilterChange()"
             class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-gray-500" />
         </div>
@@ -312,7 +312,6 @@
           <!-- Bulk actions -->
           <div class="flex flex-wrap items-center gap-2">
 
-            <!-- Customer: Assign button -->
             <ng-container *ngIf="isCustomer">
               <button type="button" (click)="openAssignModal()"
                 [disabled]="!selectedAssignableIds.length || bulkBusy || loading"
@@ -324,7 +323,6 @@
               </button>
             </ng-container>
 
-            <!-- Shared selection: status updates for staff, deletion for all permitted users -->
             <ng-container>
               <div *ngIf="!isCustomer" class="relative" data-bulk-status-menu (keydown.escape)="showBulkStatusMenu = false">
                 <button id="bulk-order-status" type="button" (click)="showBulkStatusMenu = !showBulkStatusMenu"
@@ -391,14 +389,12 @@
 
           <thead class="bg-gray-800">
             <tr>
-              <!-- Bulk select checkbox -->
               <th class="w-12 px-4 py-3 text-left">
                 <input type="checkbox" aria-label="Select all orders on this page" title="Select all orders on this page"
                   [checked]="allPageOrdersSelected" [indeterminate]="somePageOrdersSelected"
                   [disabled]="(!isCustomer && !canEdit && !canDelete) || !orders.length || bulkBusy || statusSavingId !== null"
                   (change)="togglePageSelection()" class="h-4 w-4 rounded accent-gray-600 cursor-pointer disabled:cursor-not-allowed" />
               </th>
-
 
               <th class="px-4 py-3 text-left text-xs font-semibold text-gray-100 uppercase tracking-wider">
                 Image
@@ -450,8 +446,14 @@
 
               <th *ngIf="isColumnVisible('daysForMaking')" (click)="sort('DaysForMaking')"
                 class="px-4 py-3 text-left text-xs font-semibold text-gray-100 uppercase tracking-wider cursor-pointer select-none hover:text-white">
-                Days
+                Days Passed
                 <span class="ml-1">{{ sortIcon('DaysForMaking') }}</span>
+              </th>
+
+              <th *ngIf="isColumnVisible('deadline')" (click)="sort('Deadline')"
+                class="px-4 py-3 text-left text-xs font-semibold text-gray-100 uppercase tracking-wider cursor-pointer select-none hover:text-white">
+                Deadline
+                <span class="ml-1">{{ sortIcon('Deadline') }}</span>
               </th>
 
               <th *ngIf="isColumnVisible('trackingNumber')"
@@ -459,10 +461,10 @@
                 Tracking
               </th>
 
-              <th *ngIf="isColumnVisible('createdDate')" (click)="sort('CreatedDate')"
+              <th *ngIf="isColumnVisible('assignedDate')" (click)="sort('AssignedDate')"
                 class="px-4 py-3 text-left text-xs font-semibold text-gray-100 uppercase tracking-wider cursor-pointer select-none hover:text-white">
-                Created Date
-                <span class="ml-1">{{ sortIcon('CreatedDate') }}</span>
+                Assign Date
+                <span class="ml-1">{{ sortIcon('AssignedDate') }}</span>
               </th>
 
               <th class="px-4 py-3 text-right text-xs font-semibold text-gray-100 uppercase tracking-wider">
@@ -498,8 +500,6 @@
                   (change)="toggleOrderSelection(order)" class="h-4 w-4 rounded accent-gray-800 cursor-pointer disabled:cursor-not-allowed" />
               </td>
 
-
-              <!-- Image thumbnail -->
               <td class="px-4 py-4 whitespace-nowrap" (click)="$event.stopPropagation()">
                 <button *ngIf="order.images?.length" type="button" (click)="openImageModal(order, $event)"
                   class="group relative h-16 w-16 overflow-hidden rounded-lg ring-1 ring-gray-200 cursor-pointer">
@@ -520,7 +520,6 @@
                 </div>
               </td>
 
-              <!-- Order number + ASSIGNED badge -->
               <td class="px-4 py-4 align-top font-medium text-gray-900 break-words">
                 {{ order.manufacturerOrderNumber }}
                 <span *ngIf="isAssigned(order)"
@@ -534,7 +533,6 @@
                 {{ order.customerName }}
               </td>
 
-              <!-- Product — wraps, never cut off -->
               <td class="px-4 py-4 align-top min-w-[180px] max-w-[280px]">
                 <div class="font-medium text-gray-900 whitespace-normal break-words" [title]="order.customerProductTitle">
                   {{ order.customerProductTitle }}
@@ -556,7 +554,6 @@
                 </span>
               </td>
 
-              <!-- STATUS -->
               <td class="px-4 py-4 whitespace-nowrap" (click)="$event.stopPropagation()">
                 <div class="relative inline-block" data-order-status-menu>
                   <button type="button" (click)="toggleStatusMenu(order.id)"
@@ -598,12 +595,16 @@
                 <span *ngIf="!order.priority" class="text-gray-400">—</span>
               </td>
 
-              <!-- Days — auto-computed from assignedDate -->
               <td *ngIf="isColumnVisible('daysForMaking')" class="px-4 py-4 whitespace-nowrap text-gray-600">
-                <span *ngIf="isAssigned(order)" class="inline-flex items-center gap-1 font-medium text-gray-900">
-                  {{ getAssignedDays(order) }} <span class="text-xs font-normal text-gray-500">days</span>
+                <span *ngIf="isAssigned(order)" class="inline-flex flex-col gap-0.5 font-medium text-gray-900">
+                  <span>{{ getAssignedDays(order) }} <span class="text-xs font-normal text-gray-500">days</span></span>
+                  <span *ngIf="isOverdue(order)" class="text-[10px] text-red-600 font-semibold uppercase tracking-wide">Deadline Passed</span>
                 </span>
                 <span *ngIf="!isAssigned(order)" class="text-xs text-gray-400 italic">Not assigned</span>
+              </td>
+
+              <td *ngIf="isColumnVisible('deadline')" class="px-4 py-4 whitespace-nowrap text-gray-600">
+                {{ order.deadline ? (order.deadline | date:'MMM d, y') : '—' }}
               </td>
 
               <td *ngIf="isColumnVisible('trackingNumber')" class="px-4 py-4" (click)="$event.stopPropagation()">
@@ -616,14 +617,15 @@
                   class="w-44 rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-700 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-gray-500 focus:border-gray-500 disabled:bg-gray-100 disabled:cursor-not-allowed" />
               </td>
 
-              <td *ngIf="isColumnVisible('createdDate')" class="px-4 py-4 whitespace-nowrap text-gray-600">
-                {{ order.createdDate | date:'MMM d, y' }}
+              <td *ngIf="isColumnVisible('assignedDate')" class="px-4 py-4 whitespace-nowrap text-gray-600">
+                {{ order.assignedDate ? (order.assignedDate | date:'MMM d, y') : '—' }}
               </td>
 
               <td class="px-4 py-4 whitespace-nowrap text-right" (click)="$event.stopPropagation()">
                 <div class="flex items-center justify-end gap-2">
 
                   <button type="button" (click)="openChatForOrder(order, $event)"
+                    [disabled]="order.requiresCustomerAssignment && !isAssigned(order)"
                     class="relative inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer"
                     [ngClass]="hasUnread(order.id)
                       ? 'border-emerald-300 bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
@@ -854,26 +856,23 @@
   </div>
 </div>
 
-<!-- Order Details Modal -->
-<dialog *ngIf="detailsOrderId !== null" #detailsDialog
-  aria-labelledby="order-details-title"
-  class="fixed inset-0 m-auto w-[96vw] max-w-7xl max-h-[92vh] overflow-hidden rounded-2xl border-0 p-0 shadow-2xl backdrop:bg-gray-900/60"
-  (cancel)="$event.preventDefault(); !detailsView.deletingOrder && !detailsView.showDeleteModal && closeOrderDetails()">
-  <div class="flex items-center justify-between border-b border-gray-200 bg-white px-5 py-3">
-    <h2 id="order-details-title" class="text-lg font-semibold text-gray-900">Order Details</h2>
-    <button type="button" autofocus (click)="closeOrderDetails()" [disabled]="detailsView.deletingOrder"
-      aria-label="Close order details"
-      class="rounded-lg px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 cursor-pointer disabled:opacity-50">Close ✕</button>
-  </div>
-  <div class="max-h-[calc(92vh-4rem)] overflow-y-auto overscroll-contain">
-    <app-order-details #detailsView [asModal]="true" [selectedOrderId]="detailsOrderId"
-      (closed)="closeOrderDetails()" (deleted)="onDetailsDeleted()"></app-order-details>
-  </div>
-</dialog>
+<!-- Order Details Modal — backdrop click handled inside OrderDetailsComponent -->
+<app-order-details *ngIf="detailsOrderId !== null"
+  #detailsView
+  [asModal]="true"
+  [selectedOrderId]="detailsOrderId"
+  (closed)="closeOrderDetails()"
+  (deleted)="onDetailsDeleted()">
+</app-order-details>
 
 <!-- Add Order Modal -->
 <app-order-form *ngIf="showAddOrderModal" [asModal]="true"
   (closed)="closeAddOrderModal()" (saved)="onOrderSaved()">
+</app-order-form>
+
+<!-- Edit Order Modal -->
+<app-order-form *ngIf="showEditOrderModal" [asModal]="true" [orderId]="editOrderId"
+  (closed)="closeEditOrderModal()" (saved)="onOrderSaved()">
 </app-order-form>
 
 <!-- Per-order Chat Modal -->

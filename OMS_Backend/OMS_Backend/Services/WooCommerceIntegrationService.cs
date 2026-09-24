@@ -12,6 +12,8 @@ public class WooCommerceIntegrationService(OMSDbContext db)
 {
     public async Task ValidateDefaults(int gender, int material, int status)
     {
+        if (!await db.LookupItems.Where(OrderStatusCatalog.Selectable).AnyAsync(x => x.Id == status))
+            throw new ValidationAppException("Choose Assign, In Manufacturing, Refund or Cancel as the initial OMS status.");
         foreach (var (id, type) in new[] { (gender, 3), (material, 4), (status, 1) })
             if (!await db.LookupItems.AnyAsync(x => x.Id == id && x.LookupDataTypeId == type && x.IsActive && !x.IsDeleted))
                 throw new ValidationAppException("Choose valid active gender, material and initial order status defaults.");
@@ -102,7 +104,7 @@ public class WooCommerceIntegrationService(OMSDbContext db)
                 ConsigneeName = $"{address.FirstName} {address.LastName}".Trim(),
                 ConsigneeAddress = string.Join(", ", new[] { address.Company, address.Address1, address.Address2, address.City, address.State, address.Postcode, address.Country }.Where(x => !string.IsNullOrWhiteSpace(x))),
                 NotesByCustomer = dto.CustomerNote, IsActive = true, CreatedBy = c.OwnerUserId,
-                CreatedDate = DateTime.UtcNow, DaysForMaking = 0,
+                RequiresCustomerAssignment = true, DaysForMaking = 0,
                 OrderImages = new List<OrderImage>(), InventoryBills = new List<InventoryBill>(),
                 StatusHistories = new List<OrderStatusHistory> {
                     new() { StatusId = c.DefaultStatusId, IsActive = true, CreatedBy = c.OwnerUserId, CreatedDate = DateTime.UtcNow }

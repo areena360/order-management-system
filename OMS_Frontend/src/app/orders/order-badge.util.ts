@@ -4,23 +4,17 @@ export function statusBadgeClass(
 
   switch (status) {
 
-    case 'New':
+    case 'Assign':
       return 'bg-blue-50 text-blue-700 ring-blue-600/20';
 
-    case 'Confirmed':
-      return 'bg-indigo-50 text-indigo-700 ring-indigo-600/20';
-
-    case 'In Production':
+    case 'In Manufacturing':
       return 'bg-amber-50 text-amber-700 ring-amber-600/20';
 
-    case 'Quality Check':
+    case 'Refund':
       return 'bg-purple-50 text-purple-700 ring-purple-600/20';
 
-    case 'Shipped':
-      return 'bg-cyan-50 text-cyan-700 ring-cyan-600/20';
-
-    case 'Delivered':
-      return 'bg-green-50 text-green-700 ring-green-600/20';
+    case 'Cancel':
+      return 'bg-red-50 text-red-700 ring-red-600/20';
 
     default:
       return 'bg-gray-100 text-gray-600 ring-gray-500/20';

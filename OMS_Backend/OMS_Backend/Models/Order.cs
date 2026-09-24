@@ -24,6 +24,7 @@ public class Order : BaseEntity
 
     // ===== Assignment (NEW) =====
     public bool IsAssigned { get; set; } = false;
+    public bool RequiresCustomerAssignment { get; set; } = true;
     public DateTime? AssignedDate { get; set; }
 
     public User Customer { get; set; }

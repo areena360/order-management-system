@@ -72,7 +72,8 @@ export class WooCommerceComponent implements OnInit {
     await this.load(); this.message.set('Store authorized. Return to WordPress and click Finish connection.');
   }); }
   save(s: Store) { return this.run(async () => {
-    const statusMappings = Object.fromEntries(Object.entries(s.mappings).filter(([,v]) => !!v));
+    const statusMappings = Object.fromEntries(Object.entries(s.mappings)
+      .filter(([id, value]) => !!value && this.statuses.some(status => status.id === Number(id))));
     await firstValueFrom(this.http.put(`${this.base}/connections/${s.id}/settings`, {...s, statusMappings}));
     this.message.set('Defaults and status mappings saved.');
   }); }

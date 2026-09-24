@@ -30,6 +30,7 @@ interface PendingBill {
 export class OrderFormComponent implements OnInit, OnDestroy {
 
   @Input() asModal = false;
+  @Input() orderId: number | null = null; // Added for Edit Modal
   @Output() closed = new EventEmitter<void>();
   @Output() saved = new EventEmitter<void>();
 
@@ -37,7 +38,6 @@ export class OrderFormComponent implements OnInit, OnDestroy {
   private readonly authService = inject(AuthService);
   private readonly polling = inject(PollingService);
 
-  // daysForMaking removed — now auto-computed on backend after assignment
   form = this.fb.group({
     customerProductTitle: ['', [Validators.required, Validators.maxLength(200)]],
     manufacturerProductTitle: ['', [Validators.maxLength(200)]],
@@ -56,12 +56,12 @@ export class OrderFormComponent implements OnInit, OnDestroy {
     consigneeName: ['', [Validators.required, Validators.maxLength(200)]],
     consigneeAddress: ['', [Validators.required, Validators.maxLength(1000)]],
     trackingNumber: ['', [Validators.maxLength(200)]],
+    deadline: [null as string | null],
     notesByCustomer: ['', [Validators.maxLength(3000)]],
     notesByManufacturer: ['', [Validators.maxLength(3000)]]
   });
 
   isEditMode = false;
-  orderId: number | null = null;
   loading = true;
   saving = false;
   errorMsg = '';
@@ -93,6 +93,8 @@ export class OrderFormComponent implements OnInit, OnDestroy {
   uploadingImages = false;
   imageUploadError = '';
   deletingImageId: number | null = null;
+
+  selectedImagePreviewUrl: string | null = null;
 
   showImageDeleteModal = false;
   deletingImage = false;
@@ -135,6 +137,10 @@ export class OrderFormComponent implements OnInit, OnDestroy {
     return ['Super Admin', 'Admin', 'Finance'].includes(this.authService.currentRole() ?? '');
   }
 
+  get canEditDeadline(): boolean {
+    return ['Super Admin', 'Admin'].includes(this.authService.currentRole() ?? '');
+  }
+
   get isSuperAdminCreate(): boolean {
     return this.authService.currentRole() === 'Super Admin' && !this.isEditMode;
   }
@@ -142,12 +148,17 @@ export class OrderFormComponent implements OnInit, OnDestroy {
   private applyFieldPermissions(): void {
     if (!this.canEditTracking) this.form.controls.trackingNumber.disable({ emitEvent: false });
     if (!this.canEditAmount) this.form.controls.amount.disable({ emitEvent: false });
+    if (!this.canEditDeadline) this.form.controls.deadline.disable({ emitEvent: false });
+    
     if (this.isCustomer) {
       for (const name of ['customerId', 'manufacturerProductTitle', 'manufacturerMaterialId', 'statusId', 'notesByManufacturer']) {
         this.form.get(name)?.disable({ emitEvent: false });
       }
-      if (this.isEditMode) this.form.controls.priorityId.disable({ emitEvent: false });
+      this.form.controls.priorityId.disable({ emitEvent: false });
+    } else {
+      this.form.controls.notesByCustomer.disable({ emitEvent: false });
     }
+
     if (this.isSuperAdminCreate) {
       this.form.controls.customerProductTitle.disable({ emitEvent: false });
       this.form.controls.manufacturerProductTitle.addValidators(Validators.required);
@@ -202,7 +213,9 @@ export class OrderFormComponent implements OnInit, OnDestroy {
     }
 
     let idParam: string | null = null;
-    if (!this.asModal) {
+    if (this.asModal && this.orderId) {
+      idParam = this.orderId.toString();
+    } else if (!this.asModal) {
       idParam = this.route.snapshot.paramMap.get('id');
     }
 
@@ -321,7 +334,7 @@ export class OrderFormComponent implements OnInit, OnDestroy {
           materials: this.lookupService.getByType(LOOKUP_TYPE.Material),
           sizes: this.lookupService.getByType(LOOKUP_TYPE.Size),
           sizeCharts: this.lookupService.getByType(LOOKUP_TYPE.SizeChart),
-          priorities: this.lookupService.getByType(LOOKUP_TYPE.Priority)
+          priorities: of([] as LookupItem[])
         })
       : forkJoin({
           statuses: this.lookupService.getByType(LOOKUP_TYPE.OrderStatus),
@@ -392,6 +405,7 @@ export class OrderFormComponent implements OnInit, OnDestroy {
       consigneeName: order.consigneeName,
       consigneeAddress: order.consigneeAddress,
       trackingNumber: order.trackingNumber,
+      deadline: order.deadline,
       notesByCustomer: order.notesByCustomer,
       notesByManufacturer: order.notesByManufacturer
     }, { emitEvent: false });
@@ -537,11 +551,12 @@ export class OrderFormComponent implements OnInit, OnDestroy {
       sizeId: raw.isCustomSize ? null : raw.sizeId,
       sizeChartId: raw.isCustomSize ? null : raw.sizeChartId,
       sizeDetails: raw.isCustomSize ? this.nullIfBlank(raw.sizeDetails) : null,
-      priorityId: raw.priorityId,
+      priorityId: this.isCustomer ? (this.order?.priorityId ?? null) : raw.priorityId,
       consigneeName: raw.consigneeName?.trim() ?? '',
       consigneeAddress: raw.consigneeAddress?.trim() ?? '',
       trackingNumber: this.canEditTracking ? this.nullIfBlank(raw.trackingNumber) : (this.order?.trackingNumber ?? null),
-      notesByCustomer: this.nullIfBlank(raw.notesByCustomer),
+      deadline: this.canEditDeadline ? this.nullIfBlank(raw.deadline) : (this.order?.deadline ?? null),
+      notesByCustomer: this.isCustomer ? this.nullIfBlank(raw.notesByCustomer) : (this.order?.notesByCustomer ?? null),
       notesByManufacturer: this.isCustomer ? null : this.nullIfBlank(raw.notesByManufacturer)
     };
 
@@ -699,11 +714,20 @@ export class OrderFormComponent implements OnInit, OnDestroy {
     this.selectedImagePreviews.splice(index, 1);
     this.selectedImages.splice(index, 1);
   }
+
   clearSelectedImages(): void {
     this.selectedImagePreviews.forEach(preview => URL.revokeObjectURL(preview));
     this.selectedImagePreviews = [];
     this.selectedImages = [];
     this.imageUploadError = '';
+  }
+
+  openImagePreview(url: string): void {
+    this.selectedImagePreviewUrl = url;
+  }
+
+  closeImagePreview(): void {
+    this.selectedImagePreviewUrl = null;
   }
 
   deleteExistingImage(img: { id: number }): void {
@@ -901,7 +925,7 @@ export class OrderFormComponent implements OnInit, OnDestroy {
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: Event): void {
     const target = event.target as HTMLElement;
-    if (this.showImageDeleteModal || this.showBillModal || this.showConfirmDeleteModal) return;
+    if (this.showImageDeleteModal || this.showBillModal || this.showConfirmDeleteModal || this.selectedImagePreviewUrl) return;
     if (!target.closest('[data-customer-select]')) this.showCustomerDropdown = false;
     if (!target.closest('[data-dd]')) this.openDropdown = null;
     if (!target.closest('[data-status-dd]')) this.showStatusDropdown = false;

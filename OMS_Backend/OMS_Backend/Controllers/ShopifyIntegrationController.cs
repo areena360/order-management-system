@@ -85,7 +85,7 @@ public class ShopifyIntegrationController(OMSDbContext db,ShopifyApi api,IConfig
     [Authorize,HttpPut("stores/{id:int}/settings")]
     public async Task<IActionResult> Settings(int id,ShopifySettingsDto dto) {
         var s=await Managed(id);await importer.ValidateDefaults(dto.GenderId,dto.MaterialId,dto.StatusId);
-        if(dto.FulfillmentEnabled&&(!dto.ShippedStatusId.HasValue||!await db.LookupItems.AnyAsync(x=>x.Id==dto.ShippedStatusId&&x.LookupDataTypeId==1&&x.IsActive&&!x.IsDeleted))) return BadRequest(new{message="Select the OMS shipped status."});
+        if(dto.FulfillmentEnabled&&(!dto.ShippedStatusId.HasValue||!await db.LookupItems.Where(OrderStatusCatalog.Selectable).AnyAsync(x=>x.Id==dto.ShippedStatusId))) return BadRequest(new{message="Select a valid OMS fulfillment status."});
         s.Connection.DefaultGenderId=dto.GenderId;s.Connection.DefaultMaterialId=dto.MaterialId;s.Connection.DefaultStatusId=dto.StatusId;s.FulfillmentEnabled=dto.FulfillmentEnabled;s.ShippedStatusId=dto.ShippedStatusId;await db.SaveChangesAsync();return NoContent();
     }
     [Authorize,HttpPost("stores/{id:int}/sync")]
@@ -114,6 +114,7 @@ public class ShopifyIntegrationController(OMSDbContext db,ShopifyApi api,IConfig
     }
     [Authorize,HttpGet("orders/{orderId:int}")]
     public async Task<IActionResult> Snapshot(int orderId) {
+        if(!await db.Orders.Where(OrderVisibility.ForUser(UserId,User.IsInRole("Customer"))).AnyAsync(o=>o.Id==orderId))return NotFound();
         var link=await db.Set<WooCommerceOrder>().Include(x=>x.Buyer).Include(x=>x.Connection).SingleOrDefaultAsync(x=>x.OrderId==orderId&&x.Connection.Provider=="Shopify"&&!x.Order.IsDeleted);
         if(link==null)return NotFound();var store=await db.Set<ShopifyStore>().SingleAsync(x=>x.ConnectionId==link.ConnectionId);await Managed(store.Id);
         return Ok(new{link.ExternalOrderId,link.ExternalLineId,link.UnitNumber,link.IsCurrentUnit,link.ExternalStatus,link.Currency,link.Total,link.ModifiedAt,link.PaymentMethod,link.ItemsJson,link.BillingJson,link.ShippingJson,link.Connection.StoreName,buyer=new{link.Buyer.Name,link.Buyer.Email,link.Buyer.Phone}});

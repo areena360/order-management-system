@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using OMS_Backend.Data;
 
@@ -11,9 +12,11 @@ using OMS_Backend.Data;
 namespace OMS_Backend.Migrations
 {
     [DbContext(typeof(OMSDbContext))]
-    partial class OMSDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260924112459_OrderAssignmentVisibility")]
+    partial class OrderAssignmentVisibility
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1443,35 +1446,6 @@ namespace OMS_Backend.Migrations
                     b.ToTable("RolePermissions");
                 });
 
-            modelBuilder.Entity("OMS_Backend.Models.AuthSession", b =>
-                {
-                    b.Property<string>("TokenHash")
-                        .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)");
-
-                    b.Property<DateTime>("ExpiresAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("PasswordVersion")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)");
-
-                    b.Property<bool>("RememberMe")
-                        .HasColumnType("bit");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
-
-                    b.HasKey("TokenHash");
-
-                    b.HasIndex("ExpiresAt");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("AuthSessions");
-                });
-
             modelBuilder.Entity("User", b =>
                 {
                     b.Property<int>("Id")
@@ -1741,17 +1715,6 @@ namespace OMS_Backend.Migrations
                         .IsRequired();
 
                     b.Navigation("Role");
-                });
-
-            modelBuilder.Entity("OMS_Backend.Models.AuthSession", b =>
-                {
-                    b.HasOne("User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("User", b =>

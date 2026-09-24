@@ -11,6 +11,7 @@ namespace OMS_Backend.Data
         }
 
         public DbSet<User> Users { get; set; }
+        public DbSet<AuthSession> AuthSessions { get; set; }
         public DbSet<Role> Roles { get; set; }
         public DbSet<Order> Orders { get; set; }
         public DbSet<OrderImage> OrderImages { get; set; }
@@ -27,6 +28,14 @@ namespace OMS_Backend.Data
         {
             WooCommerceModel.Configure(modelBuilder);
             ShopifyModel.Configure(modelBuilder);
+
+            // Ignore before Model.GetEntityTypes() so EF never selects dropped Orders columns.
+            modelBuilder.Entity<Order>().Ignore(o => o.CreatedDate);
+            modelBuilder.Entity<Order>().Ignore(o => o.UpdatedDate);
+
+            modelBuilder.Entity<AuthSession>().HasOne(s => s.User).WithMany()
+                .HasForeignKey(s => s.UserId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<AuthSession>().HasIndex(s => s.ExpiresAt);
 
             modelBuilder.Entity<ChatMessage>()
                 .HasOne(m => m.Order)
@@ -56,9 +65,10 @@ namespace OMS_Backend.Data
             {
                 if (typeof(BaseEntity).IsAssignableFrom(entityType.ClrType))
                 {
-                    modelBuilder.Entity(entityType.ClrType)
-                        .Property<DateTime>(nameof(BaseEntity.CreatedDate))
-                        .HasDefaultValueSql("GETUTCDATE()");
+                    if (entityType.ClrType != typeof(Order))
+                        modelBuilder.Entity(entityType.ClrType)
+                            .Property<DateTime>(nameof(BaseEntity.CreatedDate))
+                            .HasDefaultValueSql("GETUTCDATE()");
 
                     modelBuilder.Entity<RolePermission>()
                         .HasOne(rp => rp.Role)
@@ -71,6 +81,9 @@ namespace OMS_Backend.Data
                         .IsUnique();
                 }
             }
+
+            // Orders use assignment time; timestamps remain on history/other entities.
+            modelBuilder.Entity<Order>().HasIndex(o => new { o.IsAssigned, o.AssignedDate });
 
             modelBuilder.Entity<PasswordResetToken>()
                 .HasOne(t => t.User)

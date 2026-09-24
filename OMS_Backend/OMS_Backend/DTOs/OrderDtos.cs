@@ -23,7 +23,7 @@ namespace OMS_Backend.DTOs
         public int? PriorityId { get; set; }
         public int? CustomerId { get; set; }
         public int? GenderId { get; set; }
-        public int? MaterialId { get; set; } // matches Customer or Manufacturer material
+        public int? MaterialId { get; set; }
         public DateTime? DateFrom { get; set; }
         public DateTime? DateTo { get; set; }
     }
@@ -45,6 +45,10 @@ namespace OMS_Backend.DTOs
         public string? TrackingNumber { get; set; }
         public DateTime CreatedDate { get; set; }
         public List<OrderImageDto> Images { get; set; } = new();
+
+        // ===== Assignment (NEW) =====
+        public bool IsAssigned { get; set; }
+        public DateTime? AssignedDate { get; set; }
     }
 
     public class OrderDetailsDto
@@ -94,6 +98,10 @@ namespace OMS_Backend.DTOs
         public List<OrderImageDto> Images { get; set; } = new();
         public List<OrderStatusHistoryDto> StatusHistory { get; set; } = new();
         public List<InventoryBillDto> InventoryBills { get; set; } = new();
+
+        // ===== Assignment (NEW) =====
+        public bool IsAssigned { get; set; }
+        public DateTime? AssignedDate { get; set; }
     }
 
     public class CreateOrderDto
@@ -114,11 +122,16 @@ namespace OMS_Backend.DTOs
         public int? SizeChartId { get; set; }
         public string? SizeDetails { get; set; }
 
-        [Required, Range(0, 3650)] public int DaysForMaking { get; set; }
+        // Days is now optional — auto-computed after assignment.
+        // Kept for backward compatibility with old clients.
+        [Range(0, 3650)] public int? DaysForMaking { get; set; }
+
         public int? PriorityId { get; set; }
 
-        [Required] public string ConsigneeName { get; set; } = default!;
-        [Required] public string ConsigneeAddress { get; set; } = default!;
+        // Consignee fields now optional (customer can leave blank).
+        public string? ConsigneeName { get; set; }
+        public string? ConsigneeAddress { get; set; }
+
         public string? TrackingNumber { get; set; }
 
         public string? NotesByCustomer { get; set; }
@@ -143,11 +156,11 @@ namespace OMS_Backend.DTOs
         public int? SizeChartId { get; set; }
         public string? SizeDetails { get; set; }
 
-        [Required, Range(0, 3650)] public int DaysForMaking { get; set; }
+        [Range(0, 3650)] public int? DaysForMaking { get; set; }
         public int? PriorityId { get; set; }
 
-        [Required] public string ConsigneeName { get; set; } = default!;
-        [Required] public string ConsigneeAddress { get; set; } = default!;
+        public string? ConsigneeName { get; set; }
+        public string? ConsigneeAddress { get; set; }
         public string? TrackingNumber { get; set; }
 
         public string? NotesByCustomer { get; set; }
@@ -157,6 +170,22 @@ namespace OMS_Backend.DTOs
     public class UpdateOrderStatusDto
     {
         [Required] public int StatusId { get; set; }
+    }
+
+    // ===== Assignment (NEW) =====
+    public class AssignOrdersDto
+    {
+        [Required]
+        [MinLength(1, ErrorMessage = "At least one order must be selected.")]
+        public List<int> OrderIds { get; set; } = new();
+    }
+
+    // ===== Assignment Result (NEW) =====
+    public class AssignOrdersResultDto
+    {
+        public int AssignedCount { get; set; }
+        public int SkippedCount { get; set; }
+        public string Message { get; set; } = default!;
     }
 
     public class OrderImageDto

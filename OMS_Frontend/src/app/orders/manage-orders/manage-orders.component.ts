@@ -5,7 +5,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { catchError, debounceTime, distinctUntilChanged, from, map, mergeMap, of, Subject, takeUntil, toArray } from 'rxjs';
+import { catchError, debounceTime, distinctUntilChanged, finalize, from, map, mergeMap, of, Subject, takeUntil, toArray } from 'rxjs';
 
 import { FooterComponent } from '../../footer/footer.component';
 import { PermissionService } from '../../auth/permission.service';
@@ -14,6 +14,7 @@ import { OrdersService } from '../orders.service';
 import { LookupService, LOOKUP_TYPE } from '../lookup.service';
 import { PollingService } from '../../core/polling/polling.service';
 import { ChatModalComponent } from '../chat/chat-modal/chat-modal.component';
+import { OrderFormComponent } from '../order-form/order-form.component';
 import {
   ChatSignalrService,
   IncomingChatMessage,
@@ -27,7 +28,7 @@ interface ColumnOption { key: string; label: string; }
 @Component({
   selector: 'app-manage-orders',
   standalone: true,
-  imports: [CommonModule, FormsModule, FooterComponent, ChatModalComponent],
+  imports: [CommonModule, FormsModule, FooterComponent, ChatModalComponent, OrderFormComponent],
   templateUrl: './manage-orders.component.html'
 })
 export class ManageOrdersComponent implements OnInit, OnDestroy {
@@ -36,7 +37,6 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   private readonly chatSignalr = inject(ChatSignalrService);
   private readonly cdr = inject(ChangeDetectorRef);
 
-  // ---- Scroll container reference (setter reattaches ResizeObserver) ----
   @ViewChild('tableScroll')
   set tableScrollRef(ref: ElementRef<HTMLDivElement> | undefined) {
     this.tableScrollEl = ref;
@@ -69,6 +69,14 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   chatOrderNumber = '';
   chatCustomerName = '';
 
+  // Add Order modal
+  showAddOrderModal = false;
+
+  // ===== Assign modal state =====
+  showAssignModal = false;
+  assigningOrders = false;
+  assignError = '';
+
   // Unread message counters, keyed by orderId
   unreadMessages = new Map<number, number>();
   currentUserId = 0;
@@ -96,12 +104,101 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
 
   openFilterDropdown: string | null = null;
 
-  // Inline status dropdown state
   openStatusId: number | null = null;
   statusSavingId: number | null = null;
   selectedOrderIds = new Set<number>();
   bulkStatusId: number | null = null;
   bulkStatusSaving = false;
+  bulkDeleteOrderIds: number[] = [];
+  get bulkBusy(): boolean { return this.bulkStatusSaving || this.deletingOrder || this.assigningOrders; }
+
+  // =================== Assign — selectors & actions ===================
+
+  get selectedAssignableIds(): number[] {
+    return this.orders.filter(order => this.selectedOrderIds.has(order.id) && !this.isAssigned(order)).map(order => order.id);
+  }
+
+  get canEditTracking(): boolean {
+    return ['Super Admin', 'Admin', 'Staff'].includes(this.authService.currentRole() ?? '');
+  }
+
+  isAssigned(order: OrderListItem): boolean {
+    return !!(order as any).isAssigned;
+  }
+
+  getAssignedDays(order: OrderListItem): number {
+    const d = (order as any).assignedDate;
+    if (!d) return 0;
+    const start = Date.parse(d);
+    if (isNaN(start)) return 0;
+    return Math.max(0, Math.floor((Date.now() - start) / 86400000));
+  }
+
+  openAssignModal(): void {
+    if (!this.isCustomer || this.bulkBusy || this.loading || !this.selectedAssignableIds.length) return;
+    this.assignError = '';
+    this.showAssignModal = true;
+  }
+
+  closeAssignModal(): void {
+    if (this.assigningOrders) return;
+    this.showAssignModal = false;
+    this.assignError = '';
+  }
+
+  confirmAssign(): void {
+    if (!this.isCustomer || this.bulkBusy || !this.selectedAssignableIds.length) return;
+    const ids = this.selectedAssignableIds;
+    this.assigningOrders = true;
+    this.assignError = '';
+    this.ordersService.assignOrders(ids)
+      .pipe(takeUntil(this.destroy$), finalize(() => (this.assigningOrders = false)))
+      .subscribe({
+        next: () => {
+          this.selectedOrderIds = new Set();
+          this.assigningOrders = false;
+          this.showAssignModal = false;
+          this.fetchOrders();
+        },
+        error: (err) => {
+          this.assignError = err?.error?.message ?? 'Unable to assign orders. Please try again.';
+        }
+      });
+  }
+
+  // =================== Bulk status / delete ===================
+
+  openBulkDeleteModal(): void {
+    if (!this.canDelete || this.bulkBusy || this.loading || this.statusSavingId !== null) return;
+    this.bulkDeleteOrderIds = this.orders.filter(o => this.selectedOrderIds.has(o.id)).map(o => o.id);
+    if (!this.bulkDeleteOrderIds.length) return;
+    this.deleteOrderItem = null;
+    this.deleteError = '';
+    this.showBulkStatusMenu = false;
+    this.showDeleteModal = true;
+  }
+
+  private confirmBulkDeleteOrders(): void {
+    if (!this.canDelete || this.bulkBusy || !this.bulkDeleteOrderIds.length) return;
+    this.deletingOrder = true;
+    from(this.bulkDeleteOrderIds).pipe(
+      mergeMap(id => this.ordersService.deleteOrder(id).pipe(
+        map(() => ({ id, success: true })),
+        catchError(() => of({ id, success: false }))
+      ), 4), toArray(), takeUntil(this.destroy$)
+    ).subscribe(results => {
+      const failed = results.filter(r => !r.success);
+      this.selectedOrderIds = new Set(failed.map(r => r.id));
+      this.bulkStatusHasErrors = failed.length > 0;
+      this.bulkStatusMessage = `${results.length - failed.length} order(s) deleted.`;
+      if (failed.length) this.bulkStatusMessage += ` ${failed.length} failed; remaining visible failed orders are selected for retry.`;
+      this.deletingOrder = false;
+      this.showDeleteModal = false;
+      this.bulkDeleteOrderIds = [];
+      this.fetchOrders(true);
+    });
+  }
+
   showBulkStatusMenu = false;
   bulkStatusMessage = '';
   bulkStatusHasErrors = false;
@@ -115,21 +212,21 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   }
 
   toggleOrderSelection(order: OrderListItem): void {
-    if (!this.canEdit || this.bulkStatusSaving || this.loading || this.statusSavingId !== null) return;
+    if ((!this.isCustomer && !this.canEdit && !this.canDelete) || this.bulkBusy || this.loading || this.statusSavingId !== null) return;
     if (this.selectedOrderIds.has(order.id)) this.selectedOrderIds.delete(order.id);
     else this.selectedOrderIds.add(order.id);
     this.bulkStatusMessage = '';
   }
 
   togglePageSelection(): void {
-    if (!this.canEdit || this.bulkStatusSaving || this.loading || this.statusSavingId !== null) return;
+    if ((!this.isCustomer && !this.canEdit && !this.canDelete) || this.bulkBusy || this.loading || this.statusSavingId !== null) return;
     if (this.allPageOrdersSelected) this.selectedOrderIds.clear();
     else this.selectedOrderIds = new Set(this.orders.map(order => order.id));
     this.bulkStatusMessage = '';
   }
 
   clearOrderSelection(): void {
-    if (this.bulkStatusSaving) return;
+    if (this.bulkBusy) return;
     this.selectedOrderIds.clear();
     this.showBulkStatusMenu = false;
     this.bulkStatusId = null;
@@ -137,7 +234,7 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
 
   updateSelectedStatuses(statusId: number | null): void {
     this.showBulkStatusMenu = false;
-    if (!this.canEdit || this.bulkStatusSaving || this.loading || this.statusSavingId !== null) return;
+    if (!this.canEdit || this.bulkBusy || this.loading || this.statusSavingId !== null) return;
     const targetStatus = this.statuses.find(status => status.id === statusId);
     const selected = this.orders.filter(order => this.selectedOrderIds.has(order.id));
     if (!targetStatus || !selected.length) return;
@@ -151,7 +248,6 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
       return;
     }
     this.bulkStatusSaving = true;
-    // Reuse the existing endpoint so ownership checks and status history are preserved.
     from(changed).pipe(
       mergeMap(order => this.ordersService.updateStatus(order.id, targetStatus.id).pipe(
         map(() => ({ id: order.id, success: true })),
@@ -183,10 +279,11 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   showColumnMenu = false;
 
   columnOptions: ColumnOption[] = [
+    { key: 'amount', label: 'Amount (PKR)' },
     { key: 'customerOrderNumber', label: 'Customer Order #' },
     { key: 'manufacturerProductTitle', label: 'Manufacturer Product' },
     { key: 'priority', label: 'Priority' },
-    { key: 'daysForMaking', label: 'Days for Making' },
+    { key: 'daysForMaking', label: 'Days' },
     { key: 'trackingNumber', label: 'Tracking Number' },
     { key: 'createdDate', label: 'Created Date' }
   ];
@@ -205,11 +302,7 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   statusBadgeClass = statusBadgeClass;
   priorityBadgeClass = priorityBadgeClass;
 
-    // Alternating gray / white rows retain their colors on hover.
-    private readonly rowColors = [
-    'bg-gray-100',
-    'bg-white'
-  ];
+  private readonly rowColors = ['bg-gray-100', 'bg-white'];
 
   private silentRefreshBusy = false;
 
@@ -228,13 +321,13 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
     this.canDelete = this.permissionService.canDelete('Orders');
 
     this.isCustomer = this.authService.isCustomer();
+    this.canDelete = this.canDelete || this.isCustomer;
     this.currentUserId = this.readUserIdFromToken();
 
     if (this.isCustomer) {
       this.columnOptions = this.columnOptions.filter(c =>
         c.key !== 'manufacturerProductTitle' &&
-        c.key !== 'priority' &&
-        c.key !== 'daysForMaking'
+        c.key !== 'priority'
       );
       this.hiddenColumns = new Set<string>(['manufacturerProductTitle']);
     }
@@ -271,16 +364,28 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
+  // =================== Add Order Modal ===================
+
+  addOrder(): void {
+    this.showAddOrderModal = true;
+  }
+
+  closeAddOrderModal(): void {
+    this.showAddOrderModal = false;
+  }
+
+  onOrderSaved(): void {
+    this.showAddOrderModal = false;
+    this.fetchOrders();
+  }
+
   // =================== Horizontal overflow detection ===================
 
   private setupTableResizeObserver(): void {
     this.tableResizeObserver?.disconnect();
     const el = this.tableScrollEl?.nativeElement;
 
-    if (!el) {
-      this.hasHorizontalScroll = false;
-      return;
-    }
+    if (!el) { this.hasHorizontalScroll = false; return; }
 
     this.tableResizeObserver = new ResizeObserver(() => this.updateHorizontalScrollState());
     this.tableResizeObserver.observe(el);
@@ -291,7 +396,6 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   private updateHorizontalScrollState(): void {
     const el = this.tableScrollEl?.nativeElement;
     const hasOverflow = !!el && el.scrollWidth > el.clientWidth + 2;
-
     if (hasOverflow !== this.hasHorizontalScroll) {
       this.hasHorizontalScroll = hasOverflow;
       this.cdr.detectChanges();
@@ -299,30 +403,16 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   }
 
   @HostListener('window:resize')
-  onWindowResize(): void {
-    this.updateHorizontalScrollState();
-  }
+  onWindowResize(): void { this.updateHorizontalScrollState(); }
 
-  // =================== Horizontal scroll — one click = full end ===================
-
-  /**
-   * Single click jumps the table all the way to the left or right end.
-   * Uses smooth behavior for a nice animation. Works reliably on all devices
-   * (mobile, tablet, 1x/2x DPR) since it goes straight to the boundary.
-   */
   scrollTable(direction: 'left' | 'right'): void {
     const el = this.tableScrollEl?.nativeElement;
     if (!el) return;
-
     const maxScroll = Math.max(0, el.scrollWidth - el.clientWidth);
     if (maxScroll === 0) return;
-
     const target = direction === 'left' ? 0 : maxScroll;
-
     el.scrollTo({ left: target, behavior: 'smooth' });
   }
-
-  // =================== Multi-color rows ===================
 
   rowColorClass(index: number): string {
     return this.rowColors[index % this.rowColors.length];
@@ -331,7 +421,7 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   // =================== Inline Status Dropdown ===================
 
   toggleStatusMenu(orderId: number): void {
-    if (this.bulkStatusSaving || this.statusSavingId !== null) return;
+    if (this.bulkBusy || this.statusSavingId !== null) return;
     this.openStatusId = this.openStatusId === orderId ? null : orderId;
   }
 
@@ -342,7 +432,7 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   }
 
   changeOrderStatus(order: OrderListItem, statusId: number): void {
-    if (!this.canEdit || this.bulkStatusSaving || this.statusSavingId !== null) return;
+    if (!this.canEdit || this.bulkBusy || this.statusSavingId !== null) return;
 
     const targetStatus = this.statuses.find(s => s.id === statusId);
     if (!targetStatus) return;
@@ -370,9 +460,10 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
       });
   }
 
-  // =================== Inline Tracking Number Edit ===================
+  // =================== Inline Tracking Number ===================
 
   onTrackingChange(order: OrderListItem, value: string): void {
+    if (!this.canEditTracking) return;
     const newVal = (value ?? '').trim();
     const oldVal = (order.trackingNumber ?? '').trim();
     if (newVal === oldVal) return;
@@ -394,7 +485,6 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
             sizeId: full.sizeId,
             sizeChartId: full.sizeChartId,
             sizeDetails: full.sizeDetails,
-            daysForMaking: full.daysForMaking,
             priorityId: full.priorityId,
             consigneeName: full.consigneeName,
             consigneeAddress: full.consigneeAddress,
@@ -406,9 +496,7 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
           this.ordersService.updateOrder(order.id, payload)
             .pipe(takeUntil(this.destroy$))
             .subscribe({
-              next: () => {
-                order.trackingNumber = newVal || null;
-              },
+              next: () => { order.trackingNumber = newVal || null; },
               error: (error) => {
                 this.errorMsg = error?.error?.message ?? 'Unable to update tracking number.';
               }
@@ -431,7 +519,6 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   private onIncomingChatMessage(msg: IncomingChatMessage): void {
     if (msg.senderUserId === this.currentUserId) return;
     if (this.showChatModal && this.chatOrderId === msg.orderId) return;
-
     const current = this.unreadMessages.get(msg.orderId) ?? 0;
     this.unreadMessages.set(msg.orderId, current + 1);
     this.unreadMessages = new Map(this.unreadMessages);
@@ -443,19 +530,11 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));
       return Number(payload.userId ?? 0);
-    } catch {
-      return 0;
-    }
+    } catch { return 0; }
   }
 
-  getUnreadCount(orderId: number): number {
-    return this.unreadMessages.get(orderId) ?? 0;
-  }
-
-  hasUnread(orderId: number): boolean {
-    return this.getUnreadCount(orderId) > 0;
-  }
-
+  getUnreadCount(orderId: number): number { return this.unreadMessages.get(orderId) ?? 0; }
+  hasUnread(orderId: number): boolean { return this.getUnreadCount(orderId) > 0; }
   get totalUnread(): number {
     let total = 0;
     this.unreadMessages.forEach(v => total += v);
@@ -471,8 +550,8 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   }
 
   private silentRefresh(): void {
-    if (this.silentRefreshBusy || this.bulkStatusSaving || this.selectedOrderIds.size > 0) return;
-    if (this.showDeleteModal || this.showImageModal || this.showChatModal) return;
+    if (this.silentRefreshBusy || this.bulkBusy || this.selectedOrderIds.size > 0) return;
+    if (this.showDeleteModal || this.showImageModal || this.showChatModal || this.showAddOrderModal || this.showAssignModal) return;
     if (this.loading) return;
     if (this.openStatusId !== null) return;
     if (this.statusSavingId !== null) return;
@@ -483,7 +562,7 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: response => {
-          if (this.bulkStatusSaving || this.selectedOrderIds.size > 0 || this.loading) {
+          if (this.bulkBusy || this.selectedOrderIds.size > 0 || this.loading) {
             this.silentRefreshBusy = false;
             return;
           }
@@ -492,9 +571,7 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
           this.silentRefreshBusy = false;
           setTimeout(() => this.updateHorizontalScrollState(), 0);
         },
-        error: () => {
-          this.silentRefreshBusy = false;
-        }
+        error: () => { this.silentRefreshBusy = false; }
       });
   }
 
@@ -549,7 +626,7 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   }
 
   fetchOrders(preserveSelection = false): void {
-    if (this.bulkStatusSaving) return;
+    if (this.bulkBusy) return;
     if (!preserveSelection) this.clearOrderSelection();
     this.loading = true;
     this.errorMsg = '';
@@ -561,6 +638,11 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
           this.orders = response.items;
           this.selectedOrderIds = new Set(this.orders.filter(order => this.selectedOrderIds.has(order.id)).map(order => order.id));
           this.totalCount = response.totalCount;
+          if (this.currentPage > this.totalPages) {
+            this.currentPage = Math.max(1, this.totalPages);
+            this.fetchOrders(preserveSelection);
+            return;
+          }
           this.loading = false;
           setTimeout(() => this.updateHorizontalScrollState(), 0);
         },
@@ -589,7 +671,6 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
     const vals = this.isCustomer
       ? [this.statusFilter, this.dateFrom, this.dateTo]
       : [this.statusFilter, this.priorityFilter, this.genderFilter, this.materialFilter, this.customerFilter, this.dateFrom, this.dateTo];
-
     return vals.filter(v => v !== null && v !== undefined && v !== '').length + (this.sourceFilter ? 1 : 0);
   }
 
@@ -686,10 +767,6 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
     return this.columnOptions.filter(column => this.isColumnVisible(column.key)).length;
   }
 
-  // =================== Navigation / Actions ===================
-
-  addOrder(): void { this.router.navigate(['/dashboard/orders/add']); }
-
   viewOrder(order: OrderListItem): void {
     this.router.navigate(['/dashboard/orders', order.id]);
   }
@@ -701,7 +778,8 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
 
   openDeleteModal(order: OrderListItem, event: Event): void {
     event.stopPropagation();
-    if (this.deletingOrder || this.bulkStatusSaving) return;
+    if (this.deletingOrder || this.bulkBusy) return;
+    this.bulkDeleteOrderIds = [];
     this.deleteOrderItem = order;
     this.deleteError = '';
     this.showDeleteModal = true;
@@ -710,11 +788,13 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   closeDeleteModal(): void {
     if (this.deletingOrder) return;
     this.showDeleteModal = false;
+    this.bulkDeleteOrderIds = [];
     this.deleteOrderItem = null;
     this.deleteError = '';
   }
 
   confirmDeleteOrder(): void {
+    if (this.bulkDeleteOrderIds.length) { this.confirmBulkDeleteOrders(); return; }
     if (!this.deleteOrderItem || this.deletingOrder) return;
 
     this.deletingOrder = true;
@@ -782,7 +862,6 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
 
   openChatForOrder(order: OrderListItem, event: Event): void {
     event.stopPropagation();
-
     if (!order.id) return;
 
     if (this.unreadMessages.has(order.id)) {
@@ -806,7 +885,7 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: Event): void {
     const target = event.target as HTMLElement;
-    if (this.showDeleteModal || this.showImageModal || this.showChatModal) return;
+    if (this.showDeleteModal || this.showImageModal || this.showChatModal || this.showAddOrderModal || this.showAssignModal) return;
 
     if (!target.closest('[data-bulk-status-menu]')) this.showBulkStatusMenu = false;
     if (!target.closest('[data-column-menu]')) this.showColumnMenu = false;

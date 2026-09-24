@@ -141,8 +141,8 @@
             </div>
 
             <div class="min-w-0">
-              <p class="text-xs font-medium uppercase tracking-wide text-gray-400">Amount</p>
-              <p class="mt-1 text-sm font-semibold text-gray-900">{{ order.amount !== null ? order.amount : '—' }}</p>
+              <p class="text-xs font-medium uppercase tracking-wide text-gray-400">Amount (PKR)</p>
+              <p class="mt-1 text-sm font-semibold text-gray-900">{{ order.amount != null ? (order.amount | currency:'PKR':'code':'1.0-0') : '—' }}</p>
             </div>
 
             <div class="min-w-0 sm:col-span-2 md:col-span-1">

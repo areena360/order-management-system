@@ -43,7 +43,6 @@
 
     <!-- Toolbar -->
     <div class="bg-white rounded-xl shadow-sm ring-1 ring-gray-200 p-4 mb-4">
-
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
 
         <!-- Search -->
@@ -73,7 +72,6 @@
               <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
             </svg>
           </button>
-
           <div *ngIf="openFilterDropdown === 'sourceFilter'"
             class="absolute left-0 z-30 mt-2 w-full min-w-[180px] rounded-lg bg-white shadow-lg ring-1 ring-gray-200 p-1.5">
             <button type="button" (click)="selectFilterDropdown('sourceFilter', '')"
@@ -102,7 +100,6 @@
               <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
             </svg>
           </button>
-
           <div *ngIf="openFilterDropdown === 'statusFilter'"
             class="absolute left-0 z-30 mt-2 w-full min-w-[200px] max-h-56 overflow-y-auto rounded-lg bg-white shadow-lg ring-1 ring-gray-200 p-1.5">
             <button type="button" (click)="selectFilterDropdown('statusFilter', null)"
@@ -131,7 +128,6 @@
               <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
             </svg>
           </button>
-
           <div *ngIf="openFilterDropdown === 'priorityFilter'"
             class="absolute left-0 z-30 mt-2 w-full min-w-[200px] max-h-56 overflow-y-auto rounded-lg bg-white shadow-lg ring-1 ring-gray-200 p-1.5">
             <button type="button" (click)="selectFilterDropdown('priorityFilter', null)"
@@ -160,7 +156,6 @@
               <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
             </svg>
           </button>
-
           <div *ngIf="openFilterDropdown === 'customerFilter'"
             class="absolute left-0 z-30 mt-2 w-full min-w-[220px] rounded-lg bg-white shadow-lg ring-1 ring-gray-200">
             <div class="p-2 border-b border-gray-100">
@@ -197,7 +192,6 @@
               <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
             </svg>
           </button>
-
           <div *ngIf="openFilterDropdown === 'genderFilter'"
             class="absolute left-0 z-30 mt-2 w-full min-w-[180px] max-h-56 overflow-y-auto rounded-lg bg-white shadow-lg ring-1 ring-gray-200 p-1.5">
             <button type="button" (click)="selectFilterDropdown('genderFilter', null)"
@@ -226,7 +220,6 @@
               <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
             </svg>
           </button>
-
           <div *ngIf="openFilterDropdown === 'materialFilter'"
             class="absolute left-0 z-30 mt-2 w-full min-w-[180px] max-h-56 overflow-y-auto rounded-lg bg-white shadow-lg ring-1 ring-gray-200 p-1.5">
             <button type="button" (click)="selectFilterDropdown('materialFilter', null)"
@@ -259,7 +252,6 @@
 
       </div>
 
-      <!-- Active filters summary -->
       <div *ngIf="activeFilterCount > 0" class="mt-3 flex items-center justify-between border-t border-gray-100 pt-3">
         <span class="text-xs text-gray-500">
           {{ activeFilterCount }} filter{{ activeFilterCount === 1 ? '' : 's' }} active
@@ -269,83 +261,104 @@
           Clear all filters
         </button>
       </div>
-
     </div>
 
     <!-- Table Card -->
     <div class="bg-white rounded-xl shadow-sm ring-1 ring-gray-200 overflow-hidden">
 
-      <!-- Top bar: Columns dropdown (left) + Scroll heading & arrows (right) -->
       <div *ngIf="!loading" class="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-4 py-2 bg-gray-50/70">
 
         <div class="flex flex-wrap items-center gap-3">
-        <!-- Left: Columns visibility dropdown -->
-        <div class="relative" data-column-menu>
-          <button type="button" (click)="toggleColumnMenu()"
-            class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500 shrink-0" fill="none"
-              viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round"
-                d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25A2.25 2.25 0 018.25 10.5H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
-            </svg>
-            <span class="truncate">Columns ({{ visibleColumnCount() }}/{{ columnOptions.length }})</span>
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-gray-400 shrink-0 transition-transform"
-              [class.rotate-180]="showColumnMenu" fill="none" viewBox="0 0 24 24" stroke-width="2"
-              stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-            </svg>
-          </button>
 
-          <div *ngIf="showColumnMenu"
-            class="absolute left-0 z-30 mt-2 w-64 rounded-lg bg-white shadow-lg ring-1 ring-gray-200 p-3">
-            <div class="flex items-center justify-between mb-2 pb-2 border-b border-gray-100">
-              <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Show columns</span>
-              <div class="flex gap-2">
-                <button type="button" (click)="resetColumns()"
-                  class="text-xs text-blue-600 hover:text-blue-800 cursor-pointer">All</button>
-                <button type="button" (click)="hideAllOptionalColumns()"
-                  class="text-xs text-gray-500 hover:text-gray-700 cursor-pointer">None</button>
-              </div>
-            </div>
-            <div class="max-h-64 overflow-y-auto space-y-1">
-              <label *ngFor="let column of columnOptions"
-                class="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer select-none">
-                <input type="checkbox" [checked]="isColumnVisible(column.key)" (change)="toggleColumn(column.key)"
-                  class="h-4 w-4 rounded border-gray-300 text-gray-800 focus:ring-gray-800 accent-gray-800 cursor-pointer" />
-                {{ column.label }}
-              </label>
-            </div>
-          </div>
-        </div>
-
-        <div class="flex flex-wrap items-center gap-2">
-          <div class="relative" data-bulk-status-menu (keydown.escape)="showBulkStatusMenu = false">
-            <button id="bulk-order-status" type="button" (click)="showBulkStatusMenu = !showBulkStatusMenu"
-              [attr.aria-expanded]="showBulkStatusMenu" aria-controls="bulk-status-options"
-              [disabled]="!canEdit || !selectedOrderIds.size || bulkStatusSaving || statusSavingId !== null"
-              class="inline-flex items-center justify-between gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
-              <span>{{ bulkStatusSaving ? 'Updating status...' : 'Update status' }}</span>
-              <svg class="h-3.5 w-3.5 text-gray-400 shrink-0 transition-transform" [class.rotate-180]="showBulkStatusMenu"
-                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <!-- Columns dropdown -->
+          <div class="relative" data-column-menu>
+            <button type="button" (click)="toggleColumnMenu()"
+              class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500 shrink-0" fill="none"
+                viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25A2.25 2.25 0 018.25 10.5H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+              </svg>
+              <span class="truncate">Columns ({{ visibleColumnCount() }}/{{ columnOptions.length }})</span>
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-gray-400 shrink-0 transition-transform"
+                [class.rotate-180]="showColumnMenu" fill="none" viewBox="0 0 24 24" stroke-width="2"
+                stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
               </svg>
             </button>
-            <div *ngIf="showBulkStatusMenu && selectedOrderIds.size && !bulkStatusSaving" id="bulk-status-options"
-              class="absolute left-0 z-30 mt-2 min-w-48 max-h-64 overflow-y-auto rounded-lg bg-white p-1.5 shadow-lg ring-1 ring-gray-200">
-              <button *ngFor="let status of statuses" type="button" (click)="updateSelectedStatuses(status.id)"
-                [disabled]="!canEdit || statusSavingId !== null"
-                class="flex w-full items-center rounded-md px-2.5 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-50 focus:bg-gray-100 focus:outline-none cursor-pointer transition-colors disabled:opacity-50">
-                {{ status.name }}
-              </button>
+
+            <div *ngIf="showColumnMenu"
+              class="absolute left-0 z-30 mt-2 w-64 rounded-lg bg-white shadow-lg ring-1 ring-gray-200 p-3">
+              <div class="flex items-center justify-between mb-2 pb-2 border-b border-gray-100">
+                <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Show columns</span>
+                <div class="flex gap-2">
+                  <button type="button" (click)="resetColumns()"
+                    class="text-xs text-blue-600 hover:text-blue-800 cursor-pointer">All</button>
+                  <button type="button" (click)="hideAllOptionalColumns()"
+                    class="text-xs text-gray-500 hover:text-gray-700 cursor-pointer">None</button>
+                </div>
+              </div>
+              <div class="max-h-64 overflow-y-auto space-y-1">
+                <label *ngFor="let column of columnOptions"
+                  class="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer select-none">
+                  <input type="checkbox" [checked]="isColumnVisible(column.key)" (change)="toggleColumn(column.key)"
+                    class="h-4 w-4 rounded border-gray-300 text-gray-800 focus:ring-gray-800 accent-gray-800 cursor-pointer" />
+                  {{ column.label }}
+                </label>
+              </div>
             </div>
           </div>
-          <span *ngIf="selectedOrderIds.size" class="text-xs text-gray-600">{{ selectedOrderIds.size }} selected on this page</span>
-          <button *ngIf="selectedOrderIds.size" type="button" (click)="clearOrderSelection()" [disabled]="bulkStatusSaving"
-            class="text-xs text-gray-600 underline cursor-pointer disabled:opacity-50">Clear</button>
-        </div>
+
+          <!-- Bulk actions -->
+          <div class="flex flex-wrap items-center gap-2">
+
+            <!-- Customer: Assign button -->
+            <ng-container *ngIf="isCustomer">
+              <button type="button" (click)="openAssignModal()"
+                [disabled]="!selectedAssignableIds.length || bulkBusy || loading"
+                class="inline-flex items-center gap-2 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-700 hover:bg-emerald-100 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                </svg>
+                {{ assigningOrders ? 'Assigning...' : 'Assign Selected' }}
+              </button>
+            </ng-container>
+
+            <!-- Shared selection: status updates for staff, deletion for all permitted users -->
+            <ng-container>
+              <div *ngIf="!isCustomer" class="relative" data-bulk-status-menu (keydown.escape)="showBulkStatusMenu = false">
+                <button id="bulk-order-status" type="button" (click)="showBulkStatusMenu = !showBulkStatusMenu"
+                  [attr.aria-expanded]="showBulkStatusMenu" aria-controls="bulk-status-options"
+                  [disabled]="!canEdit || !selectedOrderIds.size || bulkBusy || statusSavingId !== null"
+                  class="inline-flex items-center justify-between gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                  <span>{{ bulkStatusSaving ? 'Updating status...' : 'Update status' }}</span>
+                  <svg class="h-3.5 w-3.5 text-gray-400 shrink-0 transition-transform" [class.rotate-180]="showBulkStatusMenu"
+                    viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                  </svg>
+                </button>
+                <div *ngIf="showBulkStatusMenu && selectedOrderIds.size && !bulkBusy" id="bulk-status-options"
+                  class="absolute left-0 z-30 mt-2 min-w-48 max-h-64 overflow-y-auto rounded-lg bg-white p-1.5 shadow-lg ring-1 ring-gray-200">
+                  <button *ngFor="let status of statuses" type="button" (click)="updateSelectedStatuses(status.id)"
+                    [disabled]="!canEdit || statusSavingId !== null"
+                    class="flex w-full items-center rounded-md px-2.5 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-50 focus:bg-gray-100 focus:outline-none cursor-pointer transition-colors disabled:opacity-50">
+                    {{ status.name }}
+                  </button>
+                </div>
+              </div>
+              <button type="button" (click)="openBulkDeleteModal()"
+                [disabled]="!canDelete || !selectedOrderIds.size || bulkBusy || statusSavingId !== null"
+                class="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-100 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                {{ deletingOrder && bulkDeleteOrderIds.length ? 'Deleting...' : 'Delete' }}
+              </button>
+              <span *ngIf="selectedOrderIds.size" class="text-xs text-gray-600">{{ selectedOrderIds.size }} selected on this page</span>
+              <button *ngIf="selectedOrderIds.size" type="button" (click)="clearOrderSelection()" [disabled]="bulkBusy"
+                class="text-xs text-gray-600 underline cursor-pointer disabled:opacity-50">Clear</button>
+            </ng-container>
+
+          </div>
         </div>
 
-        <!-- Right: heading + arrow buttons -->
         <div class="flex items-center gap-3">
           <span class="text-xs font-medium text-gray-500 hidden sm:inline">Scroll table horizontally</span>
           <div class="flex gap-1">
@@ -374,17 +387,19 @@
 
       <div #tableScroll *ngIf="!loading" class="overflow-x-auto">
 
-        <table class="min-w-[1260px] w-full divide-y divide-gray-200 text-sm">
+        <table class="min-w-[1400px] w-full divide-y divide-gray-200 text-sm">
 
-          <!-- Dark themed header -->
           <thead class="bg-gray-800">
             <tr>
+              <!-- Bulk select checkbox -->
               <th class="w-12 px-4 py-3 text-left">
                 <input type="checkbox" aria-label="Select all orders on this page" title="Select all orders on this page"
                   [checked]="allPageOrdersSelected" [indeterminate]="somePageOrdersSelected"
-                  [disabled]="!canEdit || !orders.length || bulkStatusSaving || statusSavingId !== null"
+                  [disabled]="(!isCustomer && !canEdit && !canDelete) || !orders.length || bulkBusy || statusSavingId !== null"
                   (change)="togglePageSelection()" class="h-4 w-4 rounded accent-gray-600 cursor-pointer disabled:cursor-not-allowed" />
               </th>
+
+
               <th class="px-4 py-3 text-left text-xs font-semibold text-gray-100 uppercase tracking-wider">
                 Image
               </th>
@@ -403,6 +418,12 @@
 
               <th class="px-4 py-3 text-left text-xs font-semibold text-gray-100 uppercase tracking-wider">
                 Product
+              </th>
+
+              <th *ngIf="isColumnVisible('amount')" (click)="sort('Amount')"
+                class="px-4 py-3 text-right text-xs font-semibold text-gray-100 uppercase tracking-wider cursor-pointer select-none hover:text-white">
+                Amount (PKR)
+                <span class="ml-1">{{ sortIcon('Amount') }}</span>
               </th>
 
               <th *ngIf="isColumnVisible('customerOrderNumber')"
@@ -452,7 +473,6 @@
 
           <tbody class="divide-y divide-gray-200">
 
-            <!-- Loading skeleton -->
             <ng-container *ngIf="loading">
               <tr *ngFor="let row of [1,2,3,4,5]">
                 <td [attr.colspan]="(isCustomer ? 6 : 7) + visibleColumnCount()" class="px-4 py-4">
@@ -461,7 +481,6 @@
               </tr>
             </ng-container>
 
-            <!-- Empty -->
             <tr *ngIf="!loading && orders.length === 0">
               <td [attr.colspan]="(isCustomer ? 6 : 7) + visibleColumnCount()"
                 class="px-6 py-10 text-center text-sm text-gray-400">
@@ -469,20 +488,19 @@
               </td>
             </tr>
 
-            <!-- Orders — alternating gray / white rows -->
             <tr *ngFor="let order of orders; let i = index" (click)="viewOrder(order)"
               class="cursor-pointer"
               [ngClass]="rowColorClass(i)">
 
               <td class="px-4 py-4" (click)="$event.stopPropagation()">
                 <input type="checkbox" [attr.aria-label]="'Select order ' + order.manufacturerOrderNumber"
-                  [checked]="selectedOrderIds.has(order.id)" [disabled]="!canEdit || bulkStatusSaving || statusSavingId !== null"
+                  [checked]="selectedOrderIds.has(order.id)" [disabled]="(!isCustomer && !canEdit && !canDelete) || bulkBusy || statusSavingId !== null"
                   (change)="toggleOrderSelection(order)" class="h-4 w-4 rounded accent-gray-800 cursor-pointer disabled:cursor-not-allowed" />
               </td>
 
+
               <!-- Image thumbnail -->
               <td class="px-4 py-4 whitespace-nowrap" (click)="$event.stopPropagation()">
-
                 <button *ngIf="order.images?.length" type="button" (click)="openImageModal(order, $event)"
                   class="group relative h-16 w-16 overflow-hidden rounded-lg ring-1 ring-gray-200 cursor-pointer">
                   <img [src]="getImageUrl(order.images?.[0]?.imageURL)" [alt]="order.customerProductTitle"
@@ -502,45 +520,51 @@
                 </div>
               </td>
 
-              <td class="px-4 py-4 whitespace-nowrap font-medium text-gray-900">
+              <!-- Order number + ASSIGNED badge -->
+              <td class="px-4 py-4 align-top font-medium text-gray-900 break-words">
                 {{ order.manufacturerOrderNumber }}
+                <span *ngIf="isAssigned(order)"
+                  class="ml-1 inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-600/20">
+                  ASSIGNED
+                </span>
                 <span *ngIf="order.source === 'WooCommerce' || order.source === 'Shopify'" class="block text-xs text-purple-700">{{order.source}}</span>
               </td>
 
-              <td *ngIf="!isCustomer" class="px-4 py-4 whitespace-nowrap font-medium text-gray-900">
+              <td *ngIf="!isCustomer" class="px-4 py-4 align-top font-medium text-gray-900 break-words">
                 {{ order.customerName }}
               </td>
 
-              <td class="max-w-[220px] px-4 py-4">
-                <div class="truncate font-medium text-gray-900" [title]="order.customerProductTitle">
+              <!-- Product — wraps, never cut off -->
+              <td class="px-4 py-4 align-top min-w-[180px] max-w-[280px]">
+                <div class="font-medium text-gray-900 whitespace-normal break-words" [title]="order.customerProductTitle">
                   {{ order.customerProductTitle }}
-                </div>
-                <div *ngIf="order.amount !== null" class="mt-0.5 text-xs text-gray-600">
-                  Amount: {{ order.amount }}
                 </div>
               </td>
 
-              <td *ngIf="isColumnVisible('customerOrderNumber')" class="px-4 py-4 whitespace-nowrap text-gray-600">
+              <td *ngIf="isColumnVisible('amount')" class="px-4 py-4 align-top text-right whitespace-nowrap tabular-nums text-gray-700">
+                {{ order.amount != null ? (order.amount | currency:'PKR':'code':'1.0-0') : '—' }}
+              </td>
+
+              <td *ngIf="isColumnVisible('customerOrderNumber')" class="px-4 py-4 align-top text-gray-600 break-words">
                 {{ order.customerOrderNumber || '—' }}
               </td>
 
-              <td *ngIf="isColumnVisible('manufacturerProductTitle')" class="max-w-[200px] px-4 py-4">
-                <span class="block truncate text-gray-600" [title]="order.manufacturerProductTitle || ''">
+              <td *ngIf="isColumnVisible('manufacturerProductTitle')"
+                class="px-4 py-4 align-top min-w-[180px] max-w-[260px]">
+                <span class="block text-gray-600 whitespace-normal break-words" [title]="order.manufacturerProductTitle || ''">
                   {{ order.manufacturerProductTitle || '—' }}
                 </span>
               </td>
 
-              <!-- STATUS — inline dropdown -->
+              <!-- STATUS -->
               <td class="px-4 py-4 whitespace-nowrap" (click)="$event.stopPropagation()">
                 <div class="relative inline-block" data-order-status-menu>
-                  <button type="button"
-                    (click)="toggleStatusMenu(order.id)"
-                    [disabled]="!canEdit || bulkStatusSaving || statusSavingId !== null"
+                  <button type="button" (click)="toggleStatusMenu(order.id)"
+                    [disabled]="!canEdit || bulkBusy || statusSavingId !== null"
                     class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset transition-all cursor-pointer hover:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                     [ngClass]="statusBadgeClass(order.status)">
                     {{ order.status }}
-                    <svg xmlns="http://www.w3.org/2000/svg"
-                      class="h-3 w-3 transition-transform"
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform"
                       [class.rotate-180]="openStatusId === order.id"
                       fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6" />
@@ -549,16 +573,13 @@
 
                   <div *ngIf="openStatusId === order.id"
                     class="absolute left-0 top-full z-30 mt-2 min-w-44 max-h-64 overflow-y-auto rounded-lg bg-white p-1.5 shadow-lg ring-1 ring-gray-200">
-                    <button *ngFor="let status of statuses"
-                      type="button"
-                      (click)="changeOrderStatus(order, status.id)"
+                    <button *ngFor="let status of statuses" type="button" (click)="changeOrderStatus(order, status.id)"
                       [disabled]="bulkStatusSaving || statusSavingId !== null"
                       class="flex w-full items-center justify-between gap-3 rounded-md px-2.5 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-50 cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       [class.bg-gray-100]="isCurrentStatus(order, status)"
                       [class.font-medium]="isCurrentStatus(order, status)">
                       <span>{{ status.name }}</span>
-                      <svg *ngIf="isCurrentStatus(order, status)"
-                        xmlns="http://www.w3.org/2000/svg"
+                      <svg *ngIf="isCurrentStatus(order, status)" xmlns="http://www.w3.org/2000/svg"
                         class="h-3.5 w-3.5 text-gray-600 shrink-0"
                         fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="m5 12 4 4L19 7" />
@@ -577,30 +598,31 @@
                 <span *ngIf="!order.priority" class="text-gray-400">—</span>
               </td>
 
+              <!-- Days — auto-computed from assignedDate -->
               <td *ngIf="isColumnVisible('daysForMaking')" class="px-4 py-4 whitespace-nowrap text-gray-600">
-                {{ order.daysForMaking }}
+                <span *ngIf="isAssigned(order)" class="inline-flex items-center gap-1 font-medium text-gray-900">
+                  {{ getAssignedDays(order) }} <span class="text-xs font-normal text-gray-500">days</span>
+                </span>
+                <span *ngIf="!isAssigned(order)" class="text-xs text-gray-400 italic">Not assigned</span>
               </td>
 
-              <!-- TRACKING — auto-save inline input (no save button) -->
               <td *ngIf="isColumnVisible('trackingNumber')" class="px-4 py-4" (click)="$event.stopPropagation()">
-                <input #trackingInput type="text"
+                <input #trackingInput type="text" [disabled]="!canEditTracking"
                   [value]="order.trackingNumber || ''"
                   (keydown.enter)="$event.preventDefault(); trackingInput.blur()"
                   (blur)="onTrackingChange(order, trackingInput.value)"
                   placeholder="Add tracking"
                   maxlength="200"
-                  class="w-44 rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-700 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-gray-500 focus:border-gray-500" />
+                  class="w-44 rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-700 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-gray-500 focus:border-gray-500 disabled:bg-gray-100 disabled:cursor-not-allowed" />
               </td>
 
               <td *ngIf="isColumnVisible('createdDate')" class="px-4 py-4 whitespace-nowrap text-gray-600">
                 {{ order.createdDate | date:'MMM d, y' }}
               </td>
 
-              <!-- Actions — no View button -->
               <td class="px-4 py-4 whitespace-nowrap text-right" (click)="$event.stopPropagation()">
                 <div class="flex items-center justify-end gap-2">
 
-                  <!-- Chat -->
                   <button type="button" (click)="openChatForOrder(order, $event)"
                     class="relative inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer"
                     [ngClass]="hasUnread(order.id)
@@ -621,13 +643,11 @@
                     </span>
                   </button>
 
-                  <!-- Edit -->
                   <button *ngIf="canEdit" type="button" (click)="editOrder(order, $event)"
                     class="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100 hover:border-blue-300 transition-colors cursor-pointer">
                     Edit
                   </button>
 
-                  <!-- Delete -->
                   <button *ngIf="canDelete" type="button" [disabled]="deletingOrderId === order.id"
                     (click)="openDeleteModal(order, $event)"
                     class="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-100 hover:border-red-300 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
@@ -659,7 +679,6 @@
             orders
           </p>
 
-          <!-- Rows per page -->
           <div class="relative" data-pagesize-menu>
             <button type="button" (click)="togglePageSizeMenu()"
               class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer">
@@ -704,16 +723,15 @@
       <!-- Delete Order Modal -->
       <div *ngIf="showDeleteModal" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 p-4"
         (click)="closeDeleteModal()">
-
         <div class="bg-white rounded-xl shadow-xl ring-1 ring-gray-200 w-full max-w-sm p-6"
           (click)="$event.stopPropagation()">
 
-          <h2 class="text-lg font-semibold text-gray-900 mb-2">Delete Order</h2>
+          <h2 class="text-lg font-semibold text-gray-900 mb-2">{{ bulkDeleteOrderIds.length ? 'Delete Selected Orders' : 'Delete Order' }}</h2>
 
           <p class="text-sm text-gray-500 mb-6">
             Are you sure you want to delete
-            <span class="font-medium text-gray-700">{{ deleteOrderItem?.manufacturerOrderNumber }}</span>?
-            This order will be removed from the active order list.
+            <span class="font-medium text-gray-700">{{ bulkDeleteOrderIds.length ? bulkDeleteOrderIds.length + ' selected orders' : deleteOrderItem?.manufacturerOrderNumber }}</span>?
+            {{ bulkDeleteOrderIds.length ? 'These orders' : 'This order' }} will be removed from the active order list.
           </p>
 
           <div *ngIf="deleteError" class="mb-4 rounded-lg bg-red-50 ring-1 ring-red-200 px-3 py-2 text-sm text-red-700">
@@ -725,7 +743,6 @@
               class="px-4 py-2 text-sm rounded-lg border border-gray-300 cursor-pointer text-gray-700 hover:bg-gray-50 disabled:opacity-50">
               Cancel
             </button>
-
             <button type="button" (click)="confirmDeleteOrder()" [disabled]="deletingOrder"
               class="px-4 py-2 text-sm rounded-lg bg-red-500 cursor-pointer text-white hover:bg-red-800 disabled:opacity-50">
               {{ deletingOrder ? 'Deleting...' : 'Delete' }}
@@ -735,10 +752,49 @@
         </div>
       </div>
 
+      <!-- Assign Confirmation Modal (customer) -->
+      <div *ngIf="showAssignModal" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 p-4"
+        (click)="closeAssignModal()">
+        <div class="bg-white rounded-xl shadow-xl ring-1 ring-gray-200 w-full max-w-sm p-6"
+          (click)="$event.stopPropagation()">
+
+          <div class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50">
+            <svg class="h-6 w-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+            </svg>
+          </div>
+
+          <h2 class="text-center text-lg font-semibold text-gray-900 mb-1">Assign Orders</h2>
+          <p class="text-center text-sm text-gray-500 mb-6">
+            Are you sure you want to assign
+            <span class="font-medium text-gray-700">{{ selectedAssignableIds.length }} order{{ selectedAssignableIds.length === 1 ? '' : 's' }}</span>?
+            The days counter will start from today for each selected order.
+          </p>
+
+          <div *ngIf="assignError" class="mb-4 rounded-lg bg-red-50 ring-1 ring-red-200 px-3 py-2 text-sm text-red-700">
+            {{ assignError }}
+          </div>
+
+          <div class="flex gap-2">
+            <button type="button" (click)="closeAssignModal()" [disabled]="assigningOrders"
+              class="flex-1 px-4 py-2 text-sm rounded-lg border border-gray-300 cursor-pointer text-gray-700 hover:bg-gray-50 disabled:opacity-50">
+              Cancel
+            </button>
+            <button type="button" (click)="confirmAssign()" [disabled]="assigningOrders"
+              class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 text-sm rounded-lg bg-emerald-600 cursor-pointer text-white hover:bg-emerald-700 disabled:opacity-50">
+              <svg *ngIf="assigningOrders" class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" opacity=".25" />
+                <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="2" />
+              </svg>
+              {{ assigningOrders ? 'Assigning...' : 'Assign' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- Image Gallery Modal -->
       <div *ngIf="showImageModal" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/70 p-4"
         (click)="closeImageModal()">
-
         <div class="relative w-full max-w-2xl rounded-xl bg-white shadow-xl ring-1 ring-gray-200"
           (click)="$event.stopPropagation()">
 
@@ -791,6 +847,11 @@
     </div>
   </div>
 </div>
+
+<!-- Add Order Modal -->
+<app-order-form *ngIf="showAddOrderModal" [asModal]="true"
+  (closed)="closeAddOrderModal()" (saved)="onOrderSaved()">
+</app-order-form>
 
 <!-- Per-order Chat Modal -->
 <app-chat-modal *ngIf="showChatModal && chatOrderId" [orderId]="chatOrderId" [orderNumber]="chatOrderNumber"

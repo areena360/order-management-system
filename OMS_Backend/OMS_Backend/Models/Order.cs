@@ -1,4 +1,4 @@
-﻿public class Order : BaseEntity
+public class Order : BaseEntity
 {
     public string CustomerProductTitle { get; set; }
     public string? ManufacturerProductTitle { get; set; }
@@ -21,6 +21,10 @@
     public string? NotesByManufacturer { get; set; }
     public int DaysForMaking { get; set; }
     public int? PriorityId { get; set; }
+
+    // ===== Assignment (NEW) =====
+    public bool IsAssigned { get; set; } = false;
+    public DateTime? AssignedDate { get; set; }
 
     public User Customer { get; set; }
     public ICollection<OrderImage> OrderImages { get; set; }

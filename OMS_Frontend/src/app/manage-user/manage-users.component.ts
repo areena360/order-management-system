@@ -5,6 +5,7 @@ import {
 import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { FormsModule, NgForm } from '@angular/forms';
+import { catchError, from, map, mergeMap, of, toArray } from 'rxjs';
 import { FooterComponent } from "../footer/footer.component";
 import { AuthService } from '../auth/auth.service';
 import { PermissionService } from '../auth/permission.service';
@@ -47,10 +48,7 @@ export interface UserForm {
   password?: string;
 }
 
-interface ColumnOption {
-  key: string;
-  label: string;
-}
+interface ColumnOption { key: string; label: string; }
 
 @Component({
   selector: 'app-manage-users',
@@ -62,7 +60,6 @@ export class ManageUsersComponent implements OnInit, OnDestroy {
 
   private readonly cdr = inject(ChangeDetectorRef);
 
-  // ---- Scroll container reference (setter reattaches ResizeObserver) ----
   @ViewChild('tableScroll')
   set tableScrollRef(ref: ElementRef<HTMLDivElement> | undefined) {
     this.tableScrollEl = ref;
@@ -131,9 +128,7 @@ export class ManageUsersComponent implements OnInit, OnDestroy {
   showColumnMenu = false;
   showRoleMenu = false;
 
-  toggleRoleMenu(): void {
-    this.showRoleMenu = !this.showRoleMenu;
-  }
+  toggleRoleMenu(): void { this.showRoleMenu = !this.showRoleMenu; }
 
   selectRole(r: string): void {
     this.roleFilter = r;
@@ -145,13 +140,8 @@ export class ManageUsersComponent implements OnInit, OnDestroy {
   showAddPassword = false;
   showPageSizeMenu = false;
 
-  toggleFormRoleMenu(): void {
-    this.showFormRoleMenu = !this.showFormRoleMenu;
-  }
-
-  toggleAddPassword(): void {
-    this.showAddPassword = !this.showAddPassword;
-  }
+  toggleFormRoleMenu(): void { this.showFormRoleMenu = !this.showFormRoleMenu; }
+  toggleAddPassword(): void { this.showAddPassword = !this.showAddPassword; }
 
   selectFormRole(id: number): void {
     this.form.roleId = id;
@@ -164,17 +154,11 @@ export class ManageUsersComponent implements OnInit, OnDestroy {
 
   toggleColumn(key: string): void {
     this.visibleColumns[key] = !this.visibleColumns[key];
-    // Column visibility changed → overflow may have changed
     setTimeout(() => this.updateHorizontalScrollState(), 0);
   }
 
-  isColumnVisible(key: string): boolean {
-    return !!this.visibleColumns[key];
-  }
-
-  toggleColumnMenu(): void {
-    this.showColumnMenu = !this.showColumnMenu;
-  }
+  isColumnVisible(key: string): boolean { return !!this.visibleColumns[key]; }
+  toggleColumnMenu(): void { this.showColumnMenu = !this.showColumnMenu; }
 
   resetColumns(): void {
     this.columnOptions.forEach((c) => (this.visibleColumns[c.key] = true));
@@ -190,9 +174,7 @@ export class ManageUsersComponent implements OnInit, OnDestroy {
     return Object.values(this.visibleColumns).filter(Boolean).length;
   }
 
-  togglePageSizeMenu(): void {
-    this.showPageSizeMenu = !this.showPageSizeMenu;
-  }
+  togglePageSizeMenu(): void { this.showPageSizeMenu = !this.showPageSizeMenu; }
 
   selectPageSize(size: number): void {
     this.pageSize = size;
@@ -201,27 +183,181 @@ export class ManageUsersComponent implements OnInit, OnDestroy {
     setTimeout(() => this.updateHorizontalScrollState(), 0);
   }
 
+  // =================== Bulk selection ===================
+
+  selectedUserIds = new Set<number>();
+  showBulkRoleMenu = false;
+  bulkRoleSaving = false;
+  bulkDeleteUserIds: number[] = [];
+  bulkStatusMessage = '';
+  bulkStatusHasErrors = false;
+
+  get bulkBusy(): boolean { return this.bulkRoleSaving || this.saving; }
+
+  get allPageUsersSelected(): boolean {
+    const selectable = this.paginatedUsers.filter(u => !this.isRowSuperAdmin(u));
+    return selectable.length > 0 && selectable.every(u => this.selectedUserIds.has(u.id));
+  }
+
+  get somePageUsersSelected(): boolean {
+    const selectable = this.paginatedUsers.filter(u => !this.isRowSuperAdmin(u));
+    return selectable.some(u => this.selectedUserIds.has(u.id)) && !this.allPageUsersSelected;
+  }
+
+  isUserSelectable(user: AppUser): boolean {
+    if (this.isRowSuperAdmin(user)) return false;
+    if ((!this.canEdit && !this.canDelete) || this.bulkBusy) return false;
+    return true;
+  }
+
+  toggleUserSelection(user: AppUser): void {
+    if (!this.isUserSelectable(user)) return;
+    if (this.selectedUserIds.has(user.id)) this.selectedUserIds.delete(user.id);
+    else this.selectedUserIds.add(user.id);
+    this.bulkStatusMessage = '';
+  }
+
+  togglePageSelection(): void {
+    if ((!this.canEdit && !this.canDelete) || this.bulkBusy || this.loading) return;
+    if (this.allPageUsersSelected) {
+      this.selectedUserIds.clear();
+    } else {
+      this.paginatedUsers.forEach(u => {
+        if (!this.isRowSuperAdmin(u)) this.selectedUserIds.add(u.id);
+      });
+      // trigger change detection for the Set
+      this.selectedUserIds = new Set(this.selectedUserIds);
+    }
+    this.bulkStatusMessage = '';
+  }
+
+  clearUserSelection(): void {
+    if (this.bulkBusy) return;
+    this.selectedUserIds.clear();
+    this.selectedUserIds = new Set();
+    this.showBulkRoleMenu = false;
+    this.bulkStatusMessage = '';
+  }
+
+  updateSelectedRoles(roleId: number): void {
+    this.showBulkRoleMenu = false;
+    if (!this.canEdit || this.bulkBusy || this.loading) return;
+
+    const role = this.roleOptions.find(r => r.id === roleId);
+    if (!role) return;
+
+    const selected = this.filteredUsers.filter(u =>
+      this.selectedUserIds.has(u.id) && !this.isRowSuperAdmin(u) && !u.isDeleted
+    );
+
+    if (!selected.length) return;
+
+    const changed = selected.filter(u => u.roleId !== roleId);
+
+    this.bulkStatusMessage = '';
+    this.bulkStatusHasErrors = false;
+
+    if (!changed.length) {
+      this.bulkStatusMessage = `All ${selected.length} selected users already have role ${role.name}.`;
+      this.clearUserSelection();
+      return;
+    }
+
+    this.bulkRoleSaving = true;
+
+    from(changed).pipe(
+      mergeMap(user => {
+        const payload: UserForm = {
+          id: user.id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          firstContact: user.firstContact,
+          secondContact: user.secondContact,
+          homeAddress: user.homeAddress,
+          officeAddress: user.officeAddress,
+          websiteUrl: user.websiteUrl,
+          roleId,
+          isActive: user.isActive
+        };
+        return this.http.put(`${this.apiUrl}/${user.id}`, payload).pipe(
+          map(() => ({ id: user.id, success: true })),
+          catchError(() => of({ id: user.id, success: false }))
+        );
+      }, 4),
+      toArray()
+    ).subscribe(results => {
+      const failed = results.filter(r => !r.success);
+      const updated = results.length - failed.length;
+
+      this.selectedUserIds = new Set(failed.map(r => r.id));
+      this.bulkRoleSaving = false;
+      this.bulkStatusHasErrors = failed.length > 0;
+      this.bulkStatusMessage = `${updated} user(s) updated to role ${role.name}.`;
+
+      const unchanged = selected.length - changed.length;
+      if (unchanged) this.bulkStatusMessage += ` ${unchanged} already had this role.`;
+      if (failed.length) this.bulkStatusMessage += ` ${failed.length} failed; remaining failed users are selected for retry.`;
+
+      this.fetchUsers();
+    });
+  }
+
+  openBulkDeleteModal(): void {
+    if (!this.canDelete || this.bulkBusy || this.loading) return;
+
+    this.bulkDeleteUserIds = this.filteredUsers
+      .filter(u => this.selectedUserIds.has(u.id) && !this.isRowSuperAdmin(u) && !u.isDeleted)
+      .map(u => u.id);
+
+    if (!this.bulkDeleteUserIds.length) return;
+
+    this.selectedUser = null;
+    this.showBulkRoleMenu = false;
+    this.showDeleteModal = true;
+  }
+
+  private confirmBulkDeleteUsers(): void {
+    if (!this.canDelete || this.bulkBusy || !this.bulkDeleteUserIds.length) return;
+
+    this.saving = true;
+
+    from(this.bulkDeleteUserIds).pipe(
+      mergeMap(id => this.http.delete(`${this.apiUrl}/${id}`).pipe(
+        map(() => ({ id, success: true })),
+        catchError(() => of({ id, success: false }))
+      ), 4),
+      toArray()
+    ).subscribe(results => {
+      const failed = results.filter(r => !r.success);
+      const deleted = results.length - failed.length;
+
+      this.selectedUserIds = new Set(failed.map(r => r.id));
+      this.bulkStatusHasErrors = failed.length > 0;
+      this.bulkStatusMessage = `${deleted} user(s) moved to Deleted.`;
+      if (failed.length) this.bulkStatusMessage += ` ${failed.length} failed; remaining failed users are selected for retry.`;
+
+      this.saving = false;
+      this.showDeleteModal = false;
+      this.bulkDeleteUserIds = [];
+      this.fetchUsers();
+    });
+  }
+
   // =================== Horizontal overflow detection ===================
 
   private setupTableResizeObserver(): void {
     this.tableResizeObserver?.disconnect();
     const el = this.tableScrollEl?.nativeElement;
-
-    if (!el) {
-      this.hasHorizontalScroll = false;
-      return;
-    }
-
+    if (!el) { this.hasHorizontalScroll = false; return; }
     this.tableResizeObserver = new ResizeObserver(() => this.updateHorizontalScrollState());
     this.tableResizeObserver.observe(el);
-
     setTimeout(() => this.updateHorizontalScrollState(), 0);
   }
 
   private updateHorizontalScrollState(): void {
     const el = this.tableScrollEl?.nativeElement;
     const hasOverflow = !!el && el.scrollWidth > el.clientWidth + 2;
-
     if (hasOverflow !== this.hasHorizontalScroll) {
       this.hasHorizontalScroll = hasOverflow;
       this.cdr.detectChanges();
@@ -229,21 +365,14 @@ export class ManageUsersComponent implements OnInit, OnDestroy {
   }
 
   @HostListener('window:resize')
-  onWindowResize(): void {
-    this.updateHorizontalScrollState();
-  }
-
-  // =================== Horizontal scroll — one click = full end ===================
+  onWindowResize(): void { this.updateHorizontalScrollState(); }
 
   scrollTable(direction: 'left' | 'right'): void {
     const el = this.tableScrollEl?.nativeElement;
     if (!el) return;
-
     const maxScroll = Math.max(0, el.scrollWidth - el.clientWidth);
     if (maxScroll === 0) return;
-
     const target = direction === 'left' ? 0 : maxScroll;
-
     el.scrollTo({ left: target, behavior: 'smooth' });
   }
 
@@ -253,6 +382,7 @@ export class ManageUsersComponent implements OnInit, OnDestroy {
     if (!target.closest('[data-approval-role-menu]')) this.showApprovalRoleMenu = false;
     if (!target.closest('[data-column-menu]')) this.showColumnMenu = false;
     if (!target.closest('[data-role-menu]')) this.showRoleMenu = false;
+    if (!target.closest('[data-bulk-role-menu]')) this.showBulkRoleMenu = false;
     if (!target.closest('[data-form-role-menu]') && !target.closest('[data-form-role-menu-edit]')) this.showFormRoleMenu = false;
     if (!target.closest('[data-user-role-menu]')) this.openUserRoleId = null;
     if (!target.closest('[data-user-status-menu]')) this.openUserStatusId = null;
@@ -275,39 +405,20 @@ export class ManageUsersComponent implements OnInit, OnDestroy {
     public perm: PermissionService
   ) {}
 
-  ngOnInit(): void {
-    this.fetchUsers();
-  }
+  ngOnInit(): void { this.fetchUsers(); }
 
-  ngOnDestroy(): void {
-    this.tableResizeObserver?.disconnect();
-  }
+  ngOnDestroy(): void { this.tableResizeObserver?.disconnect(); }
 
-  get canAdd(): boolean {
-    return this.auth.isSuperAdmin() || this.perm.canAdd('Manage Users');
-  }
-
-  get canEdit(): boolean {
-    return this.auth.isSuperAdmin() || this.perm.canEdit('Manage Users');
-  }
-
-  get canDelete(): boolean {
-    return this.auth.isSuperAdmin() || this.perm.canDelete('Manage Users');
-  }
+  get canAdd(): boolean { return this.auth.isSuperAdmin() || this.perm.canAdd('Manage Users'); }
+  get canEdit(): boolean { return this.auth.isSuperAdmin() || this.perm.canEdit('Manage Users'); }
+  get canDelete(): boolean { return this.auth.isSuperAdmin() || this.perm.canDelete('Manage Users'); }
 
   emptyForm(): UserForm {
     return {
-      firstName: '',
-      lastName: '',
-      email: '',
-      firstContact: '',
-      secondContact: '',
-      homeAddress: '',
-      officeAddress: '',
-      websiteUrl: '',
-      roleId: 4,
-      isActive: true,
-      password: ''
+      firstName: '', lastName: '', email: '',
+      firstContact: '', secondContact: '',
+      homeAddress: '', officeAddress: '', websiteUrl: '',
+      roleId: 4, isActive: true, password: ''
     };
   }
 
@@ -320,58 +431,32 @@ export class ManageUsersComponent implements OnInit, OnDestroy {
         this.roles = ['All', ...Array.from(new Set(data.map(u => u.role)))];
         this.applyFilters();
         this.loading = false;
-        // After table renders, check if horizontal scroll appeared
         setTimeout(() => this.updateHorizontalScrollState(), 0);
       },
-      error: () => {
-        this.loading = false;
-      }
+      error: () => { this.loading = false; }
     });
   }
 
   applyFilters(): void {
     let list = [...this.users];
-
-    // Super Admin is never shown in this table
     list = list.filter(u => !this.isSuperAdmin(u));
 
-    if (this.statusFilter === 'active') {
-      list = list.filter(u => !u.isDeleted);
-    } else if (this.statusFilter === 'deleted') {
-      list = list.filter(u => u.isDeleted);
-    }
+    if (this.statusFilter === 'active') list = list.filter(u => !u.isDeleted);
+    else if (this.statusFilter === 'deleted') list = list.filter(u => u.isDeleted);
 
-    if (this.roleFilter !== 'All') {
-      list = list.filter(u => u.role === this.roleFilter);
-    }
+    if (this.roleFilter !== 'All') list = list.filter(u => u.role === this.roleFilter);
 
-    // Global search: searches across all user fields, including fields
-    // that are currently hidden from the table.
     if (this.searchTerm.trim()) {
       const term = this.searchTerm.trim().toLowerCase();
-
       list = list.filter(u => {
         const searchableValues = [
-          u.id,
-          u.firstName,
-          u.lastName,
-          this.fullName(u),
-          u.firstContact,
-          u.secondContact,
-          u.email,
-          u.homeAddress,
-          u.officeAddress,
-          u.websiteUrl,
-          u.roleId,
-          u.role,
-          u.status,
+          u.id, u.firstName, u.lastName, this.fullName(u),
+          u.firstContact, u.secondContact, u.email,
+          u.homeAddress, u.officeAddress, u.websiteUrl,
+          u.roleId, u.role, u.status,
           u.isDeleted ? 'deleted' : 'not deleted',
-          u.createdDate,
-          u.createdBy,
-          u.updatedDate,
-          u.updatedBy
+          u.createdDate, u.createdBy, u.updatedDate, u.updatedBy
         ];
-
         return searchableValues.some(value =>
           String(value ?? '').toLowerCase().includes(term)
         );
@@ -392,6 +477,11 @@ export class ManageUsersComponent implements OnInit, OnDestroy {
       return (this.sortDirection === 'asc' ? result : -result) || b.id - a.id;
     });
     this.currentPage = 1;
+    // Keep only selections still visible
+    const visibleIds = new Set(this.filteredUsers.map(u => u.id));
+    this.selectedUserIds = new Set(
+      Array.from(this.selectedUserIds).filter(id => visibleIds.has(id))
+    );
     setTimeout(() => this.updateHorizontalScrollState(), 0);
   }
 
@@ -418,9 +508,7 @@ export class ManageUsersComponent implements OnInit, OnDestroy {
     if (page >= 1 && page <= this.totalPages) this.currentPage = page;
   }
 
-  onPageSizeChange(): void {
-    this.currentPage = 1;
-  }
+  onPageSizeChange(): void { this.currentPage = 1; }
 
   roleBadgeClass(role: string): string {
     const map: Record<string, string> = {
@@ -447,10 +535,7 @@ export class ManageUsersComponent implements OnInit, OnDestroy {
 
   changeUserRole(user: AppUser, roleId: number): void {
     if (!this.canEdit || user.isDeleted || user.roleId == null || this.isRowSuperAdmin(user)) return;
-    if (user.roleId === roleId) {
-      this.openUserRoleId = null;
-      return;
-    }
+    if (user.roleId === roleId) { this.openUserRoleId = null; return; }
 
     const role = this.roleOptions.find(r => r.id === roleId);
     if (!role) return;
@@ -460,16 +545,10 @@ export class ManageUsersComponent implements OnInit, OnDestroy {
 
     const payload: UserForm = {
       id: user.id,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      firstContact: user.firstContact,
-      secondContact: user.secondContact,
-      homeAddress: user.homeAddress,
-      officeAddress: user.officeAddress,
-      websiteUrl: user.websiteUrl,
-      roleId,
-      isActive: user.isActive
+      firstName: user.firstName, lastName: user.lastName, email: user.email,
+      firstContact: user.firstContact, secondContact: user.secondContact,
+      homeAddress: user.homeAddress, officeAddress: user.officeAddress,
+      websiteUrl: user.websiteUrl, roleId, isActive: user.isActive
     };
 
     this.http.put(`${this.apiUrl}/${user.id}`, payload).subscribe({
@@ -479,13 +558,10 @@ export class ManageUsersComponent implements OnInit, OnDestroy {
         this.roleSavingUserId = null;
         this.applyFilters();
       },
-      error: () => {
-        this.roleSavingUserId = null;
-      }
+      error: () => { this.roleSavingUserId = null; }
     });
   }
 
-  // ===== Status (Active/Inactive) dropdown =====
   openUserStatusId: number | null = null;
 
   toggleUserStatusMenu(userId: number): void {
@@ -519,14 +595,8 @@ export class ManageUsersComponent implements OnInit, OnDestroy {
     }
     this.saving = true;
     this.http.post(this.apiUrl, this.form).subscribe({
-      next: () => {
-        this.saving = false;
-        this.showAddModal = false;
-        this.fetchUsers();
-      },
-      error: () => {
-        this.saving = false;
-      }
+      next: () => { this.saving = false; this.showAddModal = false; this.fetchUsers(); },
+      error: () => { this.saving = false; }
     });
   }
 
@@ -534,16 +604,10 @@ export class ManageUsersComponent implements OnInit, OnDestroy {
     this.selectedUser = user;
     this.form = {
       id: user.id,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      firstContact: user.firstContact,
-      secondContact: user.secondContact,
-      homeAddress: user.homeAddress,
-      officeAddress: user.officeAddress,
-      websiteUrl: user.websiteUrl,
-      roleId: user.roleId,
-      isActive: user.isActive
+      firstName: user.firstName, lastName: user.lastName, email: user.email,
+      firstContact: user.firstContact, secondContact: user.secondContact,
+      homeAddress: user.homeAddress, officeAddress: user.officeAddress,
+      websiteUrl: user.websiteUrl, roleId: user.roleId, isActive: user.isActive
     };
     this.showEditModal = true;
   }
@@ -556,34 +620,24 @@ export class ManageUsersComponent implements OnInit, OnDestroy {
     }
     this.saving = true;
     this.http.put(`${this.apiUrl}/${this.selectedUser.id}`, this.form).subscribe({
-      next: () => {
-        this.saving = false;
-        this.showEditModal = false;
-        this.fetchUsers();
-      },
-      error: () => {
-        this.saving = false;
-      }
+      next: () => { this.saving = false; this.showEditModal = false; this.fetchUsers(); },
+      error: () => { this.saving = false; }
     });
   }
 
   openDeleteModal(user: AppUser): void {
+    this.bulkDeleteUserIds = [];
     this.selectedUser = user;
     this.showDeleteModal = true;
   }
 
   confirmDelete(): void {
+    if (this.bulkDeleteUserIds.length) { this.confirmBulkDeleteUsers(); return; }
     if (!this.selectedUser) return;
     this.saving = true;
     this.http.delete(`${this.apiUrl}/${this.selectedUser.id}`).subscribe({
-      next: () => {
-        this.saving = false;
-        this.showDeleteModal = false;
-        this.fetchUsers();
-      },
-      error: () => {
-        this.saving = false;
-      }
+      next: () => { this.saving = false; this.showDeleteModal = false; this.fetchUsers(); },
+      error: () => { this.saving = false; }
     });
   }
 
@@ -599,11 +653,7 @@ export class ManageUsersComponent implements OnInit, OnDestroy {
       status: this.targetStatus,
       roleId: this.targetStatus === 'Approved' ? this.approvalRoleId : null
     }).subscribe({
-      next: () => {
-        this.saving = false;
-        this.closeModals();
-        this.fetchUsers();
-      },
+      next: () => { this.saving = false; this.closeModals(); this.fetchUsers(); },
       error: (err) => {
         this.saving = false;
         this.statusError = err.error?.message || 'Could not update status. Please try again.';
@@ -619,13 +669,9 @@ export class ManageUsersComponent implements OnInit, OnDestroy {
     this.showToggleActiveModal = false;
     this.showApprovalRoleMenu = false;
     this.selectedUser = null;
+    this.bulkDeleteUserIds = [];
   }
 
-  isSuperAdmin(user: AppUser): boolean {
-    return user.roleId === 1;
-  }
-
-  isRowSuperAdmin(user: AppUser): boolean {
-    return user.role === 'Super Admin';
-  }
+  isSuperAdmin(user: AppUser): boolean { return user.roleId === 1; }
+  isRowSuperAdmin(user: AppUser): boolean { return user.role === 'Super Admin'; }
 }

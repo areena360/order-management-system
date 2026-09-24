@@ -27,19 +27,22 @@ namespace OMS_Backend.Services
                 throw new NotFoundException(nameof(Order), order.Id);
         }
 
-        // GET ORDERS
+        // =====================================================================
+        // GET ORDERS (list)
+        // =====================================================================
         public async Task<PagedResult<OrderListDto>> GetOrdersAsync(OrderQueryDto q, int userId, bool isCustomer)
         {
             var query = _db.Orders.AsNoTracking().Where(o => !o.IsDeleted);
+
             if (q.Source == "WooCommerce" || q.Source == "Shopify")
-                query = _wooEnabled ? query.Where(o => _db.Set<WooCommerceOrder>().Any(w => w.OrderId == o.Id && w.Connection.Provider == q.Source)) : query.Where(o => false);
+                query = _wooEnabled
+                    ? query.Where(o => _db.Set<WooCommerceOrder>().Any(w => w.OrderId == o.Id && w.Connection.Provider == q.Source))
+                    : query.Where(o => false);
             else if (q.Source == "Manual" && _wooEnabled)
                 query = query.Where(o => !_db.Set<WooCommerceOrder>().Any(w => w.OrderId == o.Id));
 
             if (isCustomer)
-            {
                 query = query.Where(o => o.CustomerId == userId);
-            }
 
             if (!string.IsNullOrWhiteSpace(q.Search))
             {
@@ -86,13 +89,21 @@ namespace OMS_Backend.Services
                     ManufacturerProductTitle = o.ManufacturerProductTitle,
                     Amount = o.Amount,
                     OrderStatusId = o.OrderStatusId,
-                    Status = _db.LookupItems.Where(li => li.Id == o.OrderStatusId).Select(li => li.Name).FirstOrDefault() ?? "Unknown",
+                    Status = _db.LookupItems
+                        .Where(li => li.Id == o.OrderStatusId)
+                        .Select(li => li.Name)
+                        .FirstOrDefault() ?? "Unknown",
                     Priority = o.PriorityId != null
                         ? _db.LookupItems.Where(li => li.Id == o.PriorityId).Select(li => li.Name).FirstOrDefault()
                         : null,
                     DaysForMaking = o.DaysForMaking,
                     TrackingNumber = o.TrackingNumber,
                     CreatedDate = o.CreatedDate,
+
+                    // Assignment
+                    IsAssigned = o.IsAssigned,
+                    AssignedDate = o.AssignedDate,
+
                     Images = o.OrderImages
                         .Where(i => !i.IsDeleted)
                         .OrderBy(i => i.Id)
@@ -101,15 +112,36 @@ namespace OMS_Backend.Services
                 })
                 .ToListAsync();
 
+            // Auto-compute days live for assigned orders (in memory to keep EF query simple)
+            var nowUtc = DateTime.UtcNow;
+            foreach (var item in items)
+            {
+                if (item.IsAssigned && item.AssignedDate.HasValue)
+                {
+                    var elapsed = (nowUtc - item.AssignedDate.Value).TotalDays;
+                    item.DaysForMaking = elapsed < 0 ? 0 : (int)elapsed;
+                }
+            }
+
             if (_wooEnabled && items.Count > 0)
             {
                 var ids = items.Select(x => x.Id).ToArray();
-                var imported = await _db.Set<WooCommerceOrder>().AsNoTracking().Include(x=>x.Connection).Where(x => ids.Contains(x.OrderId)).ToDictionaryAsync(x => x.OrderId);
-                foreach (var item in items) if (imported.TryGetValue(item.Id, out var link)) {
-                    item.Source = link.Connection.Provider;
-                    AddStoreImages(item.Images, link);
+                var imported = await _db.Set<WooCommerceOrder>()
+                    .AsNoTracking()
+                    .Include(x => x.Connection)
+                    .Where(x => ids.Contains(x.OrderId))
+                    .ToDictionaryAsync(x => x.OrderId);
+
+                foreach (var item in items)
+                {
+                    if (imported.TryGetValue(item.Id, out var link))
+                    {
+                        item.Source = link.Connection.Provider;
+                        AddStoreImages(item.Images, link);
+                    }
                 }
             }
+
             return new PagedResult<OrderListDto>
             {
                 Items = items,
@@ -122,20 +154,39 @@ namespace OMS_Backend.Services
         private static IQueryable<Order> ApplySort(IQueryable<Order> query, string? sortBy, string? dir)
         {
             var desc = string.Equals(dir, "desc", StringComparison.OrdinalIgnoreCase);
-            Func<IQueryable<Order>, IOrderedQueryable<Order>> orderFn = (sortBy ?? "CreatedDate").ToLowerInvariant() switch
-            {
-                "manufacturerordernumber" => q => desc ? q.OrderByDescending(o => o.ManufacturerOrderNumber) : q.OrderBy(o => o.ManufacturerOrderNumber),
-                "customer" => q => desc ? q.OrderByDescending(o => o.Customer.FirstName) : q.OrderBy(o => o.Customer.FirstName),
-                "amount" => q => desc ? q.OrderByDescending(o => o.Amount) : q.OrderBy(o => o.Amount),
-                "status" => q => desc ? q.OrderByDescending(o => o.OrderStatusId) : q.OrderBy(o => o.OrderStatusId),
-                "priority" => q => desc ? q.OrderByDescending(o => o.PriorityId) : q.OrderBy(o => o.PriorityId),
-                "daysformaking" => q => desc ? q.OrderByDescending(o => o.DaysForMaking) : q.OrderBy(o => o.DaysForMaking),
-                _ => q => desc ? q.OrderByDescending(o => o.CreatedDate) : q.OrderBy(o => o.CreatedDate),
-            };
+
+            Func<IQueryable<Order>, IOrderedQueryable<Order>> orderFn =
+                (sortBy ?? "CreatedDate").ToLowerInvariant() switch
+                {
+                    "manufacturerordernumber" => q => desc
+                        ? q.OrderByDescending(o => o.ManufacturerOrderNumber)
+                        : q.OrderBy(o => o.ManufacturerOrderNumber),
+                    "customer" => q => desc
+                        ? q.OrderByDescending(o => o.Customer.FirstName)
+                        : q.OrderBy(o => o.Customer.FirstName),
+                    "amount" => q => desc
+                        ? q.OrderByDescending(o => o.Amount)
+                        : q.OrderBy(o => o.Amount),
+                    "status" => q => desc
+                        ? q.OrderByDescending(o => o.OrderStatusId)
+                        : q.OrderBy(o => o.OrderStatusId),
+                    "priority" => q => desc
+                        ? q.OrderByDescending(o => o.PriorityId)
+                        : q.OrderBy(o => o.PriorityId),
+                    "daysformaking" => q => desc
+                        ? q.OrderByDescending(o => o.DaysForMaking)
+                        : q.OrderBy(o => o.DaysForMaking),
+                    _ => q => desc
+                        ? q.OrderByDescending(o => o.CreatedDate)
+                        : q.OrderBy(o => o.CreatedDate),
+                };
+
             return orderFn(query);
         }
 
+        // =====================================================================
         // GET ONE
+        // =====================================================================
         public async Task<OrderDetailsDto> GetOrderByIdAsync(int id, int userId, bool isCustomer)
         {
             var order = await _db.Orders
@@ -153,9 +204,21 @@ namespace OMS_Backend.Services
 
         private async Task<OrderDetailsDto> MapDetailsAsync(Order o)
         {
-            var store = _wooEnabled ? await _db.Set<WooCommerceOrder>().AsNoTracking().Include(x=>x.Connection).SingleOrDefaultAsync(x => x.OrderId == o.Id) : null;
-            var images = o.OrderImages.Where(i => !i.IsDeleted).Select(i => new OrderImageDto { Id = i.Id, ImageURL = i.ImageURL }).ToList();
-            if (store != null) AddStoreImages(images, store);
+            var store = _wooEnabled
+                ? await _db.Set<WooCommerceOrder>()
+                    .AsNoTracking()
+                    .Include(x => x.Connection)
+                    .SingleOrDefaultAsync(x => x.OrderId == o.Id)
+                : null;
+
+            var images = o.OrderImages
+                .Where(i => !i.IsDeleted)
+                .Select(i => new OrderImageDto { Id = i.Id, ImageURL = i.ImageURL })
+                .ToList();
+
+            if (store != null)
+                AddStoreImages(images, store);
+
             var lookupIds = new[] { o.OrderStatusId, o.GenderId, o.CustomerMaterialId, o.ManufacturerMaterialId }
                 .Concat(o.PriorityId.HasValue ? new[] { o.PriorityId.Value } : Array.Empty<int>())
                 .Concat(o.SizeId.HasValue ? new[] { o.SizeId.Value } : Array.Empty<int>())
@@ -168,7 +231,16 @@ namespace OMS_Backend.Services
                 .Where(li => lookupIds.Contains(li.Id))
                 .ToDictionaryAsync(li => li.Id, li => li.Name);
 
-            string? Name(int? id) => id.HasValue && lookupNames.TryGetValue(id.Value, out var n) ? n : null;
+            string? Name(int? id) =>
+                id.HasValue && lookupNames.TryGetValue(id.Value, out var n) ? n : null;
+
+            // Live days for assigned orders
+            var liveDays = o.DaysForMaking;
+            if (o.IsAssigned && o.AssignedDate.HasValue)
+            {
+                var elapsed = (DateTime.UtcNow - o.AssignedDate.Value).TotalDays;
+                liveDays = elapsed < 0 ? 0 : (int)elapsed;
+            }
 
             return new OrderDetailsDto
             {
@@ -195,7 +267,7 @@ namespace OMS_Backend.Services
                 SizeChartId = o.SizeChartId,
                 SizeChart = Name(o.SizeChartId),
                 SizeDetails = o.SizeDetails,
-                DaysForMaking = o.DaysForMaking,
+                DaysForMaking = liveDays,
                 ConsigneeName = o.ConsigneeName,
                 ConsigneeAddress = o.ConsigneeAddress,
                 TrackingNumber = o.TrackingNumber,
@@ -205,6 +277,11 @@ namespace OMS_Backend.Services
                 Status = Name(o.OrderStatusId) ?? "Unknown",
                 CreatedDate = o.CreatedDate,
                 UpdatedDate = o.UpdatedDate,
+
+                // Assignment
+                IsAssigned = o.IsAssigned,
+                AssignedDate = o.AssignedDate,
+
                 Images = images,
                 StatusHistory = o.StatusHistories
                     .OrderBy(h => h.CreatedDate)
@@ -215,7 +292,8 @@ namespace OMS_Backend.Services
                         Status = Name(h.StatusId) ?? "Unknown",
                         CreatedDate = h.CreatedDate
                     }).ToList(),
-                InventoryBills = o.InventoryBills.Where(b => !b.IsDeleted)
+                InventoryBills = o.InventoryBills
+                    .Where(b => !b.IsDeleted)
                     .Select(b => new InventoryBillDto
                     {
                         Id = b.Id,
@@ -231,29 +309,43 @@ namespace OMS_Backend.Services
         private static void AddStoreImages(List<OrderImageDto> images, WooCommerceOrder link)
         {
             var lines = System.Text.Json.JsonSerializer.Deserialize<List<WooLineDto>>(link.ItemsJson) ?? new();
+
             foreach (var line in lines.Where(x => link.ExternalLineId == 0 || x.Id == link.ExternalLineId))
                 foreach (var url in new[] { line.ImageUrl }.Concat(line.ImageUrls ?? new()).Distinct())
-                    if (Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme == "https" &&
-                        string.IsNullOrEmpty(uri.UserInfo) && !images.Any(x => x.ImageURL == url))
+                    if (Uri.TryCreate(url, UriKind.Absolute, out var uri)
+                        && uri.Scheme == "https"
+                        && string.IsNullOrEmpty(uri.UserInfo)
+                        && !images.Any(x => x.ImageURL == url))
+                    {
                         images.Add(new OrderImageDto { Id = 0, ImageURL = url });
+                    }
         }
 
+        // =====================================================================
         // CREATE
+        // =====================================================================
         public async Task<OrderDetailsDto> CreateOrderAsync(CreateOrderDto dto, int userId, bool isCustomer)
         {
+            var role = await _db.Users.Where(u => u.Id == userId && !u.IsDeleted)
+                .Select(u => u.Role != null ? u.Role.Name : null).FirstOrDefaultAsync();
+            if (role is not ("Super Admin" or "Admin" or "Finance")) dto.Amount = null;
+            if (role is not ("Super Admin" or "Admin" or "Staff")) dto.TrackingNumber = null;
+
             if (isCustomer)
             {
                 dto.CustomerId = userId;
                 dto.ManufacturerProductTitle = null;
-                dto.PriorityId = null;
                 dto.TrackingNumber = null;
                 dto.NotesByManufacturer = null;
                 dto.ManufacturerMaterialId = dto.CustomerMaterialId;
-                if (dto.DaysForMaking < 0) dto.DaysForMaking = 0;
+                // Days auto-computed after assignment � customer cannot set it
+                dto.DaysForMaking = null;
             }
 
-            await ValidateReferencesAsync(dto.CustomerId, dto.GenderId, dto.CustomerMaterialId,
-                dto.ManufacturerMaterialId, dto.PriorityId, dto.IsCustomSize, dto.SizeId, dto.SizeChartId, dto.SizeDetails);
+            await ValidateReferencesAsync(
+                dto.CustomerId, dto.GenderId, dto.CustomerMaterialId,
+                dto.ManufacturerMaterialId, dto.PriorityId,
+                dto.IsCustomSize, dto.SizeId, dto.SizeChartId, dto.SizeDetails);
 
             var defaultStatus = await _db.LookupItems
                 .Where(li => li.LookupDataTypeId == LT_OrderStatus && !li.IsDeleted)
@@ -279,13 +371,21 @@ namespace OMS_Backend.Services
                 SizeId = dto.IsCustomSize ? null : dto.SizeId,
                 SizeChartId = dto.IsCustomSize ? null : dto.SizeChartId,
                 OrderStatusId = defaultStatus.Id,
-                ConsigneeName = dto.ConsigneeName,
-                ConsigneeAddress = dto.ConsigneeAddress,
+
+                ConsigneeName = dto.ConsigneeName ?? string.Empty,
+                ConsigneeAddress = dto.ConsigneeAddress ?? string.Empty,
+
                 TrackingNumber = dto.TrackingNumber,
                 NotesByCustomer = dto.NotesByCustomer,
                 NotesByManufacturer = dto.NotesByManufacturer,
-                DaysForMaking = dto.DaysForMaking,
+
+                // Days start at 0; will be computed live after assignment
+                DaysForMaking = dto.DaysForMaking ?? 0,
                 PriorityId = dto.PriorityId,
+
+                IsAssigned = false,
+                AssignedDate = null,
+
                 IsActive = true,
                 CreatedBy = userId,
                 CreatedDate = DateTime.UtcNow
@@ -327,13 +427,21 @@ namespace OMS_Backend.Services
             return $"{prefix}{next}";
         }
 
+        // =====================================================================
         // UPDATE
+        // =====================================================================
         public async Task<OrderDetailsDto> UpdateOrderAsync(int id, UpdateOrderDto dto, int userId, bool isCustomer)
         {
             var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == id && !o.IsDeleted)
                 ?? throw new NotFoundException(nameof(Order), id);
 
             EnsureOwnership(order, userId, isCustomer);
+
+            var role = await _db.Users.Where(u => u.Id == userId && !u.IsDeleted)
+                .Select(u => u.Role != null ? u.Role.Name : null).FirstOrDefaultAsync();
+            // Preserve restricted fields even when a client submits modified values.
+            if (role is not ("Super Admin" or "Admin" or "Finance")) dto.Amount = order.Amount;
+            if (role is not ("Super Admin" or "Admin" or "Staff")) dto.TrackingNumber = order.TrackingNumber;
 
             if (_wooEnabled && dto.CustomerId != order.CustomerId &&
                 await _db.Set<WooCommerceOrder>().AnyAsync(x => x.OrderId == id))
@@ -344,14 +452,17 @@ namespace OMS_Backend.Services
                 dto.CustomerId = order.CustomerId;
                 dto.ManufacturerProductTitle = order.ManufacturerProductTitle;
                 dto.PriorityId = order.PriorityId;
-                dto.DaysForMaking = order.DaysForMaking;
                 dto.TrackingNumber = order.TrackingNumber;
                 dto.NotesByManufacturer = order.NotesByManufacturer;
-                dto.ManufacturerMaterialId = dto.CustomerMaterialId;
+                dto.ManufacturerMaterialId = order.ManufacturerMaterialId;
+                // Preserve days � never touched by customer
+                dto.DaysForMaking = order.DaysForMaking;
             }
 
-            await ValidateReferencesAsync(dto.CustomerId, dto.GenderId, dto.CustomerMaterialId,
-                dto.ManufacturerMaterialId, dto.PriorityId, dto.IsCustomSize, dto.SizeId, dto.SizeChartId, dto.SizeDetails);
+            await ValidateReferencesAsync(
+                dto.CustomerId, dto.GenderId, dto.CustomerMaterialId,
+                dto.ManufacturerMaterialId, dto.PriorityId,
+                dto.IsCustomSize, dto.SizeId, dto.SizeChartId, dto.SizeDetails);
 
             order.CustomerProductTitle = dto.CustomerProductTitle;
             order.ManufacturerProductTitle = dto.ManufacturerProductTitle;
@@ -365,12 +476,19 @@ namespace OMS_Backend.Services
             order.SizeDetails = dto.IsCustomSize ? dto.SizeDetails : null;
             order.SizeId = dto.IsCustomSize ? null : dto.SizeId;
             order.SizeChartId = dto.IsCustomSize ? null : dto.SizeChartId;
-            order.ConsigneeName = dto.ConsigneeName;
-            order.ConsigneeAddress = dto.ConsigneeAddress;
+
+            order.ConsigneeName = dto.ConsigneeName ?? string.Empty;
+            order.ConsigneeAddress = dto.ConsigneeAddress ?? string.Empty;
+
             order.TrackingNumber = dto.TrackingNumber;
             order.NotesByCustomer = dto.NotesByCustomer;
             order.NotesByManufacturer = dto.NotesByManufacturer;
-            order.DaysForMaking = dto.DaysForMaking;
+
+            // Only overwrite DaysForMaking when explicitly provided (admin edit).
+            // For assigned orders, the value shown is live-computed and shouldn't be persisted.
+            if (!order.IsAssigned && dto.DaysForMaking.HasValue)
+                order.DaysForMaking = dto.DaysForMaking.Value;
+
             order.PriorityId = dto.PriorityId;
             order.UpdatedBy = userId;
             order.UpdatedDate = DateTime.UtcNow;
@@ -379,7 +497,9 @@ namespace OMS_Backend.Services
             return await GetOrderByIdAsync(id, userId, isCustomer);
         }
 
+        // =====================================================================
         // UPDATE STATUS
+        // =====================================================================
         public async Task<OrderDetailsDto> UpdateOrderStatusAsync(int id, UpdateOrderStatusDto dto, int userId, bool isCustomer)
         {
             var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == id && !o.IsDeleted)
@@ -387,7 +507,8 @@ namespace OMS_Backend.Services
 
             EnsureOwnership(order, userId, isCustomer);
 
-            var statusExists = await _db.LookupItems.AnyAsync(li => li.Id == dto.StatusId && li.LookupDataTypeId == LT_OrderStatus && !li.IsDeleted);
+            var statusExists = await _db.LookupItems
+                .AnyAsync(li => li.Id == dto.StatusId && li.LookupDataTypeId == LT_OrderStatus && !li.IsDeleted);
             if (!statusExists) throw new ValidationAppException("Invalid status.");
 
             using var tx = await _db.Database.BeginTransactionAsync();
@@ -411,7 +532,69 @@ namespace OMS_Backend.Services
             return await GetOrderByIdAsync(id, userId, isCustomer);
         }
 
+        // =====================================================================
+        // ASSIGN ORDERS (bulk) � NEW
+        // =====================================================================
+        public async Task<AssignOrdersResultDto> AssignOrdersAsync(AssignOrdersDto dto, int userId, bool isCustomer)
+        {
+            if (dto?.OrderIds == null || dto.OrderIds.Count == 0)
+                throw new ValidationAppException("No orders selected for assignment.");
+
+            var ids = dto.OrderIds.Where(id => id > 0).Distinct().ToList();
+            if (ids.Count == 0)
+                throw new ValidationAppException("No valid orders selected.");
+
+            var orders = await _db.Orders
+                .Where(o => ids.Contains(o.Id) && !o.IsDeleted)
+                .ToListAsync();
+
+            if (orders.Count == 0)
+                throw new ValidationAppException("No matching orders found.");
+
+            var now = DateTime.UtcNow;
+            var assignedCount = 0;
+            var skippedCount = 0;
+
+            foreach (var order in orders)
+            {
+                // Customer can only assign their own orders
+                if (isCustomer && order.CustomerId != userId)
+                {
+                    skippedCount++;
+                    continue;
+                }
+
+                // Skip already assigned
+                if (order.IsAssigned)
+                {
+                    skippedCount++;
+                    continue;
+                }
+
+                order.IsAssigned = true;
+                order.AssignedDate = now;
+                order.DaysForMaking = 0; // starts counting from today
+                order.UpdatedBy = userId;
+                order.UpdatedDate = now;
+                assignedCount++;
+            }
+
+            if (assignedCount > 0)
+                await _db.SaveChangesAsync();
+
+            return new AssignOrdersResultDto
+            {
+                AssignedCount = assignedCount,
+                SkippedCount = skippedCount,
+                Message = assignedCount > 0
+                    ? $"{assignedCount} order(s) assigned successfully."
+                    : "No orders could be assigned."
+            };
+        }
+
+        // =====================================================================
         // IMAGES
+        // =====================================================================
         public async Task<List<OrderImageDto>> AddOrderImagesAsync(int orderId, List<IFormFile> files, int userId, bool isCustomer)
         {
             var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == orderId && !o.IsDeleted)
@@ -476,7 +659,9 @@ namespace OMS_Backend.Services
             await _db.SaveChangesAsync();
         }
 
+        // =====================================================================
         // DELETE ORDER
+        // =====================================================================
         public async Task DeleteOrderAsync(int id, int userId, bool isCustomer)
         {
             var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == id && !o.IsDeleted);
@@ -493,7 +678,9 @@ namespace OMS_Backend.Services
             await _db.SaveChangesAsync();
         }
 
+        // =====================================================================
         // INVENTORY BILLS
+        // =====================================================================
         public async Task<List<InventoryBillDto>> GetInventoryBillsAsync(int orderId, int userId, bool isCustomer)
         {
             var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == orderId && !o.IsDeleted)
@@ -585,9 +772,13 @@ namespace OMS_Backend.Services
             await _db.SaveChangesAsync();
         }
 
+        // =====================================================================
         // VALIDATION
-        private async Task ValidateReferencesAsync(int customerId, int genderId, int customerMaterialId,
-            int manufacturerMaterialId, int? priorityId, bool isCustomSize, int? sizeId, int? sizeChartId, string? sizeDetails)
+        // =====================================================================
+        private async Task ValidateReferencesAsync(
+            int customerId, int genderId, int customerMaterialId,
+            int manufacturerMaterialId, int? priorityId,
+            bool isCustomSize, int? sizeId, int? sizeChartId, string? sizeDetails)
         {
             var errors = new Dictionary<string, string[]>();
 
@@ -615,6 +806,7 @@ namespace OMS_Backend.Services
             {
                 if (sizeId.HasValue && !await _db.LookupItems.AnyAsync(li => li.Id == sizeId && !li.IsDeleted))
                     errors["sizeId"] = new[] { "Invalid size." };
+
                 if (sizeChartId.HasValue && !await _db.LookupItems.AnyAsync(li => li.Id == sizeChartId && !li.IsDeleted))
                     errors["sizeChartId"] = new[] { "Invalid size chart." };
             }

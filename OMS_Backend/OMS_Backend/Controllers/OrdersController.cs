@@ -73,6 +73,14 @@ namespace OMS_Backend.Controllers
             return Ok(order);
         }
 
+        // ===== NEW: Assign orders (bulk) =====
+        [HttpPost("assign")]
+        public async Task<IActionResult> AssignOrders([FromBody] AssignOrdersDto dto)
+        {
+            var result = await _orderService.AssignOrdersAsync(dto, CurrentUserId, IsCustomer());
+            return Ok(result);
+        }
+
         [HttpPost("{id}/images")]
         public async Task<IActionResult> UploadImages(int id, [FromForm] List<IFormFile> files)
         {

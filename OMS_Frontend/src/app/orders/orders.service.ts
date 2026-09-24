@@ -135,6 +135,17 @@ export class OrdersService {
     );
   }
 
+  // ===== NEW: Assign orders to manufacturer =====
+  assignOrders(
+    orderIds: number[]
+  ): Observable<void> {
+
+    return this.http.post<void>(
+      `${this.apiUrl}/assign`,
+      { orderIds }
+    );
+  }
+
   uploadImages(
     id: number,
     files: File[]

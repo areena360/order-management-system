@@ -34,6 +34,10 @@ export interface OrderListItem {
 
   createdDate: string;
 
+  // ===== Assignment (NEW) =====
+  isAssigned?: boolean;
+  assignedDate?: string | null;
+
   images?: OrderImageItem[];
 }
 
@@ -111,6 +115,10 @@ export interface OrderDetails {
   createdDate: string;
   updatedDate: string | null;
 
+  // ===== Assignment (NEW) =====
+  isAssigned?: boolean;
+  assignedDate?: string | null;
+
   images: OrderImageItem[];
   statusHistory: OrderStatusHistoryItem[];
   inventoryBills: InventoryBillItem[];
@@ -141,7 +149,8 @@ export interface OrderFormValue {
 
   sizeDetails: string | null;
 
-  daysForMaking: number | null;
+  // Days is now optional — auto-computed after assignment
+  daysForMaking?: number | null;
 
   priorityId: number | null;
 

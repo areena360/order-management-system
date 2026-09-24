@@ -1,4 +1,4 @@
-import { Component, HostListener, OnDestroy, OnInit, inject } from '@angular/core';
+import { Component, EventEmitter, HostListener, Input, OnDestroy, OnInit, Output, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -24,14 +24,20 @@ interface PendingBill {
   selector: 'app-order-form',
   standalone: true,
   imports: [CommonModule, FormsModule, ReactiveFormsModule, FooterComponent],
-  templateUrl: './order-form.component.html'
+  templateUrl: './order-form.component.html',
+  styles: [':host input:disabled, :host textarea:disabled, :host button:disabled { background-color: #f3f4f6; color: #6b7280; cursor: not-allowed; }']
 })
 export class OrderFormComponent implements OnInit, OnDestroy {
+
+  @Input() asModal = false;
+  @Output() closed = new EventEmitter<void>();
+  @Output() saved = new EventEmitter<void>();
 
   private readonly fb = inject(FormBuilder);
   private readonly authService = inject(AuthService);
   private readonly polling = inject(PollingService);
 
+  // daysForMaking removed — now auto-computed on backend after assignment
   form = this.fb.group({
     customerProductTitle: ['', [Validators.required, Validators.maxLength(200)]],
     manufacturerProductTitle: ['', [Validators.maxLength(200)]],
@@ -45,7 +51,6 @@ export class OrderFormComponent implements OnInit, OnDestroy {
     sizeId: [null as number | null],
     sizeChartId: [null as number | null],
     sizeDetails: ['', [Validators.maxLength(2000)]],
-    daysForMaking: [null as number | null, [Validators.required, Validators.min(0), Validators.max(3650)]],
     priorityId: [null as number | null],
     statusId: [null as number | null],
     consigneeName: ['', [Validators.required, Validators.maxLength(200)]],
@@ -84,6 +89,7 @@ export class OrderFormComponent implements OnInit, OnDestroy {
   order: OrderDetails | null = null;
 
   selectedImages: File[] = [];
+  selectedImagePreviews: string[] = [];
   uploadingImages = false;
   imageUploadError = '';
   deletingImageId: number | null = null;
@@ -121,6 +127,36 @@ export class OrderFormComponent implements OnInit, OnDestroy {
 
   isCustomer = false;
 
+  get canEditTracking(): boolean {
+    return ['Super Admin', 'Admin', 'Staff'].includes(this.authService.currentRole() ?? '');
+  }
+
+  get canEditAmount(): boolean {
+    return ['Super Admin', 'Admin', 'Finance'].includes(this.authService.currentRole() ?? '');
+  }
+
+  get isSuperAdminCreate(): boolean {
+    return this.authService.currentRole() === 'Super Admin' && !this.isEditMode;
+  }
+
+  private applyFieldPermissions(): void {
+    if (!this.canEditTracking) this.form.controls.trackingNumber.disable({ emitEvent: false });
+    if (!this.canEditAmount) this.form.controls.amount.disable({ emitEvent: false });
+    if (this.isCustomer) {
+      for (const name of ['customerId', 'manufacturerProductTitle', 'manufacturerMaterialId', 'statusId', 'notesByManufacturer']) {
+        this.form.get(name)?.disable({ emitEvent: false });
+      }
+      if (this.isEditMode) this.form.controls.priorityId.disable({ emitEvent: false });
+    }
+    if (this.isSuperAdminCreate) {
+      this.form.controls.customerProductTitle.disable({ emitEvent: false });
+      this.form.controls.manufacturerProductTitle.addValidators(Validators.required);
+      this.form.controls.manufacturerProductTitle.updateValueAndValidity({ emitEvent: false });
+      this.form.controls.manufacturerProductTitle.valueChanges.pipe(takeUntil(this.destroy$))
+        .subscribe(value => this.form.controls.customerProductTitle.setValue(value, { emitEvent: false }));
+    }
+  }
+
   constructor(
     private route: ActivatedRoute,
     private router: Router,
@@ -138,15 +174,16 @@ export class OrderFormComponent implements OnInit, OnDestroy {
       this.form.controls.customerId.clearValidators();
       this.form.controls.customerId.updateValueAndValidity({ emitEvent: false });
 
+      this.form.controls.consigneeName.clearValidators();
+      this.form.controls.consigneeAddress.clearValidators();
+      this.form.controls.consigneeName.updateValueAndValidity({ emitEvent: false });
+      this.form.controls.consigneeAddress.updateValueAndValidity({ emitEvent: false });
+
       this.form.controls.customerMaterialId.valueChanges
         .pipe(takeUntil(this.destroy$))
         .subscribe(val => {
-          this.form.controls.manufacturerMaterialId.setValue(val, { emitEvent: false });
+          if (!this.isEditMode) this.form.controls.manufacturerMaterialId.setValue(val, { emitEvent: false });
         });
-
-      if (this.form.controls.daysForMaking.value === null) {
-        this.form.controls.daysForMaking.setValue(0, { emitEvent: false });
-      }
 
       this.authService.getProfile()
         .pipe(takeUntil(this.destroy$))
@@ -164,7 +201,10 @@ export class OrderFormComponent implements OnInit, OnDestroy {
         });
     }
 
-    const idParam = this.route.snapshot.paramMap.get('id');
+    let idParam: string | null = null;
+    if (!this.asModal) {
+      idParam = this.route.snapshot.paramMap.get('id');
+    }
 
     if (idParam) {
       const id = Number(idParam);
@@ -180,17 +220,17 @@ export class OrderFormComponent implements OnInit, OnDestroy {
       this.orderId = null;
     }
 
+    this.applyFieldPermissions();
     this.loadLookups();
     this.setupStatusPolling();
   }
 
   ngOnDestroy(): void {
+    this.clearSelectedImages();
     this.destroy$.next();
     this.destroy$.complete();
   }
 
-  // Poll every 15 seconds, but only sync the status.
-  // User's other form inputs are never touched.
   private setupStatusPolling(): void {
     if (!this.isEditMode || !this.orderId) return;
 
@@ -213,23 +253,16 @@ export class OrderFormComponent implements OnInit, OnDestroy {
       .subscribe({
         next: order => {
           this.statusPollBusy = false;
-
-          // Update header badge
           if (order.status !== this.currentStatus) {
             this.currentStatus = order.status;
           }
-
-          // Update status control only if user hasn't changed it
           const control = this.form.controls.statusId;
           const serverStatusId = (order as any).orderStatusId ?? null;
-
           if (!control.dirty && control.value !== serverStatusId) {
             control.setValue(serverStatusId, { emitEvent: false });
           }
         },
-        error: () => {
-          this.statusPollBusy = false;
-        }
+        error: () => { this.statusPollBusy = false; }
       });
   }
 
@@ -288,7 +321,7 @@ export class OrderFormComponent implements OnInit, OnDestroy {
           materials: this.lookupService.getByType(LOOKUP_TYPE.Material),
           sizes: this.lookupService.getByType(LOOKUP_TYPE.Size),
           sizeCharts: this.lookupService.getByType(LOOKUP_TYPE.SizeChart),
-          priorities: of([] as LookupItem[])
+          priorities: this.lookupService.getByType(LOOKUP_TYPE.Priority)
         })
       : forkJoin({
           statuses: this.lookupService.getByType(LOOKUP_TYPE.OrderStatus),
@@ -328,10 +361,7 @@ export class OrderFormComponent implements OnInit, OnDestroy {
     this.ordersService.getOrder(id)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: order => {
-          this.patchOrder(order);
-          this.loading = false;
-        },
+        next: order => { this.patchOrder(order); this.loading = false; },
         error: (error: HttpErrorResponse) => {
           this.errorMsg = error?.error?.message ?? 'Unable to load order. Please try again.';
           this.loading = false;
@@ -357,7 +387,6 @@ export class OrderFormComponent implements OnInit, OnDestroy {
       sizeId: order.sizeId,
       sizeChartId: order.sizeChartId,
       sizeDetails: order.sizeDetails,
-      daysForMaking: order.daysForMaking,
       priorityId: order.priorityId,
       statusId: (order as any).orderStatusId ?? null,
       consigneeName: order.consigneeName,
@@ -387,6 +416,7 @@ export class OrderFormComponent implements OnInit, OnDestroy {
   }
 
   onCustomerFocus(): void {
+    if (this.form.controls.customerId.disabled) return;
     this.showCustomerDropdown = true;
     if (this.customerOptions.length === 0) {
       this.customerSearch$.next(this.customerSearchTerm.trim());
@@ -394,6 +424,7 @@ export class OrderFormComponent implements OnInit, OnDestroy {
   }
 
   onCustomerInput(value: string): void {
+    if (this.form.controls.customerId.disabled) return;
     this.customerSearchTerm = value;
     this.showCustomerDropdown = true;
     const normalizedValue = value.trim().toLowerCase();
@@ -406,6 +437,7 @@ export class OrderFormComponent implements OnInit, OnDestroy {
   }
 
   selectCustomer(customer: CustomerOption): void {
+    if (this.form.controls.customerId.disabled) return;
     this.selectedCustomer = customer;
     this.customerSearchTerm = customer.name;
     this.form.controls.customerId.setValue(customer.id);
@@ -425,12 +457,13 @@ export class OrderFormComponent implements OnInit, OnDestroy {
   }
 
   toggleDropdown(key: string): void {
+    if (this.form.get(key)?.disabled) return;
     this.openDropdown = this.openDropdown === key ? null : key;
   }
 
   selectDropdown(controlName: string, value: number): void {
     const control = this.form.get(controlName);
-    if (!control) return;
+    if (!control || control.disabled) return;
     control.setValue(value);
     control.markAsTouched();
     control.markAsDirty();
@@ -443,6 +476,7 @@ export class OrderFormComponent implements OnInit, OnDestroy {
   }
 
   onStatusSelected(statusId: number): void {
+    if (this.form.controls.statusId.disabled) return;
     this.showStatusDropdown = false;
 
     const control = this.form.controls.statusId;
@@ -490,30 +524,29 @@ export class OrderFormComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const payload: OrderFormValue = {
+    const payload: any = {
       customerProductTitle: raw.customerProductTitle?.trim() ?? '',
       manufacturerProductTitle: this.isCustomer ? null : this.nullIfBlank(raw.manufacturerProductTitle),
       customerOrderNumber: this.nullIfBlank(raw.customerOrderNumber),
       customerId: raw.customerId,
-      amount: raw.amount === null ? null : Number(raw.amount),
+      amount: this.canEditAmount ? (raw.amount === null ? null : Number(raw.amount)) : (this.order?.amount ?? null),
       genderId: raw.genderId,
       customerMaterialId: raw.customerMaterialId,
-      manufacturerMaterialId: this.isCustomer ? raw.customerMaterialId : raw.manufacturerMaterialId,
+      manufacturerMaterialId: this.isCustomer ? (this.order?.manufacturerMaterialId ?? raw.customerMaterialId) : raw.manufacturerMaterialId,
       isCustomSize: raw.isCustomSize ?? false,
       sizeId: raw.isCustomSize ? null : raw.sizeId,
       sizeChartId: raw.isCustomSize ? null : raw.sizeChartId,
       sizeDetails: raw.isCustomSize ? this.nullIfBlank(raw.sizeDetails) : null,
-      daysForMaking: raw.daysForMaking === null ? 0 : Number(raw.daysForMaking),
-      priorityId: this.isCustomer ? null : raw.priorityId,
+      priorityId: raw.priorityId,
       consigneeName: raw.consigneeName?.trim() ?? '',
       consigneeAddress: raw.consigneeAddress?.trim() ?? '',
-      trackingNumber: this.isCustomer ? null : this.nullIfBlank(raw.trackingNumber),
+      trackingNumber: this.canEditTracking ? this.nullIfBlank(raw.trackingNumber) : (this.order?.trackingNumber ?? null),
       notesByCustomer: this.nullIfBlank(raw.notesByCustomer),
       notesByManufacturer: this.isCustomer ? null : this.nullIfBlank(raw.notesByManufacturer)
     };
 
-    if (!this.isEditMode && raw.statusId) {
-      (payload as any).statusId = raw.statusId;
+    if (!this.isEditMode && this.form.controls.statusId.enabled && raw.statusId) {
+      payload.statusId = raw.statusId;
     }
 
     this.saving = true;
@@ -523,7 +556,10 @@ export class OrderFormComponent implements OnInit, OnDestroy {
       this.ordersService.updateOrder(this.orderId, payload)
         .pipe(takeUntil(this.destroy$), finalize(() => (this.saving = false)))
         .subscribe({
-          next: () => this.router.navigate(['/dashboard/orders']),
+          next: () => {
+            if (this.asModal) this.saved.emit();
+            else this.router.navigate(['/dashboard/orders']);
+          },
           error: (error: HttpErrorResponse) => {
             this.errorMsg = error?.error?.message ?? 'Unable to save order. Please try again.';
           }
@@ -557,23 +593,34 @@ export class OrderFormComponent implements OnInit, OnDestroy {
 
     if (!calls.length) {
       this.saving = false;
-      this.router.navigate(['/dashboard/orders']);
+      if (this.asModal) this.saved.emit();
+      else this.router.navigate(['/dashboard/orders']);
       return;
     }
 
     forkJoin(calls)
       .pipe(takeUntil(this.destroy$), finalize(() => (this.saving = false)))
       .subscribe({
-        next: () => this.router.navigate(['/dashboard/orders']),
+        next: () => {
+          if (this.asModal) this.saved.emit();
+          else this.router.navigate(['/dashboard/orders']);
+        },
         error: (error: HttpErrorResponse) => {
           this.errorMsg = error?.error?.message
             ?? 'Order was created, but some images/bills failed to upload.';
-          this.router.navigate(['/dashboard/orders']);
+          if (this.asModal) this.saved.emit();
+          else this.router.navigate(['/dashboard/orders']);
         }
       });
   }
 
-  cancel(): void { this.router.navigate(['/dashboard/orders']); }
+  cancel(): void {
+    if (this.asModal) {
+      this.closed.emit();
+    } else {
+      this.router.navigate(['/dashboard/orders']);
+    }
+  }
 
   isInvalid(controlName: string): boolean {
     const control = this.form.get(controlName);
@@ -640,13 +687,24 @@ export class OrderFormComponent implements OnInit, OnDestroy {
         });
     } else {
       this.selectedImages = [...this.selectedImages, ...validFiles];
+      this.selectedImagePreviews = [...this.selectedImagePreviews, ...validFiles.map(file => URL.createObjectURL(file))];
     }
 
     input.value = '';
   }
 
-  removeSelectedImage(index: number): void { this.selectedImages.splice(index, 1); }
-  clearSelectedImages(): void { this.selectedImages = []; this.imageUploadError = ''; }
+  removeSelectedImage(index: number): void {
+    const preview = this.selectedImagePreviews[index];
+    if (preview) URL.revokeObjectURL(preview);
+    this.selectedImagePreviews.splice(index, 1);
+    this.selectedImages.splice(index, 1);
+  }
+  clearSelectedImages(): void {
+    this.selectedImagePreviews.forEach(preview => URL.revokeObjectURL(preview));
+    this.selectedImagePreviews = [];
+    this.selectedImages = [];
+    this.imageUploadError = '';
+  }
 
   deleteExistingImage(img: { id: number }): void {
     if (!this.orderId) return;

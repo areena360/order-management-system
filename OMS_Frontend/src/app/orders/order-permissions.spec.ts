@@ -14,6 +14,9 @@ import { OrderDetails, OrderListItem } from './order.models';
 describe('Order field permissions and shared bulk selection', () => {
   let role: string;
   let orders: jasmine.SpyObj<OrdersService>;
+  const requiredShipping = { customerOrderNumber: 'REF-42', sizeId: 5, sizeChartId: 6,
+    consigneeName: 'Recipient', consigneeAddress: 'Delivery address',
+    shippingEmail: 'recipient@example.test', shippingContact: '+92 300 1234567' };
 
   beforeEach(async () => {
     role = 'Customer';
@@ -26,7 +29,7 @@ describe('Order field permissions and shared bulk selection', () => {
           getProfile: () => of({ id: 4, firstName: 'Test', lastName: 'Customer', email: 'test@example.test' })
         } },
         { provide: OrdersService, useValue: orders },
-        { provide: LookupService, useValue: { getByType: () => of([]), getCustomers: () => of([]) } },
+        { provide: LookupService, useValue: { getByType: () => of([{ id: 10, name: 'new' }, { id: 11, name: 'assign' }]), getCustomers: () => of([]) } },
         { provide: PollingService, useValue: { poll: () => EMPTY } },
         { provide: ChatSignalrService, useValue: { onMessage: () => () => {} } },
         { provide: PermissionService, useValue: { canView: () => true, canAdd: () => true, canEdit: () => false, canDelete: () => false } },
@@ -58,21 +61,21 @@ describe('Order field permissions and shared bulk selection', () => {
     const component = fixture.componentInstance;
     component.isEditMode = true;
     component.orderId = 42;
-    component.order = { amount: 250, trackingNumber: 'TRACK-42' } as OrderDetails;
-    component.form.patchValue({ customerProductTitle: 'Shirt', customerMaterialId: 1, genderId: 1,
+    component.order = { amount: 250, trackingNumber: 'TRACK-42', courier: 'DHL' } as OrderDetails;
+    component.form.patchValue({ ...requiredShipping, customerProductTitle: 'Shirt', customerMaterialId: 1, genderId: 1,
       isCustomSize: true, sizeDetails: 'Custom measurements', trackingNumber: 'TRACK-42', amount: 250 });
     fixture.detectChanges();
-    for (const field of ['manufacturerProductTitle', 'notesByManufacturer']) {
+    for (const field of ['notesByManufacturer', 'courier']) {
       expect(fixture.nativeElement.querySelector(`[formControlName="${field}"]`).disabled).toBeTrue();
     }
     for (const field of ['manufacturerMaterialId']) {
-      expect(fixture.nativeElement.querySelector(`[data-dd="${field}"] button`).disabled).toBeTrue();
+      expect(fixture.nativeElement.querySelector(`[data-dd="${field}"]`)).toBeNull();
     }
     expect(fixture.nativeElement.querySelector('[data-status-dd] button').disabled).toBeTrue();
     expect(fixture.nativeElement.querySelector('[formControlName="trackingNumber"]').value).toBe('TRACK-42');
     orders.updateOrder.and.returnValue(EMPTY);
     component.save();
-    expect(orders.updateOrder).toHaveBeenCalledWith(42, jasmine.objectContaining({ amount: 250, trackingNumber: 'TRACK-42' }));
+    expect(orders.updateOrder).toHaveBeenCalledWith(42, jasmine.objectContaining({ amount: 250, trackingNumber: 'TRACK-42', courier: 'DHL', sizeId: 5, sizeChartId: 6 }));
   });
 
   it('hides priority from customer creation and does not submit a customer-selected priority', () => {
@@ -83,26 +86,26 @@ describe('Order field permissions and shared bulk selection', () => {
     expect(fixture.nativeElement.querySelector('[data-dd="priorityId"]')).toBeNull();
     expect(component.form.controls.priorityId.disabled).toBeTrue();
     component.form.controls.priorityId.setValue(12);
-    component.form.patchValue({ customerProductTitle: 'Shirt', genderId: 1, customerMaterialId: 1,
+    component.form.patchValue({ ...requiredShipping, customerProductTitle: 'Shirt', genderId: 1, customerMaterialId: 1,
       isCustomSize: true, sizeDetails: 'Custom measurements' });
     orders.createOrder.and.returnValue(EMPTY);
     component.save();
     expect(orders.createOrder).toHaveBeenCalledWith(jasmine.objectContaining({ priorityId: null }));
   });
 
-  it('lets Super Admin create with an amount and an automatically filled disabled customer product name', () => {
+  it('lets Super Admin leave customer title and material blank while supplying manufacturer requirements', () => {
     role = 'Super Admin';
     const fixture = TestBed.createComponent(OrderFormComponent);
     fixture.detectChanges();
     const component = fixture.componentInstance;
-    expect(fixture.nativeElement.querySelector('[formControlName="customerProductTitle"]').disabled).toBeTrue();
-    component.form.patchValue({ manufacturerProductTitle: 'Production shirt', customerId: 4, genderId: 1,
-      customerMaterialId: 1, manufacturerMaterialId: 1, amount: 150, isCustomSize: true,
+    expect(fixture.nativeElement.querySelector('[formControlName="customerProductTitle"]').disabled).toBeFalse();
+    component.form.patchValue({ ...requiredShipping, manufacturerProductTitle: 'Production shirt', customerId: 4, genderId: 1,
+      manufacturerMaterialId: 1, priorityId: 2, courier: 'DHL', trackingNumber: 'TRACK-42', amount: 150, isCustomSize: true,
       sizeDetails: 'Custom measurements', consigneeName: 'Recipient', consigneeAddress: 'Delivery address' });
     orders.createOrder.and.returnValue(EMPTY);
     component.save();
     expect(orders.createOrder).toHaveBeenCalledWith(jasmine.objectContaining({
-      customerProductTitle: 'Production shirt', manufacturerProductTitle: 'Production shirt', amount: 150
+      customerProductTitle: '', customerMaterialId: null, manufacturerProductTitle: 'Production shirt', amount: 150
     }));
   });
 
@@ -126,6 +129,51 @@ describe('Order field permissions and shared bulk selection', () => {
     expect(fixture.nativeElement.querySelectorAll('img[src^="blob:"]').length).toBe(1);
     fixture.destroy();
     expect(revoke).toHaveBeenCalledWith(previews[1]);
+  });
+
+  for (const account of ['Customer', 'Admin', 'Super Admin']) {
+    it(`enforces sheet requirements and disabled defaults for ${account}`, () => {
+      role = account;
+      const fixture = TestBed.createComponent(OrderFormComponent);
+      fixture.detectChanges();
+      const component = fixture.componentInstance;
+      component.form.patchValue({ ...requiredShipping, customerId: 4, customerProductTitle: 'Shirt', genderId: 3,
+        manufacturerProductTitle: 'Production shirt', manufacturerMaterialId: 4, priorityId: 2,
+        courier: 'UPS', trackingNumber: 'TRACK-42' });
+      expect(component.form.valid).toBeTrue();
+      expect(component.form.controls.statusId.disabled).toBeTrue();
+      expect(component.form.controls.statusId.value).toBe(account === 'Customer' ? 10 : 11);
+      const fields = ['customerOrderNumber', 'genderId', 'sizeId', 'sizeChartId', 'consigneeName', 'shippingEmail', 'shippingContact', 'consigneeAddress',
+        ...(account === 'Customer' ? ['customerProductTitle'] : ['customerId', 'manufacturerProductTitle', 'manufacturerMaterialId', 'priorityId', 'courier', 'trackingNumber'])];
+      for (const field of fields) {
+        const control = component.form.get(field)!;
+        const previous = control.value;
+        control.setValue(null);
+        expect(component.form.invalid).withContext(field + ' must be required').toBeTrue();
+        control.setValue(previous);
+      }
+      component.form.controls.shippingContact.setValue('   ');
+      expect(component.form.invalid).toBeTrue();
+      component.form.controls.shippingContact.setValue(requiredShipping.shippingContact);
+      component.form.controls.shippingEmail.setValue('bad-email');
+      expect(component.form.invalid).toBeTrue();
+      expect(component.form.controls.notesByCustomer.disabled).toBe(account !== 'Customer');
+      expect(component.form.controls.notesByManufacturer.disabled).toBe(account === 'Customer');
+    });
+  }
+
+  it('accepts all inventory document types while keeping the size limit', () => {
+    role = 'Admin';
+    const component = TestBed.createComponent(OrderFormComponent).componentInstance;
+    for (const name of ['bill.xlsx', 'bill.docx', 'bill.zip', 'bill.html', 'bill']) {
+      const file = new File(['bill'], name);
+      component.onBillImageSelected({ target: { files: [file], value: '' } } as unknown as Event);
+      expect(component.billImageFile).toBe(file);
+      expect(component.billError).toBe('');
+    }
+    const large = new File([new Uint8Array(10 * 1024 * 1024 + 1)], 'large.zip');
+    component.onBillImageSelected({ target: { files: [large], value: '' } } as unknown as Event);
+    expect(component.billError).toContain('10 MB');
   });
 
   function listFixture() {
@@ -221,13 +269,13 @@ describe('Order field permissions and shared bulk selection', () => {
     orders.getOrder.and.returnValue(EMPTY);
     fixture.componentInstance.viewOrder(fixture.componentInstance.orders[0]);
     fixture.detectChanges();
-    const dialog = fixture.nativeElement.querySelector('dialog') as HTMLDialogElement;
-    expect(dialog.open).toBeTrue();
+    const dialog = fixture.nativeElement.querySelector('app-order-details > div') as HTMLElement;
+    expect(dialog.classList.contains('fixed')).toBeTrue();
     expect(orders.getOrder).toHaveBeenCalledWith(1);
     expect(TestBed.inject(Router).navigate).not.toHaveBeenCalled();
-    (dialog.querySelector('[aria-label="Close order details"]') as HTMLButtonElement).click();
+    dialog.click();
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('dialog')).toBeNull();
+    expect(fixture.nativeElement.querySelector('app-order-details')).toBeNull();
   });
 
   it('prevents a customer inline tracking edit from sending any request', () => {

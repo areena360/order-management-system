@@ -81,13 +81,8 @@
 
           <!-- 1. Images (TOP, full width) -->
           <section>
-            <div class="px-5 py-3 bg-gray-800 border-b border-gray-700 flex items-center justify-between">
-              <div>
-                <h2 class="text-base font-semibold text-white">Order Images</h2>
-                <p class="mt-1 text-xs text-gray-300">
-                  {{ isEditMode ? 'Images upload immediately.' : 'Selected images will be uploaded when you save the order.' }}
-                </p>
-              </div>
+            <div class="px-5 py-3 bg-gray-800 border-b border-gray-700 flex items-center gap-3">
+              <h2 class="text-base font-semibold text-white">Order Images</h2>
               <label class="inline-flex items-center gap-1.5 rounded-lg border border-gray-600 bg-gray-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-600 cursor-pointer transition-colors">
                 <svg *ngIf="!uploadingImages" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -96,7 +91,7 @@
                   <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" opacity=".25" />
                   <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="2" />
                 </svg>
-                {{ uploadingImages ? 'Uploading...' : 'Add' }}
+                {{ uploadingImages ? 'Uploading...' : 'Upload Image' }}
                 <input type="file" accept="image/*" multiple class="hidden" [disabled]="uploadingImages" (change)="onImagesSelected($event)" />
               </label>
             </div>
@@ -145,14 +140,14 @@
             </div>
           </section>
 
-          <!-- 2. Order Information -->
+          <!-- 2. Order Information (status + material + size merged) -->
           <section>
             <div class="px-5 py-3 bg-gray-800 border-b border-gray-700">
               <h2 class="text-base font-semibold text-white">Order Information</h2>
-              <p class="mt-1 text-sm text-gray-300">Basic customer and product information.</p>
             </div>
 
             <div class="grid grid-cols-1 gap-5 p-5 sm:grid-cols-2 lg:grid-cols-4">
+              <!-- Customer Name -->
               <div class="relative min-w-0" data-customer-select>
                 <label class="mb-1.5 block text-sm font-medium text-gray-700">{{ isCustomer ? 'Your Name' : 'Customer Name' }} <span class="text-red-500">*</span></label>
                 <div class="relative">
@@ -187,35 +182,42 @@
                 <p *ngIf="isInvalid('customerId')" class="mt-1.5 text-xs text-red-600">Please select a customer.</p>
               </div>
 
+              <!-- Customer Order # -->
               <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700">{{ isCustomer ? 'Order Number' : 'Customer Order Number' }}</label>
-                <input type="text" formControlName="customerOrderNumber" maxlength="100" [placeholder]="isCustomer ? 'Enter your order number' : 'Enter the customer’s order number'"
-                  class="w-full min-w-0 truncate rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-gray-500" />
+                <label class="mb-1.5 block text-sm font-medium text-gray-700">Customer Order # <span class="text-red-500">*</span></label>
+                <input type="text" formControlName="customerOrderNumber" maxlength="100" placeholder="Enter customer order number"
+                  class="w-full min-w-0 truncate rounded-lg border bg-white px-3 py-2 text-sm text-gray-700 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-gray-500"
+                  [class.border-red-400]="isInvalid('customerOrderNumber')" [class.border-gray-300]="!isInvalid('customerOrderNumber')" />
+                <p *ngIf="isInvalid('customerOrderNumber')" class="mt-1.5 text-xs text-red-600">{{ getError('customerOrderNumber') }}</p>
               </div>
 
-              <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700">Order Amount (PKR)</label>
-                <input type="number" formControlName="amount" min="0" placeholder="Enter amount in PKR"
-                  class="w-full min-w-0 truncate rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-gray-500" />
+              <!-- Manufacturer Order # -->
+              <div *ngIf="!isCustomer">
+                <label class="mb-1.5 block text-sm font-medium text-gray-700">Manufacturer Order # (optional)</label>
+                <input type="text" formControlName="manufacturerOrderNumber" maxlength="100" placeholder="Auto-generated if left blank"
+                  class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700" />
+                <p *ngIf="isInvalid('manufacturerOrderNumber')" class="mt-1.5 text-xs text-red-600">{{ getError('manufacturerOrderNumber') }}</p>
               </div>
 
+              <!-- Customer Title -->
               <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700">{{ isCustomer ? 'Product Name' : 'Customer Product Name' }} <span class="text-red-500">*</span></label>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700">Customer Title <span *ngIf="isCustomer" class="text-red-500">*</span><span *ngIf="!isCustomer"> (optional)</span></label>
                 <input type="text" formControlName="customerProductTitle" maxlength="200" placeholder="Enter product name"
                   class="w-full rounded-lg border bg-white px-3 py-2 text-sm text-gray-700 outline-none placeholder:text-gray-400"
                   [class.border-red-400]="isInvalid('customerProductTitle')"
                   [class.border-gray-300]="!isInvalid('customerProductTitle')" />
                 <p *ngIf="isInvalid('customerProductTitle')" class="mt-1.5 text-xs text-red-600">{{ getError('customerProductTitle') }}</p>
-                <p *ngIf="isSuperAdminCreate" class="mt-1.5 text-xs text-gray-500">Filled automatically from Manufacturer Product Name.</p>
               </div>
 
-              <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700">Manufacturer Product Name <span *ngIf="isSuperAdminCreate" class="text-red-500">*</span></label>
+              <!-- Manufacturer Title -->
+              <div *ngIf="!isCustomer">
+                <label class="mb-1.5 block text-sm font-medium text-gray-700">Manufacturer Title <span class="text-red-500">*</span></label>
                 <input type="text" formControlName="manufacturerProductTitle" maxlength="200" placeholder="Product name used by the manufacturer"
                   class="w-full min-w-0 truncate rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-gray-500" />
                 <p *ngIf="isInvalid('manufacturerProductTitle')" class="mt-1.5 text-xs text-red-600">{{ getError('manufacturerProductTitle') }}</p>
               </div>
 
+              <!-- Gender -->
               <div>
                 <label class="mb-1.5 block text-sm font-medium text-gray-700">Gender <span class="text-red-500">*</span></label>
                 <div class="relative" data-dd="genderId">
@@ -240,8 +242,9 @@
                 <p *ngIf="isInvalid('genderId')" class="mt-1.5 text-xs text-red-600">{{ getError('genderId') }}</p>
               </div>
 
+              <!-- Order Priority -->
               <div *ngIf="!isCustomer">
-                <label class="mb-1.5 block text-sm font-medium text-gray-700">Order Priority</label>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700">Order Priority <span class="text-red-500">*</span></label>
                 <div class="relative" data-dd="priorityId">
                   <button type="button" (click)="toggleDropdown('priorityId')" [disabled]="form.controls.priorityId.disabled"
                     class="w-full flex items-center justify-between rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-left focus:outline-none focus:ring-2 focus:ring-gray-500 hover:bg-gray-50 cursor-pointer">
@@ -260,67 +263,43 @@
                       [class.font-medium]="form.controls.priorityId.value === priority.id">{{ priority.name }}</button>
                   </div>
                 </div>
+                <p *ngIf="isInvalid('priorityId')" class="mt-1.5 text-xs text-red-600">{{ getError('priorityId') }}</p>
               </div>
-            </div>
-          </section>
 
-          <!-- 3. Order Status -->
-          <section>
-            <div class="px-5 py-3 bg-gray-800 border-b border-gray-700">
-              <h2 class="text-base font-semibold text-white">Order Status</h2>
-              <p class="mt-1 text-sm text-gray-300">
-                {{ isEditMode ? 'Change the status — updates sync in real-time.' : 'Set the initial status for this order.' }}
-              </p>
-            </div>
-            <div class="p-5">
-              <div class="w-full sm:w-72 relative" data-status-dd>
-                <button type="button" (click)="!changingStatus && (showStatusDropdown = !showStatusDropdown)" [disabled]="changingStatus || form.controls.statusId.disabled"
-                  class="w-full flex items-center justify-between rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 cursor-pointer disabled:bg-gray-100 disabled:cursor-not-allowed">
-                  <span class="truncate" [class.text-gray-400]="!form.controls.statusId.value" [class.text-gray-700]="form.controls.statusId.value">
-                    {{ optionName(statuses, form.controls.statusId.value) || 'Select status' }}
-                  </span>
-                  <svg class="h-3.5 w-3.5 text-gray-400 shrink-0 ml-2 transition-transform" [class.rotate-180]="showStatusDropdown" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+              <!-- Order Status -->
+              <div>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700">Order Status</label>
+                <div class="relative" data-status-dd>
+                  <button type="button" (click)="!changingStatus && (showStatusDropdown = !showStatusDropdown)"
+                    [disabled]="changingStatus || form.controls.statusId.disabled"
+                    class="w-full flex items-center justify-between rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 cursor-pointer disabled:bg-gray-100 disabled:cursor-not-allowed">
+                    <span class="truncate" [class.text-gray-400]="!form.controls.statusId.value" [class.text-gray-700]="form.controls.statusId.value">
+                      {{ optionName(statuses, form.controls.statusId.value) || 'Select status' }}
+                    </span>
+                    <svg class="h-3.5 w-3.5 text-gray-400 shrink-0 ml-2 transition-transform" [class.rotate-180]="showStatusDropdown" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                    </svg>
+                  </button>
+                  <div *ngIf="showStatusDropdown"
+                    class="absolute left-0 right-0 z-20 mt-2 max-h-56 overflow-y-auto rounded-lg bg-white shadow-lg ring-1 ring-gray-200 p-1.5">
+                    <button *ngFor="let status of statuses" type="button" (click)="onStatusSelected(status.id)"
+                      class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors"
+                      [class.bg-gray-100]="form.controls.statusId.value === status.id"
+                      [class.font-medium]="form.controls.statusId.value === status.id">{{ status.name }}</button>
+                  </div>
+                </div>
+                <div *ngIf="changingStatus" class="mt-2 flex items-center gap-2 text-xs text-gray-500">
+                  <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
                   </svg>
-                </button>
-                <div *ngIf="showStatusDropdown"
-                  class="absolute left-0 right-0 z-20 mt-2 max-h-56 overflow-y-auto rounded-lg bg-white shadow-lg ring-1 ring-gray-200 p-1.5">
-                  <button *ngFor="let status of statuses" type="button" (click)="onStatusSelected(status.id)"
-                    class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors"
-                    [class.bg-gray-100]="form.controls.statusId.value === status.id"
-                    [class.font-medium]="form.controls.statusId.value === status.id">{{ status.name }}</button>
+                  Updating status...
                 </div>
               </div>
-              <div *ngIf="changingStatus" class="mt-3 flex items-center gap-2 text-xs text-gray-500">
-                <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
-                </svg>
-                Updating status...
-              </div>
-            </div>
-          </section>
 
-          <!-- 4. Material & Size -->
-          <section>
-            <div class="px-5 py-3 bg-gray-800 border-b border-gray-700 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <!-- Customer Material -->
               <div>
-                <h2 class="text-base font-semibold text-white">Material & Size</h2>
-                <p class="mt-1 text-sm text-gray-300">Configure customer and manufacturer materials and sizing.</p>
-              </div>
-              <label class="inline-flex w-fit shrink-0 cursor-pointer items-center gap-2.5 rounded-lg ring-1 ring-gray-600 bg-gray-700 px-3.5 py-2">
-                <input type="checkbox" formControlName="isCustomSize"
-                  class="h-4 w-4 rounded border-gray-300 text-gray-800 focus:ring-gray-800 accent-gray-800 cursor-pointer" />
-                <span>
-                  <span class="block text-sm font-medium text-white">Use custom size</span>
-                  <span class="block text-xs text-gray-300">Non-standard size.</span>
-                </span>
-              </label>
-            </div>
-
-            <div class="grid grid-cols-1 gap-5 p-5 sm:grid-cols-2 lg:grid-cols-4">
-              <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700">{{ isCustomer ? 'Preferred Material' : 'Customer’s Preferred Material' }} <span class="text-red-500">*</span></label>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700">Customer Material (optional)</label>
                 <div class="relative" data-dd="customerMaterialId">
                   <button type="button" (click)="toggleDropdown('customerMaterialId')" [disabled]="form.controls.customerMaterialId.disabled"
                     class="w-full flex items-center justify-between rounded-lg border bg-white px-3 py-2 text-sm text-left focus:outline-none focus:ring-2 focus:ring-gray-500 hover:bg-gray-50 cursor-pointer"
@@ -335,6 +314,7 @@
                   </button>
                   <div *ngIf="openDropdown === 'customerMaterialId'"
                     class="absolute left-0 z-20 mt-2 w-full max-h-56 overflow-y-auto rounded-lg bg-white shadow-lg ring-1 ring-gray-200 p-1.5">
+                    <button type="button" (click)="selectDropdown('customerMaterialId', null)" class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50">None</button>
                     <button *ngFor="let material of materials" type="button" (click)="selectDropdown('customerMaterialId', material.id)"
                       class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors"
                       [class.bg-gray-100]="form.controls.customerMaterialId.value === material.id"
@@ -344,8 +324,9 @@
                 <p *ngIf="isInvalid('customerMaterialId')" class="mt-1.5 text-xs text-red-600">{{ getError('customerMaterialId') }}</p>
               </div>
 
-              <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700">Production Material <span class="text-red-500">*</span></label>
+              <!-- Manufacturer Material -->
+              <div *ngIf="!isCustomer">
+                <label class="mb-1.5 block text-sm font-medium text-gray-700">Manufacturer Material <span class="text-red-500">*</span></label>
                 <div class="relative" data-dd="manufacturerMaterialId">
                   <button type="button" (click)="toggleDropdown('manufacturerMaterialId')" [disabled]="form.controls.manufacturerMaterialId.disabled"
                     class="w-full flex items-center justify-between rounded-lg border bg-white px-3 py-2 text-sm text-left focus:outline-none focus:ring-2 focus:ring-gray-500 hover:bg-gray-50 cursor-pointer"
@@ -369,58 +350,68 @@
                 <p *ngIf="isInvalid('manufacturerMaterialId')" class="mt-1.5 text-xs text-red-600">{{ getError('manufacturerMaterialId') }}</p>
               </div>
 
-              <ng-container *ngIf="!form.controls.isCustomSize.value">
-                <div>
-                  <label class="mb-1.5 block text-sm font-medium text-gray-700">Size Chart <span class="text-red-500">*</span></label>
-                  <div class="relative" data-dd="sizeChartId">
-                    <button type="button" (click)="toggleDropdown('sizeChartId')" [disabled]="form.controls.sizeChartId.disabled"
-                      class="w-full flex items-center justify-between rounded-lg border bg-white px-3 py-2 text-sm text-left focus:outline-none focus:ring-2 focus:ring-gray-500 hover:bg-gray-50 cursor-pointer"
-                      [class.border-red-400]="isInvalid('sizeChartId')" [class.border-gray-300]="!isInvalid('sizeChartId')">
-                      <span class="min-w-0 flex-1 truncate whitespace-nowrap" [class.text-gray-400]="!form.controls.sizeChartId.value"
-                        [class.text-gray-700]="form.controls.sizeChartId.value">
-                        {{ optionName(sizeCharts, form.controls.sizeChartId.value) || 'Select size chart' }}
-                      </span>
-                      <svg class="h-3.5 w-3.5 text-gray-400 transition-transform" [class.rotate-180]="openDropdown === 'sizeChartId'" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                      </svg>
-                    </button>
-                    <div *ngIf="openDropdown === 'sizeChartId'"
-                      class="absolute left-0 z-20 mt-2 w-full max-h-56 overflow-y-auto rounded-lg bg-white shadow-lg ring-1 ring-gray-200 p-1.5">
-                      <button *ngFor="let chart of sizeCharts" type="button" (click)="selectDropdown('sizeChartId', chart.id)"
-                        class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors"
-                        [class.bg-gray-100]="form.controls.sizeChartId.value === chart.id"
-                        [class.font-medium]="form.controls.sizeChartId.value === chart.id">{{ chart.name }}</button>
-                    </div>
+              <!-- Size Chart -->
+              <div>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700">Size Chart <span class="text-red-500">*</span></label>
+                <div class="relative" data-dd="sizeChartId">
+                  <button type="button" (click)="toggleDropdown('sizeChartId')" [disabled]="form.controls.sizeChartId.disabled"
+                    class="w-full flex items-center justify-between rounded-lg border bg-white px-3 py-2 text-sm text-left focus:outline-none focus:ring-2 focus:ring-gray-500 hover:bg-gray-50 cursor-pointer"
+                    [class.border-red-400]="isInvalid('sizeChartId')" [class.border-gray-300]="!isInvalid('sizeChartId')">
+                    <span class="min-w-0 flex-1 truncate whitespace-nowrap" [class.text-gray-400]="!form.controls.sizeChartId.value"
+                      [class.text-gray-700]="form.controls.sizeChartId.value">
+                      {{ optionName(sizeCharts, form.controls.sizeChartId.value) || 'Select size chart' }}
+                    </span>
+                    <svg class="h-3.5 w-3.5 text-gray-400 transition-transform" [class.rotate-180]="openDropdown === 'sizeChartId'" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                    </svg>
+                  </button>
+                  <div *ngIf="openDropdown === 'sizeChartId'"
+                    class="absolute left-0 z-20 mt-2 w-full max-h-56 overflow-y-auto rounded-lg bg-white shadow-lg ring-1 ring-gray-200 p-1.5">
+                    <button *ngFor="let chart of sizeCharts" type="button" (click)="selectDropdown('sizeChartId', chart.id)"
+                      class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors"
+                      [class.bg-gray-100]="form.controls.sizeChartId.value === chart.id"
+                      [class.font-medium]="form.controls.sizeChartId.value === chart.id">{{ chart.name }}</button>
                   </div>
-                  <p *ngIf="isInvalid('sizeChartId')" class="mt-1.5 text-xs text-red-600">{{ getError('sizeChartId') }}</p>
                 </div>
+                <p *ngIf="isInvalid('sizeChartId')" class="mt-1.5 text-xs text-red-600">{{ getError('sizeChartId') }}</p>
+              </div>
 
-                <div>
-                  <label class="mb-1.5 block text-sm font-medium text-gray-700">Size <span class="text-red-500">*</span></label>
-                  <div class="relative" data-dd="sizeId">
-                    <button type="button" (click)="toggleDropdown('sizeId')" [disabled]="form.controls.sizeId.disabled"
-                      class="w-full flex items-center justify-between rounded-lg border bg-white px-3 py-2 text-sm text-left focus:outline-none focus:ring-2 focus:ring-gray-500 hover:bg-gray-50 cursor-pointer"
-                      [class.border-red-400]="isInvalid('sizeId')" [class.border-gray-300]="!isInvalid('sizeId')">
-                      <span class="min-w-0 flex-1 truncate whitespace-nowrap" [class.text-gray-400]="!form.controls.sizeId.value" [class.text-gray-700]="form.controls.sizeId.value">
-                        {{ optionName(sizes, form.controls.sizeId.value) || 'Select size' }}
-                      </span>
-                      <svg class="h-3.5 w-3.5 text-gray-400 transition-transform" [class.rotate-180]="openDropdown === 'sizeId'" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                      </svg>
-                    </button>
-                    <div *ngIf="openDropdown === 'sizeId'"
-                      class="absolute left-0 z-20 mt-2 w-full max-h-56 overflow-y-auto rounded-lg bg-white shadow-lg ring-1 ring-gray-200 p-1.5">
-                      <button *ngFor="let size of sizes" type="button" (click)="selectDropdown('sizeId', size.id)"
-                        class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors"
-                        [class.bg-gray-100]="form.controls.sizeId.value === size.id"
-                        [class.font-medium]="form.controls.sizeId.value === size.id">{{ size.name }}</button>
-                    </div>
+              <!-- Size -->
+              <div>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700">Size <span class="text-red-500">*</span></label>
+                <div class="relative" data-dd="sizeId">
+                  <button type="button" (click)="toggleDropdown('sizeId')" [disabled]="form.controls.sizeId.disabled"
+                    class="w-full flex items-center justify-between rounded-lg border bg-white px-3 py-2 text-sm text-left focus:outline-none focus:ring-2 focus:ring-gray-500 hover:bg-gray-50 cursor-pointer"
+                    [class.border-red-400]="isInvalid('sizeId')" [class.border-gray-300]="!isInvalid('sizeId')">
+                    <span class="min-w-0 flex-1 truncate whitespace-nowrap" [class.text-gray-400]="!form.controls.sizeId.value" [class.text-gray-700]="form.controls.sizeId.value">
+                      {{ optionName(sizes, form.controls.sizeId.value) || 'Select size' }}
+                    </span>
+                    <svg class="h-3.5 w-3.5 text-gray-400 transition-transform" [class.rotate-180]="openDropdown === 'sizeId'" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                    </svg>
+                  </button>
+                  <div *ngIf="openDropdown === 'sizeId'"
+                    class="absolute left-0 z-20 mt-2 w-full max-h-56 overflow-y-auto rounded-lg bg-white shadow-lg ring-1 ring-gray-200 p-1.5">
+                    <button *ngFor="let size of sizes" type="button" (click)="selectDropdown('sizeId', size.id)"
+                      class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors"
+                      [class.bg-gray-100]="form.controls.sizeId.value === size.id"
+                      [class.font-medium]="form.controls.sizeId.value === size.id">{{ size.name }}</button>
                   </div>
-                  <p *ngIf="isInvalid('sizeId')" class="mt-1.5 text-xs text-red-600">{{ getError('sizeId') }}</p>
                 </div>
-              </ng-container>
+                <p *ngIf="isInvalid('sizeId')" class="mt-1.5 text-xs text-red-600">{{ getError('sizeId') }}</p>
+              </div>
 
-              <div *ngIf="form.controls.isCustomSize.value" class="sm:col-span-2 lg:col-span-2">
+              <!-- Custom size toggle -->
+              <div class="sm:col-span-2 lg:col-span-4">
+                <label class="inline-flex items-center gap-2.5 cursor-pointer rounded-lg bg-gray-50 ring-1 ring-gray-200 px-3.5 py-2">
+                  <input type="checkbox" formControlName="isCustomSize"
+                    class="h-4 w-4 rounded border-gray-300 text-gray-800 focus:ring-gray-800 accent-gray-800 cursor-pointer" />
+                  <span class="text-sm font-medium text-gray-700">Use custom size</span>
+                </label>
+              </div>
+
+              <!-- Custom Measurements -->
+              <div *ngIf="form.controls.isCustomSize.value" class="sm:col-span-2 lg:col-span-4">
                 <label class="mb-1.5 block text-sm font-medium text-gray-700">Custom Measurements <span class="text-red-500">*</span></label>
                 <textarea formControlName="sizeDetails" rows="3" maxlength="2000" placeholder="Enter measurements and units (inches or cm)"
                   class="w-full resize-y rounded-lg border bg-white px-3 py-2 text-sm text-gray-700 outline-none placeholder:text-gray-400"
@@ -430,28 +421,52 @@
             </div>
           </section>
 
-          <!-- 5. Production & Delivery -->
+          <!-- 3. Shipping Information -->
           <section>
             <div class="px-5 py-3 bg-gray-800 border-b border-gray-700">
-              <h2 class="text-base font-semibold text-white">Production & Delivery</h2>
-              <p class="mt-1 text-sm text-gray-300">Tracking and delivery details. Production days are counted automatically once the order is assigned.</p>
+              <h2 class="text-base font-semibold text-white">Shipping Information</h2>
             </div>
 
             <div class="grid grid-cols-1 gap-5 p-5 sm:grid-cols-2 lg:grid-cols-4">
               <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700">Tracking Number</label>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700">Email <span class="text-red-500">*</span></label>
+                <input type="email" formControlName="shippingEmail" maxlength="320" placeholder="Shipping email"
+                  class="w-full rounded-lg border bg-white px-3 py-2 text-sm text-gray-700"
+                  [class.border-red-400]="isInvalid('shippingEmail')" [class.border-gray-300]="!isInvalid('shippingEmail')" />
+                <p *ngIf="isInvalid('shippingEmail')" class="mt-1.5 text-xs text-red-600">{{ getError('shippingEmail') }}</p>
+              </div>
+              <div>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700">Contact <span class="text-red-500">*</span></label>
+                <input type="tel" formControlName="shippingContact" maxlength="100" placeholder="Shipping contact number"
+                  class="w-full rounded-lg border bg-white px-3 py-2 text-sm text-gray-700"
+                  [class.border-red-400]="isInvalid('shippingContact')" [class.border-gray-300]="!isInvalid('shippingContact')" />
+                <p *ngIf="isInvalid('shippingContact')" class="mt-1.5 text-xs text-red-600">{{ getError('shippingContact') }}</p>
+              </div>
+              <div>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700">Courier <span *ngIf="!isCustomer" class="text-red-500">*</span><span *ngIf="isCustomer"> (optional)</span></label>
+                <select formControlName="courier" class="w-full rounded-lg border bg-white px-3 py-2 text-sm text-gray-700 disabled:bg-gray-100 disabled:text-gray-500"
+                  [class.border-red-400]="isInvalid('courier')" [class.border-gray-300]="!isInvalid('courier')">
+                  <option value="">Select courier</option>
+                  <option *ngIf="form.controls.courier.value && !couriers.includes(form.controls.courier.value!)" [value]="form.controls.courier.value">{{ form.controls.courier.value }}</option>
+                  <option *ngFor="let courier of couriers" [value]="courier">{{ courier }}</option>
+                </select>
+                <p *ngIf="isInvalid('courier')" class="mt-1.5 text-xs text-red-600">{{ getError('courier') }}</p>
+              </div>
+              <div>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700">Tracking Number <span *ngIf="!isCustomer" class="text-red-500">*</span><span *ngIf="isCustomer"> (optional)</span></label>
                 <input type="text" formControlName="trackingNumber" maxlength="200" placeholder="Tracking number"
                   class="w-full min-w-0 truncate rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-gray-500" />
+                <p *ngIf="isInvalid('trackingNumber')" class="mt-1.5 text-xs text-red-600">{{ getError('trackingNumber') }}</p>
               </div>
 
               <div>
                 <label class="mb-1.5 block text-sm font-medium text-gray-700">Deadline</label>
-                <input type="date" formControlName="deadline" [disabled]="!canEditDeadline"
+                <input type="date" formControlName="deadline"
                   class="w-full min-w-0 truncate rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-gray-500 disabled:bg-gray-100 disabled:cursor-not-allowed" />
               </div>
 
               <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700">Receiver Name <span *ngIf="!isCustomer" class="text-red-500">*</span></label>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700">Name <span class="text-red-500">*</span></label>
                 <input type="text" formControlName="consigneeName" maxlength="200" placeholder="Name of the person receiving the order"
                   class="w-full rounded-lg border bg-white px-3 py-2 text-sm text-gray-700 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-gray-500"
                   [class.border-red-400]="isInvalid('consigneeName')" [class.border-gray-300]="!isInvalid('consigneeName')" />
@@ -459,7 +474,7 @@
               </div>
 
               <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700">Shipping Address <span *ngIf="!isCustomer" class="text-red-500">*</span></label>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700">Shipping Address <span class="text-red-500">*</span></label>
                 <input type="text" formControlName="consigneeAddress" maxlength="1000" placeholder="Enter the complete shipping address"
                   class="w-full rounded-lg border bg-white px-3 py-2 text-sm text-gray-700 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-gray-500"
                   [class.border-red-400]="isInvalid('consigneeAddress')" [class.border-gray-300]="!isInvalid('consigneeAddress')" />
@@ -468,11 +483,10 @@
             </div>
           </section>
 
-          <!-- 6. Notes -->
+          <!-- 4. Notes -->
           <section>
             <div class="px-5 py-3 bg-gray-800 border-b border-gray-700">
               <h2 class="text-base font-semibold text-white">Notes</h2>
-              <p class="mt-1 text-sm text-gray-300">Additional information related to the order.</p>
             </div>
             <div class="grid grid-cols-1 gap-5 p-5 sm:grid-cols-2">
               <div>
@@ -488,21 +502,16 @@
             </div>
           </section>
 
-          <!-- 7. Inventory Bills -->
-          <section>
-            <div class="px-5 py-3 bg-gray-800 border-b border-gray-700 flex items-center justify-between">
-              <div>
-                <h2 class="text-base font-semibold text-white">Inventory Bills</h2>
-                <p class="mt-1 text-xs text-gray-300">
-                  {{ isEditMode ? 'Bills save immediately.' : 'Added bills will be saved when you save the order.' }}
-                </p>
-              </div>
+          <!-- 5. Inventory Bills -->
+          <section *ngIf="!isCustomer">
+            <div class="px-5 py-3 bg-gray-800 border-b border-gray-700 flex items-center gap-3">
+              <h2 class="text-base font-semibold text-white">Inventory Bills</h2>
               <button type="button" (click)="openBillModal()" [disabled]="isCustomer"
                 class="inline-flex items-center gap-1.5 rounded-lg border border-gray-600 bg-gray-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-600 transition-colors cursor-pointer">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
                 </svg>
-                Add Bill
+                Upload Bill
               </button>
             </div>
 
@@ -607,8 +616,8 @@
           <label class="block text-xs font-medium text-gray-600 mb-1">Bill Image / Document</label>
           <div *ngIf="!billImageFile" class="flex items-center justify-center rounded-lg border border-dashed border-gray-300 px-3 py-4">
             <label class="cursor-pointer text-sm font-medium text-gray-600 hover:text-gray-900">
-              Choose file (JPG, PNG, WEBP, PDF)
-              <input type="file" accept="image/*,.pdf" class="hidden" (change)="onBillImageSelected($event)" />
+              Choose file (all file types, up to 10 MB)
+              <input type="file" class="hidden" (change)="onBillImageSelected($event)" />
             </label>
           </div>
           <div *ngIf="billImageFile" class="flex items-center justify-between rounded-lg ring-1 ring-gray-200 bg-gray-50 px-3 py-2">

@@ -7,15 +7,18 @@ public class Order : BaseEntity
     public int CustomerId { get; set; }
     public int? Amount { get; set; }
     public int GenderId { get; set; }
-    public int CustomerMaterialId { get; set; }
-    public int ManufacturerMaterialId { get; set; }
+    public int? CustomerMaterialId { get; set; }
+    public int? ManufacturerMaterialId { get; set; }
     public bool IsCustomSize { get; set; }
     public string? SizeDetails { get; set; }
     public int? SizeId { get; set; }
     public int? SizeChartId { get; set; }
     public int OrderStatusId { get; set; }
     public string ConsigneeName { get; set; }
+    public string? ShippingEmail { get; set; }
+    public string? ShippingContact { get; set; }
     public string ConsigneeAddress { get; set; }
+    public string? Courier { get; set; }
     public string? TrackingNumber { get; set; }
     public string? NotesByCustomer { get; set; }
     public string? NotesByManufacturer { get; set; }

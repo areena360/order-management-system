@@ -1,4 +1,4 @@
-import { Component, EventEmitter, HostListener, Input, OnDestroy, OnInit, Output, inject } from '@angular/core';
+import { Component, EventEmitter, Input, OnDestroy, OnInit, Output, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -30,7 +30,7 @@ interface PendingBill {
 export class OrderFormComponent implements OnInit, OnDestroy {
 
   @Input() asModal = false;
-  @Input() orderId: number | null = null; // Added for Edit Modal
+  @Input() orderId: number | null = null;
   @Output() closed = new EventEmitter<void>();
   @Output() saved = new EventEmitter<void>();
 
@@ -39,22 +39,26 @@ export class OrderFormComponent implements OnInit, OnDestroy {
   private readonly polling = inject(PollingService);
 
   form = this.fb.group({
-    customerProductTitle: ['', [Validators.required, Validators.maxLength(200)]],
+    customerProductTitle: ['', [Validators.maxLength(200)]],
     manufacturerProductTitle: ['', [Validators.maxLength(200)]],
-    customerOrderNumber: ['', [Validators.maxLength(100)]],
+    customerOrderNumber: ['', [Validators.required, Validators.pattern(/\S/), Validators.maxLength(100)]],
+    manufacturerOrderNumber: ['', [Validators.maxLength(100)]],
     customerId: [null as number | null, Validators.required],
     amount: [null as number | null, [Validators.min(0)]],
     genderId: [null as number | null, Validators.required],
-    customerMaterialId: [null as number | null, Validators.required],
-    manufacturerMaterialId: [null as number | null, Validators.required],
+    customerMaterialId: [null as number | null],
+    manufacturerMaterialId: [null as number | null],
     isCustomSize: [false],
     sizeId: [null as number | null],
     sizeChartId: [null as number | null],
     sizeDetails: ['', [Validators.maxLength(2000)]],
     priorityId: [null as number | null],
-    statusId: [null as number | null],
+    statusId: [null as number | null, Validators.required],
     consigneeName: ['', [Validators.required, Validators.maxLength(200)]],
+    shippingEmail: ['', [Validators.required, Validators.email, Validators.maxLength(320)]],
+    shippingContact: ['', [Validators.required, Validators.maxLength(100)]],
     consigneeAddress: ['', [Validators.required, Validators.maxLength(1000)]],
+    courier: [''],
     trackingNumber: ['', [Validators.maxLength(200)]],
     deadline: [null as string | null],
     notesByCustomer: ['', [Validators.maxLength(3000)]],
@@ -74,6 +78,7 @@ export class OrderFormComponent implements OnInit, OnDestroy {
   materials: LookupItem[] = [];
   sizes: LookupItem[] = [];
   sizeCharts: LookupItem[] = [];
+  readonly couriers = ['DHL', 'SkyNet', 'FedEx', 'UPS'];
 
   customerOptions: CustomerOption[] = [];
   customerSearchTerm = '';
@@ -141,30 +146,42 @@ export class OrderFormComponent implements OnInit, OnDestroy {
     return ['Super Admin', 'Admin'].includes(this.authService.currentRole() ?? '');
   }
 
-  get isSuperAdminCreate(): boolean {
-    return this.authService.currentRole() === 'Super Admin' && !this.isEditMode;
-  }
-
   private applyFieldPermissions(): void {
     if (!this.canEditTracking) this.form.controls.trackingNumber.disable({ emitEvent: false });
     if (!this.canEditAmount) this.form.controls.amount.disable({ emitEvent: false });
     if (!this.canEditDeadline) this.form.controls.deadline.disable({ emitEvent: false });
-    
+
     if (this.isCustomer) {
-      for (const name of ['customerId', 'manufacturerProductTitle', 'manufacturerMaterialId', 'statusId', 'notesByManufacturer']) {
+      for (const name of ['customerId', 'manufacturerOrderNumber', 'manufacturerProductTitle', 'manufacturerMaterialId', 'statusId', 'notesByManufacturer', 'courier']) {
         this.form.get(name)?.disable({ emitEvent: false });
       }
       this.form.controls.priorityId.disable({ emitEvent: false });
+      this.form.controls.customerMaterialId.clearValidators();
+      this.form.controls.customerProductTitle.setValidators([Validators.required, Validators.maxLength(200)]);
     } else {
       this.form.controls.notesByCustomer.disable({ emitEvent: false });
+      this.form.controls.statusId.disable({ emitEvent: false });
+      this.form.controls.manufacturerMaterialId.setValidators([Validators.required]);
+      this.form.controls.manufacturerProductTitle.setValidators([Validators.required, Validators.maxLength(200)]);
+      this.form.controls.customerOrderNumber.setValidators([Validators.required, Validators.maxLength(100)]);
+      this.form.controls.priorityId.setValidators([Validators.required]);
+      this.form.controls.courier.setValidators([Validators.required]);
+      this.form.controls.trackingNumber.setValidators([Validators.required, Validators.maxLength(200)]);
     }
+    this.form.controls.customerMaterialId.updateValueAndValidity({ emitEvent: false });
+    this.form.controls.manufacturerMaterialId.updateValueAndValidity({ emitEvent: false });
+    this.form.controls.customerProductTitle.updateValueAndValidity({ emitEvent: false });
+    this.form.controls.customerOrderNumber.updateValueAndValidity({ emitEvent: false });
+    this.form.controls.manufacturerProductTitle.updateValueAndValidity({ emitEvent: false });
+    this.form.controls.priorityId.updateValueAndValidity({ emitEvent: false });
+    this.form.controls.courier.updateValueAndValidity({ emitEvent: false });
+    this.form.controls.trackingNumber.updateValueAndValidity({ emitEvent: false });
 
-    if (this.isSuperAdminCreate) {
-      this.form.controls.customerProductTitle.disable({ emitEvent: false });
-      this.form.controls.manufacturerProductTitle.addValidators(Validators.required);
-      this.form.controls.manufacturerProductTitle.updateValueAndValidity({ emitEvent: false });
-      this.form.controls.manufacturerProductTitle.valueChanges.pipe(takeUntil(this.destroy$))
-        .subscribe(value => this.form.controls.customerProductTitle.setValue(value, { emitEvent: false }));
+    for (const control of Object.values(this.form.controls)) {
+      if (control.hasValidator(Validators.required)) {
+        control.addValidators(Validators.pattern(/\S/));
+        control.updateValueAndValidity({ emitEvent: false });
+      }
     }
   }
 
@@ -182,20 +199,6 @@ export class OrderFormComponent implements OnInit, OnDestroy {
     this.setupCustomerSearch();
 
     if (this.isCustomer) {
-      this.form.controls.customerId.clearValidators();
-      this.form.controls.customerId.updateValueAndValidity({ emitEvent: false });
-
-      this.form.controls.consigneeName.clearValidators();
-      this.form.controls.consigneeAddress.clearValidators();
-      this.form.controls.consigneeName.updateValueAndValidity({ emitEvent: false });
-      this.form.controls.consigneeAddress.updateValueAndValidity({ emitEvent: false });
-
-      this.form.controls.customerMaterialId.valueChanges
-        .pipe(takeUntil(this.destroy$))
-        .subscribe(val => {
-          if (!this.isEditMode) this.form.controls.manufacturerMaterialId.setValue(val, { emitEvent: false });
-        });
-
       this.authService.getProfile()
         .pipe(takeUntil(this.destroy$))
         .subscribe({
@@ -208,7 +211,7 @@ export class OrderFormComponent implements OnInit, OnDestroy {
             };
             this.customerSearchTerm = this.selectedCustomer.name;
           },
-          error: () => { /* silent */ }
+          error: () => { this.errorMsg = 'Unable to load your customer profile. Please refresh and try again.'; }
         });
     }
 
@@ -236,13 +239,24 @@ export class OrderFormComponent implements OnInit, OnDestroy {
     this.applyFieldPermissions();
     this.loadLookups();
     this.setupStatusPolling();
+
+    document.addEventListener('click', this.documentClickListener, true);
   }
 
   ngOnDestroy(): void {
+    document.removeEventListener('click', this.documentClickListener, true);
     this.clearSelectedImages();
     this.destroy$.next();
     this.destroy$.complete();
   }
+
+  private readonly documentClickListener = (event: Event): void => {
+    const target = event.target as HTMLElement;
+    if (this.showImageDeleteModal || this.showBillModal || this.showConfirmDeleteModal || this.selectedImagePreviewUrl) return;
+    if (!target.closest('[data-customer-select]')) this.showCustomerDropdown = false;
+    if (!target.closest('[data-dd]')) this.openDropdown = null;
+    if (!target.closest('[data-status-dd]')) this.showStatusDropdown = false;
+  };
 
   private setupStatusPolling(): void {
     if (!this.isEditMode || !this.orderId) return;
@@ -292,9 +306,9 @@ export class OrderFormComponent implements OnInit, OnDestroy {
     const chartControl = this.form.controls.sizeChartId;
     const detailsControl = this.form.controls.sizeDetails;
 
+    sizeControl.setValidators([Validators.required]);
+    chartControl.setValidators([Validators.required]);
     if (isCustom) {
-      sizeControl.clearValidators();
-      chartControl.clearValidators();
       detailsControl.setValidators([Validators.required, Validators.maxLength(2000)]);
     } else {
       sizeControl.setValidators([Validators.required]);
@@ -352,9 +366,14 @@ export class OrderFormComponent implements OnInit, OnDestroy {
           this.statuses = result.statuses;
           this.priorities = result.priorities;
           this.genders = result.genders;
-          this.materials = result.materials;
+          this.materials = [...result.materials, { id: -1, name: 'Other Material' } as LookupItem];
           this.sizes = result.sizes;
           this.sizeCharts = result.sizeCharts;
+
+          if (!this.isEditMode) {
+            const name = this.isCustomer ? 'new' : 'assign';
+            this.form.controls.statusId.setValue(this.statuses.find(item => item.name.toLowerCase() === name)?.id ?? null, { emitEvent: false });
+          }
 
           if (this.isEditMode && this.orderId) {
             this.loadOrder(this.orderId);
@@ -391,6 +410,7 @@ export class OrderFormComponent implements OnInit, OnDestroy {
       customerProductTitle: order.customerProductTitle,
       manufacturerProductTitle: order.manufacturerProductTitle,
       customerOrderNumber: order.customerOrderNumber,
+      manufacturerOrderNumber: order.manufacturerOrderNumber,
       customerId: order.customerId,
       amount: order.amount,
       genderId: order.genderId,
@@ -403,7 +423,10 @@ export class OrderFormComponent implements OnInit, OnDestroy {
       priorityId: order.priorityId,
       statusId: (order as any).orderStatusId ?? null,
       consigneeName: order.consigneeName,
+      shippingEmail: order.shippingEmail ?? '',
+      shippingContact: order.shippingContact ?? '',
       consigneeAddress: order.consigneeAddress,
+      courier: order.courier ?? '',
       trackingNumber: order.trackingNumber,
       deadline: order.deadline,
       notesByCustomer: order.notesByCustomer,
@@ -475,7 +498,7 @@ export class OrderFormComponent implements OnInit, OnDestroy {
     this.openDropdown = this.openDropdown === key ? null : key;
   }
 
-  selectDropdown(controlName: string, value: number): void {
+  selectDropdown(controlName: string, value: number | null): void {
     const control = this.form.get(controlName);
     if (!control || control.disabled) return;
     control.setValue(value);
@@ -532,8 +555,8 @@ export class OrderFormComponent implements OnInit, OnDestroy {
 
     const raw = this.form.getRawValue();
 
-    if (!this.isCustomer && !raw.customerId) {
-      this.errorMsg = 'Please select a customer.';
+    if (!raw.customerId) {
+      this.errorMsg = this.isCustomer ? 'Your customer profile is not loaded. Please refresh and try again.' : 'Please select a customer.';
       this.form.controls.customerId.markAsTouched();
       return;
     }
@@ -542,18 +565,22 @@ export class OrderFormComponent implements OnInit, OnDestroy {
       customerProductTitle: raw.customerProductTitle?.trim() ?? '',
       manufacturerProductTitle: this.isCustomer ? null : this.nullIfBlank(raw.manufacturerProductTitle),
       customerOrderNumber: this.nullIfBlank(raw.customerOrderNumber),
+      manufacturerOrderNumber: this.isCustomer ? undefined : this.nullIfBlank(raw.manufacturerOrderNumber),
       customerId: raw.customerId,
       amount: this.canEditAmount ? (raw.amount === null ? null : Number(raw.amount)) : (this.order?.amount ?? null),
       genderId: raw.genderId,
       customerMaterialId: raw.customerMaterialId,
-      manufacturerMaterialId: this.isCustomer ? (this.order?.manufacturerMaterialId ?? raw.customerMaterialId) : raw.manufacturerMaterialId,
+      manufacturerMaterialId: this.isCustomer ? (this.order?.manufacturerMaterialId ?? null) : raw.manufacturerMaterialId,
       isCustomSize: raw.isCustomSize ?? false,
-      sizeId: raw.isCustomSize ? null : raw.sizeId,
-      sizeChartId: raw.isCustomSize ? null : raw.sizeChartId,
+      sizeId: raw.sizeId,
+      sizeChartId: raw.sizeChartId,
       sizeDetails: raw.isCustomSize ? this.nullIfBlank(raw.sizeDetails) : null,
       priorityId: this.isCustomer ? (this.order?.priorityId ?? null) : raw.priorityId,
       consigneeName: raw.consigneeName?.trim() ?? '',
+      shippingEmail: this.nullIfBlank(raw.shippingEmail),
+      shippingContact: this.nullIfBlank(raw.shippingContact),
       consigneeAddress: raw.consigneeAddress?.trim() ?? '',
+      courier: this.isCustomer ? (this.order?.courier ?? null) : this.nullIfBlank(raw.courier),
       trackingNumber: this.canEditTracking ? this.nullIfBlank(raw.trackingNumber) : (this.order?.trackingNumber ?? null),
       deadline: this.canEditDeadline ? this.nullIfBlank(raw.deadline) : (this.order?.deadline ?? null),
       notesByCustomer: this.isCustomer ? this.nullIfBlank(raw.notesByCustomer) : (this.order?.notesByCustomer ?? null),
@@ -576,7 +603,7 @@ export class OrderFormComponent implements OnInit, OnDestroy {
             else this.router.navigate(['/dashboard/orders']);
           },
           error: (error: HttpErrorResponse) => {
-            this.errorMsg = error?.error?.message ?? 'Unable to save order. Please try again.';
+            this.showSaveError(error);
           }
         });
       return;
@@ -588,7 +615,7 @@ export class OrderFormComponent implements OnInit, OnDestroy {
         next: createdOrder => this.attachImagesAndBills(createdOrder.id),
         error: (error: HttpErrorResponse) => {
           this.saving = false;
-          this.errorMsg = error?.error?.message ?? 'Unable to save order. Please try again.';
+          this.showSaveError(error);
         }
       });
   }
@@ -646,6 +673,8 @@ export class OrderFormComponent implements OnInit, OnDestroy {
     const control = this.form.get(controlName);
     if (!control?.errors) return '';
     if (control.errors['required']) return 'This field is required.';
+    if (control.errors['pattern']) return 'Enter a value, not only spaces.';
+    if (control.errors['email']) return 'Enter a valid email address.';
     if (control.errors['maxlength']) return `Maximum ${control.errors['maxlength'].requiredLength} characters allowed.`;
     if (control.errors['min']) return `Value must be at least ${control.errors['min'].min}.`;
     if (control.errors['max']) return `Value cannot be greater than ${control.errors['max'].max}.`;
@@ -656,6 +685,12 @@ export class OrderFormComponent implements OnInit, OnDestroy {
     if (value === null || value === undefined) return null;
     const trimmed = value.trim();
     return trimmed.length > 0 ? trimmed : null;
+  }
+
+  private showSaveError(error: HttpErrorResponse): void {
+    const errors = error.error?.errors as Record<string, string[]> | undefined;
+    this.errorMsg = errors ? Object.values(errors).flat().join(' ') :
+      (error.error?.message ?? error.error?.title ?? 'Unable to save order. Please try again.');
   }
 
   get pageTitle(): string { return this.isEditMode ? 'Edit Order' : 'Add Order'; }
@@ -788,12 +823,6 @@ export class OrderFormComponent implements OnInit, OnDestroy {
     const input = event.target as HTMLInputElement;
     if (!input.files?.length) return;
     const file = input.files[0];
-    const allowedExt = ['.jpg', '.jpeg', '.png', '.webp', '.pdf'];
-    const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
-    if (!allowedExt.includes(ext)) {
-      this.billError = 'Unsupported file format. Use JPG, PNG, WEBP, or PDF.';
-      input.value = ''; return;
-    }
     if (file.size > 10 * 1024 * 1024) {
       this.billError = 'File must be smaller than 10 MB.';
       input.value = ''; return;
@@ -920,14 +949,5 @@ export class OrderFormComponent implements OnInit, OnDestroy {
     const parsedDate = new Date(date);
     if (Number.isNaN(parsedDate.getTime())) return '—';
     return parsedDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-  }
-
-  @HostListener('document:click', ['$event'])
-  onDocumentClick(event: Event): void {
-    const target = event.target as HTMLElement;
-    if (this.showImageDeleteModal || this.showBillModal || this.showConfirmDeleteModal || this.selectedImagePreviewUrl) return;
-    if (!target.closest('[data-customer-select]')) this.showCustomerDropdown = false;
-    if (!target.closest('[data-dd]')) this.openDropdown = null;
-    if (!target.closest('[data-status-dd]')) this.showStatusDropdown = false;
   }
 }

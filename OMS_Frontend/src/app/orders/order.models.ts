@@ -78,10 +78,10 @@ export interface OrderDetails {
   genderId: number;
   gender: string | null;
 
-  customerMaterialId: number;
+  customerMaterialId: number | null;
   customerMaterial: string | null;
 
-  manufacturerMaterialId: number;
+  manufacturerMaterialId: number | null;
   manufacturerMaterial: string | null;
 
   amount: number | null;
@@ -103,7 +103,10 @@ export interface OrderDetails {
   deadline: string | null;
 
   consigneeName: string;
+  shippingEmail: string | null;
+  shippingContact: string | null;
   consigneeAddress: string;
+  courier: string | null;
 
   trackingNumber: string | null;
 
@@ -155,7 +158,12 @@ export interface OrderFormValue {
 
   consigneeName: string;
 
+  shippingEmail: string | null;
+  shippingContact: string | null;
+
   consigneeAddress: string;
+
+  courier: string | null;
 
   trackingNumber: string | null;
 

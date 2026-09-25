@@ -130,7 +130,22 @@ app.UseExceptionHandler();
 
 // Explicit loopback-only development exception; production still redirects to HTTPS.
 app.UseWhen(context => !WooCommerceSecurity.TransportAllowed(context.Request, app.Configuration, app.Environment), branch => branch.UseHttpsRedirection());
-app.UseStaticFiles();
+var fileTypes = new Microsoft.AspNetCore.StaticFiles.FileExtensionContentTypeProvider();
+fileTypes.Mappings[".download"] = "application/octet-stream";
+app.UseStaticFiles(new StaticFileOptions
+{
+    ContentTypeProvider = fileTypes,
+    OnPrepareResponse = context =>
+    {
+        if (context.Context.Request.Path.StartsWithSegments("/uploads/inventory-bills") && context.File.Name.EndsWith(".download"))
+        {
+            var name = context.File.Name[..^9];
+            if (name.Length > 33) name = name[33..];
+            context.Context.Response.Headers.ContentDisposition = $"attachment; filename*=UTF-8''{Uri.EscapeDataString(name)}";
+            context.Context.Response.Headers.XContentTypeOptions = "nosniff";
+        }
+    }
+});
 app.UseCors("AngularClient");
 app.UseRateLimiter();
 app.UseAuthentication();

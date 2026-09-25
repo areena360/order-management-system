@@ -34,5 +34,7 @@
         public Order? Order { get; set; }
         public User? Customer { get; set; }
         public User? Sender { get; set; }
+        // NEW: "Customer" (existing) | "Group" (staff internal)
+        public string Channel { get; set; } = "Customer";
     }
 }

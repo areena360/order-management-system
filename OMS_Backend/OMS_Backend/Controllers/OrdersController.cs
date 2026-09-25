@@ -118,5 +118,11 @@ namespace OMS_Backend.Controllers
             await _orderService.DeleteInventoryBillAsync(id, billId, CurrentUserId, IsCustomer());
             return NoContent();
         }
+
+        [HttpPut("{id}/inventory-bill/{billId}")]
+        public async Task<IActionResult> UpdateInventoryBill(int id, int billId, [FromForm] SaveInventoryBillDto dto)
+        {
+            return Ok(await _orderService.UpdateInventoryBillAsync(id, billId, dto, CurrentUserId, IsCustomer()));
+        }
     }
 }

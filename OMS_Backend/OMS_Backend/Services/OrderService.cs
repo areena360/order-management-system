@@ -219,7 +219,9 @@ namespace OMS_Backend.Services
             if (store != null)
                 AddStoreImages(images, store);
 
-            var lookupIds = new[] { o.OrderStatusId, o.GenderId, o.CustomerMaterialId, o.ManufacturerMaterialId }
+            var lookupIds = new[] { o.OrderStatusId, o.GenderId }
+                .Concat(o.CustomerMaterialId.HasValue ? new[] { o.CustomerMaterialId.Value } : Array.Empty<int>())
+                .Concat(o.ManufacturerMaterialId.HasValue ? new[] { o.ManufacturerMaterialId.Value } : Array.Empty<int>())
                 .Concat(o.PriorityId.HasValue ? new[] { o.PriorityId.Value } : Array.Empty<int>())
                 .Concat(o.SizeId.HasValue ? new[] { o.SizeId.Value } : Array.Empty<int>())
                 .Concat(o.SizeChartId.HasValue ? new[] { o.SizeChartId.Value } : Array.Empty<int>())
@@ -269,7 +271,10 @@ namespace OMS_Backend.Services
                 SizeDetails = o.SizeDetails,
                 DaysForMaking = liveDays,
                 ConsigneeName = o.ConsigneeName,
+                ShippingEmail = o.ShippingEmail,
+                ShippingContact = o.ShippingContact,
                 ConsigneeAddress = o.ConsigneeAddress,
+                Courier = o.Courier,
                 TrackingNumber = o.TrackingNumber,
                 NotesByCustomer = o.NotesByCustomer,
                 NotesByManufacturer = o.NotesByManufacturer,
@@ -337,19 +342,33 @@ namespace OMS_Backend.Services
                 dto.TrackingNumber = null;
                 dto.PriorityId = null;
                 dto.NotesByManufacturer = null;
-                dto.ManufacturerMaterialId = dto.CustomerMaterialId;
+                dto.ManufacturerMaterialId = null;
+                dto.Courier = null;
+                dto.ManufacturerOrderNumber = null;
                 // Days auto-computed after assignment � customer cannot set it
                 dto.DaysForMaking = null;
             }
+            else
+            {
+                dto.NotesByCustomer = null;
+            }
+
+            var manufacturerNumber = dto.ManufacturerOrderNumber?.Trim();
+            if (!string.IsNullOrEmpty(manufacturerNumber) && await _db.Orders.AnyAsync(o => o.ManufacturerOrderNumber == manufacturerNumber))
+                throw new ValidationAppException(new Dictionary<string, string[]> { ["manufacturerOrderNumber"] = ["Manufacturer order number already exists."] });
+
+            ValidateFormRequirements(dto.CustomerProductTitle, dto.ManufacturerProductTitle, dto.CustomerOrderNumber,
+                dto.PriorityId, dto.Courier, dto.TrackingNumber, dto.ConsigneeName, dto.ShippingEmail,
+                dto.ShippingContact, dto.ConsigneeAddress, isCustomer);
 
             await ValidateReferencesAsync(
                 dto.CustomerId, dto.GenderId, dto.CustomerMaterialId,
                 dto.ManufacturerMaterialId, dto.PriorityId,
-                dto.IsCustomSize, dto.SizeId, dto.SizeChartId, dto.SizeDetails);
+                dto.IsCustomSize, dto.SizeId, dto.SizeChartId, dto.SizeDetails, !isCustomer);
 
             var defaultStatus = await _db.LookupItems
                 .Where(OrderStatusCatalog.Selectable)
-                .Where(li => li.Name == OrderStatusCatalog.Assign)
+                .Where(li => li.Name == (isCustomer ? OrderStatusCatalog.New : OrderStatusCatalog.Assign))
                 .OrderBy(li => li.Id)
                 .FirstOrDefaultAsync()
                 ?? throw new AppConfigurationException("Assign order status is missing. Apply the order status catalog migration.");
@@ -358,10 +377,10 @@ namespace OMS_Backend.Services
 
             var order = new Order
             {
-                CustomerProductTitle = dto.CustomerProductTitle,
+                CustomerProductTitle = dto.CustomerProductTitle?.Trim() ?? string.Empty,
                 ManufacturerProductTitle = dto.ManufacturerProductTitle,
                 CustomerOrderNumber = dto.CustomerOrderNumber,
-                ManufacturerOrderNumber = await GenerateOrderNumberAsync(),
+                ManufacturerOrderNumber = string.IsNullOrEmpty(manufacturerNumber) ? await GenerateOrderNumberAsync() : manufacturerNumber,
                 CustomerId = dto.CustomerId,
                 Amount = dto.Amount,
                 GenderId = dto.GenderId,
@@ -369,12 +388,15 @@ namespace OMS_Backend.Services
                 ManufacturerMaterialId = dto.ManufacturerMaterialId,
                 IsCustomSize = dto.IsCustomSize,
                 SizeDetails = dto.IsCustomSize ? dto.SizeDetails : null,
-                SizeId = dto.IsCustomSize ? null : dto.SizeId,
-                SizeChartId = dto.IsCustomSize ? null : dto.SizeChartId,
+                SizeId = dto.SizeId,
+                SizeChartId = dto.SizeChartId,
                 OrderStatusId = defaultStatus.Id,
 
                 ConsigneeName = dto.ConsigneeName ?? string.Empty,
+                ShippingEmail = dto.ShippingEmail,
+                ShippingContact = dto.ShippingContact,
                 ConsigneeAddress = dto.ConsigneeAddress ?? string.Empty,
+                Courier = dto.Courier,
 
                 TrackingNumber = dto.TrackingNumber,
                 NotesByCustomer = dto.NotesByCustomer,
@@ -425,6 +447,7 @@ namespace OMS_Backend.Services
             if (last != null && int.TryParse(last.Substring(prefix.Length), out var lastSeq))
                 next = lastSeq + 1;
 
+            while (await _db.Orders.AnyAsync(o => o.ManufacturerOrderNumber == $"{prefix}{next}")) next++;
             return $"{prefix}{next}";
         }
 
@@ -456,16 +479,32 @@ namespace OMS_Backend.Services
                 dto.TrackingNumber = order.TrackingNumber;
                 dto.NotesByManufacturer = order.NotesByManufacturer;
                 dto.ManufacturerMaterialId = order.ManufacturerMaterialId;
+                dto.Courier = order.Courier;
+                dto.ManufacturerOrderNumber = order.ManufacturerOrderNumber;
                 // Preserve days � never touched by customer
                 dto.DaysForMaking = order.DaysForMaking;
             }
+            else
+            {
+                dto.NotesByCustomer = order.NotesByCustomer;
+            }
+
+            var manufacturerNumber = string.IsNullOrWhiteSpace(dto.ManufacturerOrderNumber)
+                ? order.ManufacturerOrderNumber : dto.ManufacturerOrderNumber.Trim();
+            if (await _db.Orders.AnyAsync(o => o.Id != id && o.ManufacturerOrderNumber == manufacturerNumber))
+                throw new ValidationAppException(new Dictionary<string, string[]> { ["manufacturerOrderNumber"] = ["Manufacturer order number already exists."] });
+
+            ValidateFormRequirements(dto.CustomerProductTitle, dto.ManufacturerProductTitle, dto.CustomerOrderNumber,
+                dto.PriorityId, dto.Courier, dto.TrackingNumber, dto.ConsigneeName, dto.ShippingEmail,
+                dto.ShippingContact, dto.ConsigneeAddress, isCustomer);
 
             await ValidateReferencesAsync(
                 dto.CustomerId, dto.GenderId, dto.CustomerMaterialId,
                 dto.ManufacturerMaterialId, dto.PriorityId,
-                dto.IsCustomSize, dto.SizeId, dto.SizeChartId, dto.SizeDetails);
+                dto.IsCustomSize, dto.SizeId, dto.SizeChartId, dto.SizeDetails, !isCustomer);
 
-            order.CustomerProductTitle = dto.CustomerProductTitle;
+            order.CustomerProductTitle = dto.CustomerProductTitle?.Trim() ?? string.Empty;
+            order.ManufacturerOrderNumber = manufacturerNumber;
             order.ManufacturerProductTitle = dto.ManufacturerProductTitle;
             order.CustomerOrderNumber = dto.CustomerOrderNumber;
             order.CustomerId = dto.CustomerId;
@@ -475,11 +514,14 @@ namespace OMS_Backend.Services
             order.ManufacturerMaterialId = dto.ManufacturerMaterialId;
             order.IsCustomSize = dto.IsCustomSize;
             order.SizeDetails = dto.IsCustomSize ? dto.SizeDetails : null;
-            order.SizeId = dto.IsCustomSize ? null : dto.SizeId;
-            order.SizeChartId = dto.IsCustomSize ? null : dto.SizeChartId;
+            order.SizeId = dto.SizeId;
+            order.SizeChartId = dto.SizeChartId;
 
             order.ConsigneeName = dto.ConsigneeName ?? string.Empty;
+            order.ShippingEmail = dto.ShippingEmail;
+            order.ShippingContact = dto.ShippingContact;
             order.ConsigneeAddress = dto.ConsigneeAddress ?? string.Empty;
+            order.Courier = dto.Courier;
 
             order.TrackingNumber = dto.TrackingNumber;
             order.NotesByCustomer = dto.NotesByCustomer;
@@ -674,35 +716,13 @@ namespace OMS_Backend.Services
 
         public async Task<InventoryBillDto> AddInventoryBillAsync(int orderId, SaveInventoryBillDto dto, int userId, bool isCustomer)
         {
+            if (isCustomer) throw new ForbiddenAppException("Only staff can manage inventory bills.");
             var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == orderId && !o.IsDeleted)
                 ?? throw new NotFoundException(nameof(Order), orderId);
 
             EnsureOwnership(order, userId, isCustomer);
 
-            string? billImageUrl = null;
-
-            if (dto.BillImageFile != null)
-            {
-                var allowedExt = new[] { ".jpg", ".jpeg", ".png", ".webp", ".pdf" };
-                const long maxSize = 10 * 1024 * 1024;
-
-                var ext = Path.GetExtension(dto.BillImageFile.FileName).ToLowerInvariant();
-                if (!allowedExt.Contains(ext))
-                    throw new ValidationAppException($"Unsupported bill image format: {ext}");
-                if (dto.BillImageFile.Length > maxSize)
-                    throw new ValidationAppException("Bill image exceeds the 10MB limit.");
-
-                var uploadRoot = Path.Combine(_env.ContentRootPath, "wwwroot", "uploads", "inventory-bills", orderId.ToString());
-                Directory.CreateDirectory(uploadRoot);
-
-                var fileName = $"{Guid.NewGuid()}{ext}";
-                var fullPath = Path.Combine(uploadRoot, fileName);
-
-                using (var stream = new FileStream(fullPath, FileMode.Create))
-                    await dto.BillImageFile.CopyToAsync(stream);
-
-                billImageUrl = $"/uploads/inventory-bills/{orderId}/{fileName}";
-            }
+            var billImageUrl = await SaveBillFileAsync(orderId, dto.BillImageFile);
 
             var bill = new InventoryBill
             {
@@ -728,6 +748,7 @@ namespace OMS_Backend.Services
 
         public async Task DeleteInventoryBillAsync(int orderId, int billId, int userId, bool isCustomer)
         {
+            if (isCustomer) throw new ForbiddenAppException("Only staff can manage inventory bills.");
             var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == orderId && !o.IsDeleted)
                 ?? throw new NotFoundException(nameof(Order), orderId);
 
@@ -743,47 +764,102 @@ namespace OMS_Backend.Services
             await _db.SaveChangesAsync();
         }
 
+        public async Task<InventoryBillDto> UpdateInventoryBillAsync(int orderId, int billId, SaveInventoryBillDto dto, int userId, bool isCustomer)
+        {
+            if (isCustomer) throw new ForbiddenAppException("Only staff can manage inventory bills.");
+            var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == orderId && !o.IsDeleted)
+                ?? throw new NotFoundException(nameof(Order), orderId);
+            EnsureOwnership(order, userId, isCustomer);
+            var bill = await _db.InventoryBills.FirstOrDefaultAsync(b => b.Id == billId && b.OrderId == orderId && !b.IsDeleted)
+                ?? throw new NotFoundException(nameof(InventoryBill), billId);
+            var fileUrl = await SaveBillFileAsync(orderId, dto.BillImageFile);
+            bill.BillNumber = dto.BillNumber;
+            bill.BillDetails = dto.BillDetails;
+            if (fileUrl != null) bill.BillImage = fileUrl;
+            bill.UpdatedBy = userId;
+            await _db.SaveChangesAsync();
+            return new InventoryBillDto { Id = bill.Id, BillNumber = bill.BillNumber, BillDetails = bill.BillDetails,
+                BillImage = bill.BillImage, CreatedDate = bill.CreatedDate };
+        }
+
+        private async Task<string?> SaveBillFileAsync(int orderId, IFormFile? file)
+        {
+            if (file == null) return null;
+            if (file.Length > 10 * 1024 * 1024)
+                throw new ValidationAppException("Bill file exceeds the 10MB limit.");
+            // An inert storage extension keeps every file type downloadable rather than executable.
+            var originalName = Path.GetFileName(file.FileName.Replace('\\', '/'));
+            var safeName = string.Concat(originalName.Where(c => !Path.GetInvalidFileNameChars().Contains(c)));
+            if (safeName.Length > 150) safeName = safeName[^150..];
+            var fileName = $"{Guid.NewGuid():N}-{safeName}.download";
+            var uploadRoot = Path.Combine(_env.ContentRootPath, "wwwroot", "uploads", "inventory-bills", orderId.ToString());
+            Directory.CreateDirectory(uploadRoot);
+            await using var stream = new FileStream(Path.Combine(uploadRoot, fileName), FileMode.CreateNew);
+            await file.CopyToAsync(stream);
+            return $"/uploads/inventory-bills/{orderId}/{Uri.EscapeDataString(fileName)}";
+        }
+
         // =====================================================================
         // VALIDATION
         // =====================================================================
         private async Task ValidateReferencesAsync(
-            int customerId, int genderId, int customerMaterialId,
-            int manufacturerMaterialId, int? priorityId,
-            bool isCustomSize, int? sizeId, int? sizeChartId, string? sizeDetails)
+            int customerId, int genderId, int? customerMaterialId,
+            int? manufacturerMaterialId, int? priorityId,
+            bool isCustomSize, int? sizeId, int? sizeChartId, string? sizeDetails, bool requireManufacturerMaterial)
         {
             var errors = new Dictionary<string, string[]>();
 
             if (!await _db.Users.AnyAsync(u => u.Id == customerId && !u.IsDeleted))
                 errors["customerId"] = new[] { "Selected customer does not exist." };
 
-            if (!await _db.LookupItems.AnyAsync(li => li.Id == genderId && !li.IsDeleted))
+            if (!await _db.LookupItems.AnyAsync(li => li.Id == genderId && li.LookupDataTypeId == 3 && li.IsActive && !li.IsDeleted))
                 errors["genderId"] = new[] { "Invalid gender." };
 
-            if (!await _db.LookupItems.AnyAsync(li => li.Id == customerMaterialId && !li.IsDeleted))
+            if (customerMaterialId.HasValue && !await _db.LookupItems.AnyAsync(li => li.Id == customerMaterialId && li.LookupDataTypeId == 4 && li.IsActive && !li.IsDeleted))
                 errors["customerMaterialId"] = new[] { "Invalid customer material." };
 
-            if (!await _db.LookupItems.AnyAsync(li => li.Id == manufacturerMaterialId && !li.IsDeleted))
+            if (requireManufacturerMaterial && !manufacturerMaterialId.HasValue)
+                errors["manufacturerMaterialId"] = new[] { "Manufacturer material is required." };
+            else if (manufacturerMaterialId.HasValue && !await _db.LookupItems.AnyAsync(li => li.Id == manufacturerMaterialId && li.LookupDataTypeId == 4 && li.IsActive && !li.IsDeleted))
                 errors["manufacturerMaterialId"] = new[] { "Invalid manufacturer material." };
 
-            if (priorityId.HasValue && !await _db.LookupItems.AnyAsync(li => li.Id == priorityId && !li.IsDeleted))
+            if (priorityId.HasValue && !await _db.LookupItems.AnyAsync(li => li.Id == priorityId && li.LookupDataTypeId == 2 && li.IsActive && !li.IsDeleted))
                 errors["priorityId"] = new[] { "Invalid priority." };
 
-            if (isCustomSize)
-            {
-                if (string.IsNullOrWhiteSpace(sizeDetails))
-                    errors["sizeDetails"] = new[] { "Custom size details are required when Custom Size is selected." };
-            }
-            else
-            {
-                if (sizeId.HasValue && !await _db.LookupItems.AnyAsync(li => li.Id == sizeId && !li.IsDeleted))
-                    errors["sizeId"] = new[] { "Invalid size." };
+            if (!sizeId.HasValue)
+                errors["sizeId"] = new[] { "Size is required." };
+            else if (!await _db.LookupItems.AnyAsync(li => li.Id == sizeId && li.LookupDataTypeId == 5 && li.IsActive && !li.IsDeleted))
+                errors["sizeId"] = new[] { "Invalid size." };
 
-                if (sizeChartId.HasValue && !await _db.LookupItems.AnyAsync(li => li.Id == sizeChartId && !li.IsDeleted))
-                    errors["sizeChartId"] = new[] { "Invalid size chart." };
-            }
+            if (!sizeChartId.HasValue)
+                errors["sizeChartId"] = new[] { "Size chart is required." };
+            else if (!await _db.LookupItems.AnyAsync(li => li.Id == sizeChartId && li.LookupDataTypeId == 6 && li.IsActive && !li.IsDeleted))
+                errors["sizeChartId"] = new[] { "Invalid size chart." };
+
+            if (isCustomSize && string.IsNullOrWhiteSpace(sizeDetails))
+                errors["sizeDetails"] = ["Custom measurements are required."];
 
             if (errors.Count > 0)
                 throw new ValidationAppException(errors);
+        }
+
+        private static void ValidateFormRequirements(string? customerTitle, string? manufacturerTitle,
+            string? customerOrderNumber, int? priorityId, string? courier, string? trackingNumber,
+            string? shippingName, string? shippingEmail, string? shippingContact, string? shippingAddress,
+            bool isCustomer)
+        {
+            var errors = new Dictionary<string, string[]>();
+            if (string.IsNullOrWhiteSpace(customerOrderNumber)) errors["customerOrderNumber"] = ["Customer order number is required."];
+            if (isCustomer && string.IsNullOrWhiteSpace(customerTitle)) errors["customerProductTitle"] = ["Customer title is required."];
+            if (!isCustomer && string.IsNullOrWhiteSpace(manufacturerTitle)) errors["manufacturerProductTitle"] = ["Manufacturer title is required."];
+            if (!isCustomer && !priorityId.HasValue) errors["priorityId"] = ["Order priority is required."];
+            if (!isCustomer && string.IsNullOrWhiteSpace(courier)) errors["courier"] = ["Courier is required."];
+            if (!isCustomer && string.IsNullOrWhiteSpace(trackingNumber)) errors["trackingNumber"] = ["Tracking number is required."];
+            if (string.IsNullOrWhiteSpace(shippingName)) errors["consigneeName"] = ["Shipping name is required."];
+            if (string.IsNullOrWhiteSpace(shippingEmail)) errors["shippingEmail"] = ["Shipping email is required."];
+            if (string.IsNullOrWhiteSpace(shippingContact)) errors["shippingContact"] = ["Shipping contact is required."];
+            if (string.IsNullOrWhiteSpace(shippingAddress)) errors["consigneeAddress"] = ["Shipping address is required."];
+            if (errors.Count > 0) throw new ValidationAppException(errors);
         }
     }
 }

@@ -40,7 +40,7 @@ namespace OMS_Backend.Controllers
                 .Select(li => new LookupItemDto { Id = li.Id, Name = li.Name })
                 .ToListAsync();
             if (typeId == OrderStatusCatalog.LookupTypeId)
-                items = items.OrderBy(item => Array.IndexOf(OrderStatusCatalog.Names, item.Name)).ToList();
+                items = items.OrderBy(item => Array.IndexOf(OrderStatusCatalog.Names, item.Name) is var index && index >= 0 ? index : int.MaxValue).ToList();
             return Ok(items);
         }
 

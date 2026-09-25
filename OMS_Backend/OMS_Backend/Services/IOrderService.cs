@@ -18,6 +18,7 @@ namespace OMS_Backend.Services
 
         Task<List<InventoryBillDto>> GetInventoryBillsAsync(int orderId, int userId, bool isCustomer);
         Task<InventoryBillDto> AddInventoryBillAsync(int orderId, SaveInventoryBillDto dto, int userId, bool isCustomer);
+        Task<InventoryBillDto> UpdateInventoryBillAsync(int orderId, int billId, SaveInventoryBillDto dto, int userId, bool isCustomer);
 
         // ===== NEW: Bulk assign orders (customer marks orders as assigned) =====
         Task<AssignOrdersResultDto> AssignOrdersAsync(AssignOrdersDto dto, int userId, bool isCustomer);

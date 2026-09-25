@@ -66,9 +66,9 @@ namespace OMS_Backend.DTOs
         public string? ManufacturerProductTitle { get; set; }
         public int GenderId { get; set; }
         public string? Gender { get; set; }
-        public int CustomerMaterialId { get; set; }
+        public int? CustomerMaterialId { get; set; }
         public string? CustomerMaterial { get; set; }
-        public int ManufacturerMaterialId { get; set; }
+        public int? ManufacturerMaterialId { get; set; }
         public string? ManufacturerMaterial { get; set; }
         public int? Amount { get; set; }
         public int? PriorityId { get; set; }
@@ -84,7 +84,10 @@ namespace OMS_Backend.DTOs
         public int DaysForMaking { get; set; }
 
         public string ConsigneeName { get; set; } = default!;
+        public string? ShippingEmail { get; set; }
+        public string? ShippingContact { get; set; }
         public string ConsigneeAddress { get; set; } = default!;
+        public string? Courier { get; set; }
         public string? TrackingNumber { get; set; }
 
         public string? NotesByCustomer { get; set; }
@@ -107,7 +110,8 @@ namespace OMS_Backend.DTOs
 
     public class CreateOrderDto
     {
-        [Required] public string CustomerProductTitle { get; set; } = default!;
+        [MaxLength(100)] public string? ManufacturerOrderNumber { get; set; }
+        public string? CustomerProductTitle { get; set; }
         public string? ManufacturerProductTitle { get; set; }
         public string? CustomerOrderNumber { get; set; }
 
@@ -115,8 +119,8 @@ namespace OMS_Backend.DTOs
         public int? Amount { get; set; }
 
         [Required] public int GenderId { get; set; }
-        [Required] public int CustomerMaterialId { get; set; }
-        [Required] public int ManufacturerMaterialId { get; set; }
+        public int? CustomerMaterialId { get; set; }
+        public int? ManufacturerMaterialId { get; set; }
 
         public bool IsCustomSize { get; set; }
         public int? SizeId { get; set; }
@@ -129,9 +133,12 @@ namespace OMS_Backend.DTOs
 
         public int? PriorityId { get; set; }
 
-        // Consignee fields now optional (customer can leave blank).
+        // Role-specific requirements are enforced by OrderService.
         public string? ConsigneeName { get; set; }
+        [EmailAddress] public string? ShippingEmail { get; set; }
+        public string? ShippingContact { get; set; }
         public string? ConsigneeAddress { get; set; }
+        public string? Courier { get; set; }
 
         public string? TrackingNumber { get; set; }
 
@@ -141,7 +148,8 @@ namespace OMS_Backend.DTOs
 
     public class UpdateOrderDto
     {
-        [Required] public string CustomerProductTitle { get; set; } = default!;
+        [MaxLength(100)] public string? ManufacturerOrderNumber { get; set; }
+        public string? CustomerProductTitle { get; set; }
         public string? ManufacturerProductTitle { get; set; }
         public string? CustomerOrderNumber { get; set; }
 
@@ -149,8 +157,8 @@ namespace OMS_Backend.DTOs
         public int? Amount { get; set; }
 
         [Required] public int GenderId { get; set; }
-        [Required] public int CustomerMaterialId { get; set; }
-        [Required] public int ManufacturerMaterialId { get; set; }
+        public int? CustomerMaterialId { get; set; }
+        public int? ManufacturerMaterialId { get; set; }
 
         public bool IsCustomSize { get; set; }
         public int? SizeId { get; set; }
@@ -161,7 +169,10 @@ namespace OMS_Backend.DTOs
         public int? PriorityId { get; set; }
 
         public string? ConsigneeName { get; set; }
+        [EmailAddress] public string? ShippingEmail { get; set; }
+        public string? ShippingContact { get; set; }
         public string? ConsigneeAddress { get; set; }
+        public string? Courier { get; set; }
         public string? TrackingNumber { get; set; }
 
         public string? NotesByCustomer { get; set; }

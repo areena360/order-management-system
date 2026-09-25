@@ -539,8 +539,14 @@
                 </div>
               </td>
 
-              <td *ngIf="isColumnVisible('amount')" class="px-4 py-4 align-top text-right whitespace-nowrap tabular-nums text-gray-700">
-                {{ order.amount != null ? (order.amount | currency:'PKR':'code':'1.0-0') : '—' }}
+              <!-- Amount — inline editable -->
+              <td *ngIf="isColumnVisible('amount')" class="px-4 py-4" (click)="$event.stopPropagation()">
+                <input #amountInput type="number" min="0" step="1" [disabled]="!canEditAmount"
+                  [value]="order.amount ?? ''"
+                  (keydown.enter)="$event.preventDefault(); amountInput.blur()"
+                  (blur)="onAmountChange(order, amountInput.value)"
+                  placeholder="Add amount"
+                  class="w-32 rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-right text-gray-700 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-gray-500 focus:border-gray-500 disabled:bg-gray-100 disabled:cursor-not-allowed" />
               </td>
 
               <td *ngIf="isColumnVisible('customerOrderNumber')" class="px-4 py-4 align-top text-gray-600 break-words">

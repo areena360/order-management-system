@@ -125,6 +125,10 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
     return ['Super Admin', 'Admin', 'Staff'].includes(this.authService.currentRole() ?? '');
   }
 
+  get canEditAmount(): boolean {
+    return ['Super Admin', 'Admin', 'Finance'].includes(this.authService.currentRole() ?? '');
+  }
+
   isAssigned(order: OrderListItem): boolean {
     return !!(order as any).isAssigned;
   }
@@ -407,13 +411,10 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   }
 
   // =================== Order Details Backdrop Click ===================
-  // Called when clicking anywhere on the fullscreen wrapper (outside the modal card).
-  // The modal card itself has (click)="$event.stopPropagation()" so clicks inside won't reach here.
-  // =================== Order Details Backdrop Click ===================
-onDialogBackdropClick(): void {
-  if (this.detailsView?.deletingOrder || this.detailsView?.showDeleteModal) return;
-  this.closeOrderDetails();
-}
+  onDialogBackdropClick(): void {
+    if (this.detailsView?.deletingOrder || this.detailsView?.showDeleteModal) return;
+    this.closeOrderDetails();
+  }
 
   // =================== Table Resize & Scroll ===================
   private setupTableResizeObserver(): void {
@@ -536,6 +537,59 @@ onDialogBackdropClick(): void {
         },
         error: () => {
           this.errorMsg = 'Unable to load order for tracking update.';
+        }
+      });
+  }
+
+  onAmountChange(order: OrderListItem, value: string): void {
+    if (!this.canEditAmount) return;
+    const trimmed = (value ?? '').trim();
+    const parsed = trimmed === '' ? null : Number(trimmed);
+
+    if (parsed !== null && (isNaN(parsed) || parsed < 0)) {
+      this.errorMsg = 'Please enter a valid amount.';
+      return;
+    }
+    const oldVal = order.amount ?? null;
+    if (parsed === oldVal) return;
+
+    this.ordersService.getOrder(order.id)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (full: any) => {
+          const payload: any = {
+            customerProductTitle: full.customerProductTitle,
+            manufacturerProductTitle: full.manufacturerProductTitle,
+            customerOrderNumber: full.customerOrderNumber,
+            customerId: full.customerId,
+            amount: parsed,
+            genderId: full.genderId,
+            customerMaterialId: full.customerMaterialId,
+            manufacturerMaterialId: full.manufacturerMaterialId,
+            isCustomSize: full.isCustomSize,
+            sizeId: full.sizeId,
+            sizeChartId: full.sizeChartId,
+            sizeDetails: full.sizeDetails,
+            priorityId: full.priorityId,
+            consigneeName: full.consigneeName,
+            consigneeAddress: full.consigneeAddress,
+            trackingNumber: full.trackingNumber,
+            deadline: full.deadline,
+            notesByCustomer: full.notesByCustomer,
+            notesByManufacturer: full.notesByManufacturer
+          };
+
+          this.ordersService.updateOrder(order.id, payload)
+            .pipe(takeUntil(this.destroy$))
+            .subscribe({
+              next: () => { order.amount = parsed; },
+              error: (error) => {
+                this.errorMsg = error?.error?.message ?? 'Unable to update amount.';
+              }
+            });
+        },
+        error: () => {
+          this.errorMsg = 'Unable to load order for amount update.';
         }
       });
   }

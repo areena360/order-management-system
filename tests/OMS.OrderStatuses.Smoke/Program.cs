@@ -18,6 +18,11 @@ if (!(host.Equals(Environment.MachineName, StringComparison.OrdinalIgnoreCase)
       || new[] { ".", "localhost", "127.0.0.1", "(localdb)" }.Contains(host.ToLowerInvariant())))
     throw new InvalidOperationException("This smoke test is restricted to a local development SQL Server.");
 await using var db = new OMSDbContext(new DbContextOptionsBuilder<OMSDbContext>().UseSqlServer(connection.ConnectionString).Options);
+if (args.Contains("--forms"))
+{
+    await FormChecks.Run(db, config);
+    return;
+}
 if (args.Contains("--assignment"))
 {
     await AssignmentChecks.Run(db, config, args.Contains("--apply"));

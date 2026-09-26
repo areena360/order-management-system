@@ -281,6 +281,47 @@ namespace OMS_Backend.Controllers
             });
         }
 
+        [HttpPost("refresh")]
+        public async Task<IActionResult> Refresh()
+        {
+            var raw = Request.Cookies[SessionCookie];
+            if (string.IsNullOrEmpty(raw) || raw.Length != 64)
+                throw new UnauthorizedAppException("Your session has expired. Please log in again.");
+
+            var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(raw)));
+            var session = await _db.AuthSessions.AsNoTracking()
+                .Include(s => s.User).ThenInclude(u => u.Role)
+                .SingleOrDefaultAsync(s => s.TokenHash == hash);
+            if (session == null || session.ExpiresAt <= DateTime.UtcNow || session.User.IsDeleted
+                || session.User.ApprovalStatus == "Rejected"
+                || (!session.User.IsActive && session.User.ApprovalStatus != "Pending")
+                || session.PasswordVersion != Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(session.User.Password ?? ""))))
+                throw new UnauthorizedAppException("Your session has expired. Please log in again.");
+
+            var user = session.User;
+            var (token, expiresAt) = _jwtService.GenerateToken(user, user.Role?.Name ?? "No Role");
+            Response.Headers.CacheControl = "no-store";
+            return Ok(new AuthResponseDto
+            {
+                Token = token, ExpiresAt = expiresAt, FirstName = user.FirstName,
+                LastName = user.LastName, Email = user.Email,
+                Role = user.Role?.Name ?? "No Role", IsActive = user.IsActive
+            });
+        }
+
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout()
+        {
+            var raw = Request.Cookies[SessionCookie];
+            if (!string.IsNullOrEmpty(raw))
+            {
+                var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(raw)));
+                await _db.AuthSessions.Where(s => s.TokenHash == hash).ExecuteDeleteAsync();
+            }
+            Response.Cookies.Delete(SessionCookie, new CookieOptions { Path = "/" });
+            return NoContent();
+        }
+
         private async Task StartSession(User user, bool rememberMe)
         {
             var raw = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
@@ -288,8 +329,6 @@ namespace OMS_Backend.Controllers
             var passwordVersion = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(user.Password ?? "")));
             var expiresAt = DateTime.UtcNow.AddDays(rememberMe ? 30 : 1);
 
-            try
-            {
                 _db.AuthSessions.Add(new AuthSession
                 {
                     TokenHash = tokenHash,
@@ -299,18 +338,12 @@ namespace OMS_Backend.Controllers
                     RememberMe = rememberMe
                 });
                 await _db.SaveChangesAsync();
-            }
-            catch (DbUpdateException)
-            {
-                foreach (var entry in _db.ChangeTracker.Entries<AuthSession>().ToList())
-                    entry.State = EntityState.Detached;
-            }
 
             Response.Cookies.Append(SessionCookie, raw, new CookieOptions
             {
                 HttpOnly = true,
                 Secure = Request.IsHttps,
-                SameSite = SameSiteMode.Lax,
+                SameSite = Request.IsHttps ? SameSiteMode.None : SameSiteMode.Lax,
                 Expires = expiresAt,
                 Path = "/"
             });

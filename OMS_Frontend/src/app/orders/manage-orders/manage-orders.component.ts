@@ -13,6 +13,7 @@ import { AuthService } from '../../auth/auth.service';
 import { OrdersService } from '../orders.service';
 import { LookupService, LOOKUP_TYPE } from '../lookup.service';
 import { PollingService } from '../../core/polling/polling.service';
+import { ChatService } from '../chat/chat.service';
 import { ChatModalComponent } from '../chat/chat-modal/chat-modal.component';
 import { OrderFormComponent } from '../order-form/order-form.component';
 import { OrderDetailsComponent } from '../order-details/order-details.component';
@@ -84,6 +85,30 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   pendingAssignIds: number[] = [];
 
   unreadMessages = new Map<number, number>();
+  groupUnreadMessages = new Map<number, number>();
+  chatInitialTab: 'customer' | 'group' = 'customer';
+  private unregisterGroupChatListener: (() => void) | null = null;
+  get canViewCustomerChat(): boolean { return this.permissionService.canView('Order Customer Chat'); }
+  get canViewGroupChat(): boolean {
+    return !this.isCustomer && this.permissionService.canView('Order Group Chat');
+  }
+  getGroupUnreadCount(orderId: number): number { return this.groupUnreadMessages.get(orderId) ?? 0; }
+  get totalGroupUnread(): number { return [...this.groupUnreadMessages.values()].reduce((a, b) => a + b, 0); }
+  private readonly chatService = inject(ChatService);
+  private unreadRequestVersion = 0;
+  markChatRead(_tab: 'customer' | 'group'): void { this.refreshUnread(); }
+  private refreshUnread(): void {
+    const version = ++this.unreadRequestVersion;
+    this.chatService.getUnread().pipe(takeUntil(this.destroy$)).subscribe({
+      next: rows => {
+        if (version !== this.unreadRequestVersion) return;
+        this.unreadMessages = new Map(rows.filter(r => r.channel === 'Customer').map(r => [r.orderId, r.count]));
+        this.groupUnreadMessages = new Map(rows.filter(r => r.channel === 'Group').map(r => [r.orderId, r.count]));
+        this.cdr.markForCheck();
+      },
+      error: () => { /* Preserve counts on temporary failures. */ }
+    });
+  }
   currentUserId = 0;
 
   private searchInput$ = new Subject<string>();
@@ -377,6 +402,7 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.unregisterGroupChatListener?.();
     if (this.unregisterChatListener) this.unregisterChatListener();
     this.tableResizeObserver?.disconnect();
     this.destroy$.next();
@@ -595,19 +621,10 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   }
 
   private setupChatNotifications(): void {
-    this.unregisterChatListener = this.chatSignalr.onMessage(
-      (msg: IncomingChatMessage) => this.onIncomingChatMessage(msg)
-    );
+    this.refreshUnread();
+    this.unregisterGroupChatListener = this.chatSignalr.onGroupMessage(() => this.refreshUnread());
+    this.unregisterChatListener = this.chatSignalr.onMessage(() => this.refreshUnread());
   }
-
-  private onIncomingChatMessage(msg: IncomingChatMessage): void {
-    if (msg.senderUserId === this.currentUserId) return;
-    if (this.showChatModal && this.chatOrderId === msg.orderId) return;
-    const current = this.unreadMessages.get(msg.orderId) ?? 0;
-    this.unreadMessages.set(msg.orderId, current + 1);
-    this.unreadMessages = new Map(this.unreadMessages);
-  }
-
   private readUserIdFromToken(): number {
     const token = this.authService.getToken();
     if (!token) return 0;
@@ -628,7 +645,7 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   private setupPolling(): void {
     this.polling.poll(10000)
       .pipe(takeUntil(this.destroy$))
-      .subscribe(() => this.silentRefresh());
+      .subscribe(() => { this.refreshUnread(); this.silentRefresh(); });
   }
 
   private silentRefresh(): void {
@@ -944,14 +961,12 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
     return Math.min(this.currentPage * this.pageSize, this.totalCount);
   }
 
-  openChatForOrder(order: OrderListItem, event: Event): void {
+  openChatForOrder(order: OrderListItem, event: Event, tab: 'customer' | 'group' = 'customer'): void {
     event.stopPropagation();
     if (!order.id || (order.requiresCustomerAssignment && !this.isAssigned(order))) return;
 
-    if (this.unreadMessages.has(order.id)) {
-      this.unreadMessages.delete(order.id);
-      this.unreadMessages = new Map(this.unreadMessages);
-    }
+    if (tab === 'group' ? !this.canViewGroupChat : !this.canViewCustomerChat) return;
+    this.chatInitialTab = tab;
 
     this.chatOrderId = order.id;
     this.chatOrderNumber = order.manufacturerOrderNumber ?? '';

@@ -1,105 +1,76 @@
 <div class="h-screen bg-gray-100 flex overflow-hidden">
 
   <!-- Sidebar -->
-  <aside class="h-screen bg-gray-900 text-gray-100 flex flex-col overflow-hidden shrink-0 transition-all duration-200"
-    [class.w-64]="sidebarOpen() && !isMobile()" [class.w-42]="sidebarOpen() && isMobile()"
+  <aside
+    class="h-screen bg-gray-900 text-gray-100 flex flex-col overflow-hidden shrink-0 transition-all duration-200"
+    [class.w-64]="sidebarOpen() && !isMobile()"
+    [class.w-42]="sidebarOpen() && isMobile()"
     [class.w-[72px]]="!sidebarOpen()">
 
     <!-- Brand -->
     <div class="h-16 flex items-center gap-3 px-4 border-b border-gray-800">
-
       <div class="h-10 w-10 shrink-0 flex rounded-lg bg-gray-100 items-center justify-center">
         <img src="/assets/images/oms-logo.png" alt="OMS Logo" class="h-8 w-8 object-contain" />
       </div>
-
       <span *ngIf="sidebarOpen()" class="font-semibold text-sm whitespace-nowrap">
         OMS Panel
       </span>
-
     </div>
 
     <!-- Navigation -->
     <nav class="flex-1 px-2 py-4 space-y-1">
-      <a *ngIf="isAdminOrSuperAdmin() || user()?.role === 'Customer'" routerLink="/dashboard/integrations/shopify" routerLinkActive="bg-gray-800 text-white"
-        class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:bg-gray-800 hover:text-white" title="Shopify integrations">
-        <span aria-hidden="true">↔</span><span *ngIf="sidebarOpen()">Shopify</span>
-      </a>
-      <a *ngIf="isAdminOrSuperAdmin() || user()?.role === 'Customer'" routerLink="/dashboard/integrations/woocommerce" routerLinkActive="bg-gray-800 text-white"
-        class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:bg-gray-800 hover:text-white" title="WooCommerce integrations">
-        <span aria-hidden="true">↔</span><span *ngIf="sidebarOpen()">WooCommerce</span>
-      </a>
 
       <!-- Dashboard -->
-      <a *ngIf="canView('Dashboard')" routerLink="/dashboard" routerLinkActive="bg-gray-800 text-white"
+      <a *ngIf="canView('Dashboard')"
+        routerLink="/dashboard"
+        routerLinkActive="bg-gray-800 text-white"
         [routerLinkActiveOptions]="{ exact: true }"
         class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition">
-
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24"
           stroke-width="1.7" stroke="currentColor">
-
           <path stroke-linecap="round" stroke-linejoin="round"
             d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
-
         </svg>
-
-        <span *ngIf="sidebarOpen()" class="whitespace-nowrap">
-          Dashboard
-        </span>
-
+        <span *ngIf="sidebarOpen()" class="whitespace-nowrap">Dashboard</span>
       </a>
 
       <!-- Manage Users -->
-      <a *ngIf="canView('Manage Users')" routerLink="/dashboard/manage-users" routerLinkActive="bg-gray-800 text-white"
+      <a *ngIf="canView('Manage Users')"
+        routerLink="/dashboard/manage-users"
+        routerLinkActive="bg-gray-800 text-white"
         class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition">
-
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24"
           stroke-width="1.7" stroke="currentColor">
-
           <path stroke-linecap="round" stroke-linejoin="round"
             d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
-
         </svg>
-
-        <span *ngIf="sidebarOpen()" class="whitespace-nowrap">
-          Manage Users
-        </span>
-
+        <span *ngIf="sidebarOpen()" class="whitespace-nowrap">Manage Users</span>
       </a>
 
       <!-- Manage Roles -->
-      <a *ngIf="canView('Manage Roles')" routerLink="/dashboard/manage-roles" routerLinkActive="bg-gray-800 text-white"
+      <a *ngIf="canView('Manage Roles')"
+        routerLink="/dashboard/manage-roles"
+        routerLinkActive="bg-gray-800 text-white"
         class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition">
-
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24"
           stroke-width="1.7" stroke="currentColor">
-
           <path stroke-linecap="round" stroke-linejoin="round"
             d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
-
         </svg>
-
-        <span *ngIf="sidebarOpen()" class="whitespace-nowrap">
-          Manage Roles
-        </span>
-
+        <span *ngIf="sidebarOpen()" class="whitespace-nowrap">Manage Roles</span>
       </a>
 
       <!-- Orders -->
-      <a *ngIf="canView('Orders')" routerLink="/dashboard/orders" routerLinkActive="bg-gray-800 text-white"
+      <a *ngIf="canView('Orders')"
+        routerLink="/dashboard/orders"
+        routerLinkActive="bg-gray-800 text-white"
         class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition">
-
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24"
           stroke-width="1.7" stroke="currentColor">
-
           <path stroke-linecap="round" stroke-linejoin="round"
             d="M9 3.75H6.912a2.25 2.25 0 00-2.15 1.588L2.35 13.177a2.25 2.25 0 00-.1.661V18a2.25 2.25 0 002.25 2.25h15a2.25 2.25 0 002.25-2.25v-4.162c0-.224-.034-.447-.1-.661L19.24 5.338a2.25 2.25 0 00-2.15-1.588H15M9 3.75V6h6V3.75M9 3.75a1.5 1.5 0 011.5-1.5h3A1.5 1.5 0 0115 3.75M2.25 13.5h3.86a2.25 2.25 0 012.012 1.244l.256.512a2.25 2.25 0 002.013 1.244h3.218a2.25 2.25 0 002.013-1.244l.256-.512a2.25 2.25 0 012.013-1.244h3.859" />
-
         </svg>
-
-        <span *ngIf="sidebarOpen()" class="whitespace-nowrap">
-          Orders
-        </span>
-
+        <span *ngIf="sidebarOpen()" class="whitespace-nowrap">Orders</span>
       </a>
 
     </nav>
@@ -107,18 +78,12 @@
     <!-- Collapse Toggle -->
     <button (click)="toggleSidebar()"
       class="flex items-center gap-3 px-3 py-3 m-2 cursor-w-resize rounded-lg text-sm text-gray-400 hover:bg-gray-800 hover:text-white transition">
-
       <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 transition-transform"
-        [class.rotate-180]="!sidebarOpen()" fill="none" viewBox="0 0 24 24" stroke-width="1.7" stroke="currentColor">
-
+        [class.rotate-180]="!sidebarOpen()" fill="none" viewBox="0 0 24 24"
+        stroke-width="1.7" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-
       </svg>
-
-      <span *ngIf="sidebarOpen()">
-        Collapse
-      </span>
-
+      <span *ngIf="sidebarOpen()">Collapse</span>
     </button>
 
   </aside>
@@ -131,126 +96,95 @@
 
       <div></div>
 
-      <!-- Profile Area -->
-      <div class="profile-menu-container flex items-center gap-3 relative">
+      <div class="flex items-center gap-2">
 
-        <!-- Profile Button -->
-        <button type="button" (click)="profileMenuOpen = !profileMenuOpen"
-          class="flex items-center gap-3 px-2 py-1.5 rounded-lg hover:bg-gray-50 transition cursor-pointer">
-
-          <!-- Avatar -->
-          <div
-            class="h-9 w-9 rounded-full bg-gray-800 text-white flex items-center justify-center text-xs font-semibold shrink-0">
-
-            {{ initials() }}
-
-          </div>
-
-          <!-- User Info -->
-          <div class="text-left hidden sm:block">
-
-            <p class="text-sm font-medium text-gray-800 leading-5">
-              {{ user()?.firstName }} {{ user()?.lastName }}
-            </p>
-
-            <p class="text-xs text-gray-400 leading-4">
-              {{ user()?.role }}
-            </p>
-
-          </div>
-
-          <!-- Chevron -->
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400 transition-transform"
-            [class.rotate-180]="profileMenuOpen" fill="none" viewBox="0 0 24 24" stroke-width="1.8"
-            stroke="currentColor">
-
-            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
-
+        <!-- ⚙️ Settings Button -->
+        <button type="button" (click)="openSettings()"
+          class="p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-800 transition"
+          title="Settings" aria-label="Open settings">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+            stroke-width="1.7" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
-
         </button>
 
-        <!-- Profile Dropdown -->
-        <div *ngIf="profileMenuOpen"
-          class="absolute right-0 top-12 w-64 bg-white border border-gray-200 rounded-xl shadow-lg py-2 z-50">
+        <!-- Profile Area -->
+        <div class="profile-menu-container flex items-center gap-3 relative">
 
-          <!-- Profile Header -->
-          <div class="px-4 py-3 border-b border-gray-100">
+          <!-- Profile Button -->
+          <button type="button" (click)="profileMenuOpen = !profileMenuOpen"
+            class="flex items-center gap-3 px-2 py-1.5 rounded-lg hover:bg-gray-50 transition cursor-pointer">
 
-            <div class="flex items-center gap-3">
-
-              <div
-                class="h-10 w-10 rounded-full bg-gray-800 text-white flex items-center justify-center text-sm font-semibold">
-
-                {{ initials() }}
-
-              </div>
-
-              <div class="min-w-0">
-
-                <p class="text-sm font-semibold text-gray-800 truncate">
-                  {{ user()?.firstName }} {{ user()?.lastName }}
-                </p>
-
-                <p class="text-xs text-gray-400 truncate">
-                  {{ user()?.email }}
-                </p>
-
-              </div>
-
+            <div class="h-9 w-9 rounded-full bg-gray-800 text-white flex items-center justify-center text-xs font-semibold shrink-0">
+              {{ initials() }}
             </div>
 
-          </div>
+            <div class="text-left hidden sm:block">
+              <p class="text-sm font-medium text-gray-800 leading-5">
+                {{ user()?.firstName }} {{ user()?.lastName }}
+              </p>
+              <p class="text-xs text-gray-400 leading-4">
+                {{ user()?.role }}
+              </p>
+            </div>
 
-          <!-- Menu Items -->
-          <div class="py-1">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400 transition-transform"
+              [class.rotate-180]="profileMenuOpen" fill="none" viewBox="0 0 24 24"
+              stroke-width="1.8" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
 
-            <!-- My Profile -->
-            <button type="button" routerLink="/dashboard/profile" (click)="profileMenuOpen = false"
-              class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition cursor-pointer">
+          <!-- Profile Dropdown -->
+          <div *ngIf="profileMenuOpen"
+            class="absolute right-0 top-12 w-64 bg-white border border-gray-200 rounded-xl shadow-lg py-2 z-50">
 
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24"
-                stroke-width="1.7" stroke="currentColor">
+            <div class="px-4 py-3 border-b border-gray-100">
+              <div class="flex items-center gap-3">
+                <div class="h-10 w-10 rounded-full bg-gray-800 text-white flex items-center justify-center text-sm font-semibold">
+                  {{ initials() }}
+                </div>
+                <div class="min-w-0">
+                  <p class="text-sm font-semibold text-gray-800 truncate">
+                    {{ user()?.firstName }} {{ user()?.lastName }}
+                  </p>
+                  <p class="text-xs text-gray-400 truncate">
+                    {{ user()?.email }}
+                  </p>
+                </div>
+              </div>
+            </div>
 
-                <path stroke-linecap="round" stroke-linejoin="round"
-                  d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.5 20.25a8.25 8.25 0 0115 0" />
+            <div class="py-1">
+              <button type="button" routerLink="/dashboard/profile" (click)="profileMenuOpen = false"
+                class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition cursor-pointer">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24"
+                  stroke-width="1.7" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.5 20.25a8.25 8.25 0 0115 0" />
+                </svg>
+                <span>My Profile</span>
+              </button>
+            </div>
 
-              </svg>
-
-              <span>
-                My Profile
-              </span>
-
-            </button>
-
-          </div>
-
-          <!-- Logout -->
-          <div class="border-t border-gray-100 pt-1">
-
-            <button type="button" (click)="logout()"
-              class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition cursor-pointer">
-
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.7"
-                stroke="currentColor">
-
-                <path stroke-linecap="round" stroke-linejoin="round"
-                  d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
-
-              </svg>
-
-              <span>
-                Logout
-              </span>
-
-            </button>
-
+            <div class="border-t border-gray-100 pt-1">
+              <button type="button" (click)="logout()"
+                class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition cursor-pointer">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                  stroke-width="1.7" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
+                </svg>
+                <span>Logout</span>
+              </button>
+            </div>
           </div>
 
         </div>
 
       </div>
-
     </header>
 
     <!-- Page Outlet -->
@@ -258,6 +192,72 @@
       <router-outlet></router-outlet>
     </main>
 
+  </div>
+
+  <!-- ⚙️ SETTINGS DRAWER (right side, large, smooth slide) -->
+  <div *ngIf="settingsMounted()" class="fixed inset-0 z-[100] flex justify-end">
+
+    <!-- Backdrop -->
+    <div class="absolute inset-0 bg-black/40 backdrop-blur-[2px]
+                transition-opacity duration-300 ease-out"
+         [class.opacity-0]="!settingsOpen()"
+         [class.opacity-100]="settingsOpen()"
+         [style.pointer-events]="settingsOpen() ? 'auto' : 'none'"
+         (click)="closeSettings()"
+         aria-hidden="true"></div>
+
+    <!-- Panel -->
+    <div class="relative h-full w-full max-w-3xl bg-white shadow-2xl flex flex-col
+                will-change-transform
+                transition-transform duration-300 ease-[cubic-bezier(.16,1,.3,1)]"
+         [class.translate-x-full]="!settingsOpen()"
+         [class.translate-x-0]="settingsOpen()"
+         role="dialog" aria-modal="true" aria-label="Settings">
+
+      <!-- Header -->
+      <header class="h-16 shrink-0 flex items-center justify-between px-6 border-b border-gray-200 bg-white">
+        <h2 class="text-lg font-semibold text-gray-900">Settings</h2>
+        <button type="button" (click)="closeSettings()"
+          class="p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-800 transition"
+          aria-label="Close settings">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+            stroke-width="1.8" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </header>
+
+      <!-- Tabs (segmented control) -->
+      <nav class="shrink-0 px-6 py-3 border-b border-gray-200 bg-white">
+        <div class="inline-flex gap-1 rounded-lg bg-gray-100 p-1">
+          <button type="button" (click)="settingsTab.set('shopify')"
+            class="px-4 py-1.5 rounded-md text-sm font-medium transition-all duration-150"
+            [class.bg-white]="settingsTab() === 'shopify'"
+            [class.text-gray-900]="settingsTab() === 'shopify'"
+            [class.shadow-sm]="settingsTab() === 'shopify'"
+            [class.text-gray-600]="settingsTab() !== 'shopify'"
+            [class.hover:text-gray-900]="settingsTab() !== 'shopify'">
+            Shopify
+          </button>
+          <button type="button" (click)="settingsTab.set('woocommerce')"
+            class="px-4 py-1.5 rounded-md text-sm font-medium transition-all duration-150"
+            [class.bg-white]="settingsTab() === 'woocommerce'"
+            [class.text-gray-900]="settingsTab() === 'woocommerce'"
+            [class.shadow-sm]="settingsTab() === 'woocommerce'"
+            [class.text-gray-600]="settingsTab() !== 'woocommerce'"
+            [class.hover:text-gray-900]="settingsTab() !== 'woocommerce'">
+            WooCommerce
+          </button>
+        </div>
+      </nav>
+
+      <!-- Content -->
+      <div class="flex-1 overflow-y-auto bg-gray-50">
+        <app-shopify *ngIf="settingsTab() === 'shopify'"></app-shopify>
+        <app-woocommerce *ngIf="settingsTab() === 'woocommerce'"></app-woocommerce>
+      </div>
+
+    </div>
   </div>
 
 </div>

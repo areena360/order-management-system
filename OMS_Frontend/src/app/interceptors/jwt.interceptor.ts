@@ -1,22 +1,29 @@
 import { HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
+import { catchError, switchMap, throwError } from 'rxjs';
 import { AuthService } from '../auth/auth.service';
+import { environment } from '../../environments/environment';
 
-// Built-in functional interceptor style (Angular 15+/20) — no class boilerplate needed
 export const jwtInterceptor: HttpInterceptorFn = (req, next) => {
-  const authService = inject(AuthService);
-  const token = authService.getToken();
-
-  if (token) {
-    req = req.clone({
-      setHeaders: { Authorization: `Bearer ${token}` },
-    });
+  if (!req.url.startsWith(`${environment.apiUrl}/`)) return next(req);
+  const auth = inject(AuthService);
+  const path = req.url.split('?')[0];
+  if (['login', 'register', 'refresh', 'logout', 'forgot-password', 'reset-password']
+      .some(action => path === `${environment.apiUrl}/auth/${action}`)) {
+    return next(req.clone({ withCredentials: true }));
   }
-
-  return next(req);
+  const send = (token: string | null) => next(token
+    ? req.clone({ setHeaders: { Authorization: `Bearer ${token}` } }) : req);
+  return auth.getValidToken().pipe(switchMap(token => send(token).pipe(
+    catchError(err => {
+      if (err.status !== 401 || !token) return throwError(() => err);
+      const current = auth.getToken();
+      const retry = current && current !== token ? send(current)
+        : auth.refreshSession().pipe(switchMap(res => send(res.token)));
+      return retry.pipe(catchError(retryError => {
+        if (retryError.status === 401 && auth.getToken()) auth.expireSession();
+        return throwError(() => retryError);
+      }));
+    })
+  )));
 };
-
-// Register in app.config.ts:
-// providers: [
-//   provideHttpClient(withInterceptors([jwtInterceptor])),
-// ]

@@ -1,7 +1,9 @@
 import { Injectable } from '@angular/core';
 import * as signalR from '@microsoft/signalr';
+import { firstValueFrom } from 'rxjs';
 
 import { AuthService } from '../../auth/auth.service';
+import { PermissionService } from '../../auth/permission.service';
 import { environment } from '../../../environments/environment';
 
 export interface IncomingChatMessage {
@@ -14,6 +16,19 @@ export interface IncomingChatMessage {
   createdDate: string;
 }
 
+// NEW: Group chat message shape
+export interface IncomingGroupChatMessage {
+  id: number;
+  orderId: number;
+  customerId: number;
+  senderUserId: number;
+  senderRole: string;
+  senderName: string;
+  message: string;
+  channel: string;
+  createdDate: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class ChatSignalrService {
 
@@ -21,8 +36,9 @@ export class ChatSignalrService {
   private starting = false;
 
   private messageListeners = new Set<(msg: IncomingChatMessage) => void>();
+  private groupMessageListeners = new Set<(msg: IncomingGroupChatMessage) => void>();
 
-  constructor(private authService: AuthService) {
+  constructor(private authService: AuthService, private permissions: PermissionService) {
     this.authService.sessionChanged$.subscribe(loggedIn => {
       if (loggedIn) this.start();
       else this.stop();
@@ -39,14 +55,26 @@ export class ChatSignalrService {
 
     this.connection = new signalR.HubConnectionBuilder()
       .withUrl(environment.chatHubUrl, {
-        accessTokenFactory: () => this.authService.getToken() ?? '',
+        accessTokenFactory: async () => (await firstValueFrom(this.authService.getValidToken())) ?? '',
       })
       .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
       .configureLogging(signalR.LogLevel.Warning)
       .build();
 
+    this.connection.on('PermissionsChanged', () => {
+      this.permissions.load(true).subscribe({ error: () => {} });
+    });
+    this.connection.onreconnected(() => {
+      this.permissions.load(true).subscribe({ error: () => {} });
+    });
+    // Customer <-> Admin messages
     this.connection.on('MessageReceived', (msg: IncomingChatMessage) => {
       this.messageListeners.forEach(fn => fn(msg));
+    });
+
+    // NEW: Group (staff-only) messages
+    this.connection.on('GroupMessageReceived', (msg: IncomingGroupChatMessage) => {
+      this.groupMessageListeners.forEach(fn => fn(msg));
     });
 
     try {
@@ -65,6 +93,8 @@ export class ChatSignalrService {
     try { await this.connection.stop(); } catch { /* ignore */ }
     this.connection = null;
   }
+
+  // ==================== Customer chat ====================
 
   onMessage(fn: (msg: IncomingChatMessage) => void): () => void {
     this.messageListeners.add(fn);
@@ -92,5 +122,18 @@ export class ChatSignalrService {
     await this.start();
     if (!this.connection) throw new Error('Chat not connected.');
     await this.connection.invoke('SendMessage', orderId, message);
+  }
+
+  // ==================== NEW: Group chat ====================
+
+  onGroupMessage(fn: (msg: IncomingGroupChatMessage) => void): () => void {
+    this.groupMessageListeners.add(fn);
+    return () => this.groupMessageListeners.delete(fn);
+  }
+
+  async sendGroupMessage(orderId: number, message: string): Promise<void> {
+    await this.start();
+    if (!this.connection) throw new Error('Chat not connected.');
+    await this.connection.invoke('SendGroupMessage', orderId, message);
   }
 }

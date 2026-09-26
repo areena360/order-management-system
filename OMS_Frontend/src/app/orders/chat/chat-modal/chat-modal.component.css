@@ -1,0 +1,49 @@
+.chat-shell {
+  --accent: #34564b;
+  --accent-hover: #263f37;
+  --tint: #e7eeea;
+  --line: #d2ded7;
+  --canvas: #f1f4f2;
+}
+.chat-group {
+  --accent: #544363;
+  --accent-hover: #40334d;
+  --tint: #ece8ef;
+  --line: #dcd4e2;
+  --canvas: #f3f1f5;
+}
+.chat-header { background: linear-gradient(110deg, var(--tint), #fff 80%); border-color: var(--line); padding-top: 1.25rem; padding-bottom: 1.25rem; }
+.chat-avatar, .chat-bubble-own, .chat-send { background: var(--accent); }
+.chat-avatar { box-shadow: 0 0 0 5px var(--line); }
+.chat-tab { color: #64748b; transition: background-color .15s, color .15s; }
+.chat-tab:hover { background: #f1f5f9; }
+.chat-tab-customer.chat-tab-active { background: #e7eeea; color: #263f37; box-shadow: inset 0 0 0 1px #becfc5; }
+.chat-tab-group.chat-tab-active { background: #ece8ef; color: #40334d; box-shadow: inset 0 0 0 1px #cbc0d4; }
+.chat-context { background: var(--tint); border-color: var(--line); }
+.chat-context p { color: var(--accent-hover); }
+.chat-history { background-color: var(--canvas); scrollbar-color: #cbd5e1 transparent; }
+.chat-bubble-other { border: 1px solid var(--line); }
+.chat-empty { background: var(--line); color: var(--accent); }
+.chat-composer { background: #fff; border-color: var(--line); }
+.chat-input { background: var(--canvas); border-color: #cbd5e1; }
+.chat-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--line); }
+.chat-send:hover:not(:disabled) { background: var(--accent-hover); }
+.chat-send:focus-visible, .chat-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+.chat-customer-badge { background: #34564b; color: #fff; }
+.chat-group-badge { background: #544363; color: #fff; }
+.chat-staff-label { background: #e2dce7; color: #4c3e59; }
+
+.chat-enter-right, .chat-enter-left {
+  animation: chat-message-enter 320ms cubic-bezier(.22, 1, .36, 1) both;
+}
+.chat-enter-right { --entry-x: 24px; transform-origin: bottom right; }
+.chat-enter-left { --entry-x: -24px; transform-origin: bottom left; }
+@keyframes chat-message-enter {
+  from { opacity: 0; transform: translate(var(--entry-x), 10px) scale(.92); }
+  75% { opacity: 1; transform: translate(0, -1px) scale(1.015); }
+  to { opacity: 1; transform: translate(0, 0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chat-enter-right, .chat-enter-left { animation: none; }
+}

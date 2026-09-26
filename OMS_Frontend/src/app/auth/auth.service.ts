@@ -1,6 +1,7 @@
 import { Injectable, signal } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable, Subject, tap } from 'rxjs';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { Router } from '@angular/router';
+import { Observable, Subject, tap, map, of, catchError, finalize, shareReplay, throwError } from 'rxjs';
 import { environment } from '../../environments/environment';
 
 export interface AuthResponse {
@@ -52,7 +53,46 @@ export class AuthService {
     this.getCurrentUser()
   );
 
-  constructor(private http: HttpClient) { }
+  private refreshRequest?: Observable<AuthResponse>;
+  private sessionVersion = 0;
+
+  constructor(private http: HttpClient, private router: Router) { }
+
+  getValidToken(): Observable<string | null> {
+    const token = this.getToken();
+    if (!token) return of(null);
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+      if (payload.exp * 1000 > Date.now() + 30000) return of(token);
+    } catch { /* Renew malformed or expired cached tokens through the session cookie. */ }
+    return this.refreshSession().pipe(map(res => res.token));
+  }
+
+  refreshSession(): Observable<AuthResponse> {
+    if (!this.refreshRequest) {
+      const version = this.sessionVersion;
+      this.refreshRequest = this.http.post<AuthResponse>(`${this.apiUrl}/refresh`, {}, { withCredentials: true }).pipe(
+        tap(res => {
+          if (version !== this.sessionVersion) throw new HttpErrorResponse({ status: 401 });
+          this.persistSession(res);
+        }),
+        catchError(err => {
+          if (err.status === 401 && version === this.sessionVersion) this.expireSession();
+          return throwError(() => err);
+        }),
+        finalize(() => this.refreshRequest = undefined),
+        shareReplay({ bufferSize: 1, refCount: false })
+      );
+    }
+    return this.refreshRequest;
+  }
+
+  expireSession(): void {
+    const returnUrl = this.router.url;
+    this.clearSession();
+    if (!returnUrl.startsWith('/login'))
+      void this.router.navigate(['/login'], { queryParams: { returnUrl, sessionExpired: true } });
+  }
 
   register(payload: {
     firstName: string;
@@ -155,6 +195,12 @@ export class AuthService {
   }
 
   logout(): void {
+    this.http.post(`${this.apiUrl}/logout`, {}, { withCredentials: true }).subscribe({ error: () => {} });
+    this.clearSession();
+  }
+
+  private clearSession(): void {
+    this.sessionVersion++;
 
     localStorage.removeItem(this.tokenKey);
     localStorage.removeItem(this.userKey);
@@ -174,9 +220,8 @@ export class AuthService {
 
     const raw = localStorage.getItem(this.userKey);
 
-    return raw
-      ? JSON.parse(raw)
-      : null;
+    try { return raw ? JSON.parse(raw) : null; }
+    catch { return null; }
   }
 
   updateLocalUser(patch: Partial<AuthResponse>): void {

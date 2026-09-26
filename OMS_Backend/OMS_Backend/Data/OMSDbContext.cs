@@ -5,10 +5,7 @@ namespace OMS_Backend.Data
 {
     public class OMSDbContext : DbContext
     {
-        public OMSDbContext(DbContextOptions<OMSDbContext> options)
-            : base(options)
-        {
-        }
+        public OMSDbContext(DbContextOptions<OMSDbContext> options) : base(options) { }
 
         public DbSet<User> Users { get; set; }
         public DbSet<AuthSession> AuthSessions { get; set; }
@@ -22,14 +19,16 @@ namespace OMS_Backend.Data
         public DbSet<PasswordResetToken> PasswordResetTokens { get; set; }
         public DbSet<RolePermission> RolePermissions { get; set; }
         public DbSet<ChatMessage> ChatMessages { get; set; }
-
+        public DbSet<ChatReadState> ChatReadStates { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             WooCommerceModel.Configure(modelBuilder);
             ShopifyModel.Configure(modelBuilder);
 
-            // Ignore before Model.GetEntityTypes() so EF never selects dropped Orders columns.
+            modelBuilder.Entity<ChatReadState>().HasKey(r => new { r.UserId, r.OrderId, r.Channel });
+            modelBuilder.Entity<ChatReadState>().Property(r => r.Channel).HasMaxLength(20);
+
             modelBuilder.Entity<Order>().Ignore(o => o.CreatedDate);
             modelBuilder.Entity<Order>().Ignore(o => o.UpdatedDate);
 
@@ -37,30 +36,39 @@ namespace OMS_Backend.Data
                 .HasForeignKey(s => s.UserId).OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<AuthSession>().HasIndex(s => s.ExpiresAt);
 
+            // ---------------- ChatMessage ----------------
             modelBuilder.Entity<ChatMessage>()
-                .HasOne(m => m.Order)
-                .WithMany()
+                .HasOne(m => m.Order).WithMany()
                 .HasForeignKey(m => m.OrderId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<ChatMessage>()
-                .HasOne(m => m.Customer)
-                .WithMany()
+                .HasOne(m => m.Customer).WithMany()
                 .HasForeignKey(m => m.CustomerId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<ChatMessage>()
-                .HasOne(m => m.Sender)
-                .WithMany()
+                .HasOne(m => m.Sender).WithMany()
                 .HasForeignKey(m => m.SenderUserId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<ChatMessage>()
                 .HasIndex(m => new { m.OrderId, m.CreatedDate });
 
+            modelBuilder.Entity<ChatMessage>()
+                .Property(m => m.Channel)
+                .HasMaxLength(20)
+                .HasDefaultValue("Customer");
+
+            modelBuilder.Entity<ChatMessage>()
+                .HasIndex(m => new { m.OrderId, m.Channel, m.CreatedDate });
+
             modelBuilder.Entity<OrderImage>().HasQueryFilter(x => !x.IsDeleted);
             modelBuilder.Entity<InventoryBill>().HasQueryFilter(x => !x.IsDeleted);
 
+            // =====================================================
+            // ✅ FIXED: BaseEntity CreatedDate default
+            // =====================================================
             foreach (var entityType in modelBuilder.Model.GetEntityTypes())
             {
                 if (typeof(BaseEntity).IsAssignableFrom(entityType.ClrType))
@@ -69,65 +77,69 @@ namespace OMS_Backend.Data
                         modelBuilder.Entity(entityType.ClrType)
                             .Property<DateTime>(nameof(BaseEntity.CreatedDate))
                             .HasDefaultValueSql("GETUTCDATE()");
-
-                    modelBuilder.Entity<RolePermission>()
-                        .HasOne(rp => rp.Role)
-                        .WithMany()
-                        .HasForeignKey(rp => rp.RoleId)
-                        .OnDelete(DeleteBehavior.Cascade);
-
-                    modelBuilder.Entity<RolePermission>()
-                        .HasIndex(rp => new { rp.RoleId, rp.ScreenKey })
-                        .IsUnique();
                 }
             }
 
-            // Orders use assignment time; timestamps remain on history/other entities.
+            // =====================================================
+            // ✅ FIXED: RolePermission config — loop ke BAAHAR
+            // =====================================================
+            modelBuilder.Entity<RolePermission>()
+                .HasOne(rp => rp.Role).WithMany()
+                .HasForeignKey(rp => rp.RoleId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<RolePermission>()
+                .HasIndex(rp => new { rp.RoleId, rp.ScreenKey })
+                .IsUnique();
+
+            // =====================================================
+            // ✅ NEW: Role.Name unique — duplicate roles rokne ke liye
+            // =====================================================
+            modelBuilder.Entity<Role>()
+                .HasIndex(r => r.Name)
+                .IsUnique();
+
+            // =====================================================
+            // ✅ NEW: Role filter (soft-delete aware) — optional but recommended
+            // =====================================================
+            modelBuilder.Entity<Role>().HasQueryFilter(r => !r.IsDeleted);
+
             modelBuilder.Entity<Order>().HasIndex(o => new { o.IsAssigned, o.AssignedDate });
 
             modelBuilder.Entity<PasswordResetToken>()
-                .HasOne(t => t.User)
-                .WithMany()
+                .HasOne(t => t.User).WithMany()
                 .HasForeignKey(t => t.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
-
-            modelBuilder.Entity<PasswordResetToken>()
-                .HasIndex(t => t.Token);
+            modelBuilder.Entity<PasswordResetToken>().HasIndex(t => t.Token);
 
             modelBuilder.Entity<User>()
-                .HasOne(u => u.Role)
-                .WithMany(r => r.Users)
+                .HasOne(u => u.Role).WithMany(r => r.Users)
                 .HasForeignKey(u => u.RoleId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<Order>()
-                .HasOne(o => o.Customer)
-                .WithMany()
+                .HasOne(o => o.Customer).WithMany()
                 .HasForeignKey(o => o.CustomerId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<OrderImage>()
-                .HasOne(oi => oi.Order)
-                .WithMany(o => o.OrderImages)
+                .HasOne(oi => oi.Order).WithMany(o => o.OrderImages)
                 .HasForeignKey(oi => oi.OrderId);
 
             modelBuilder.Entity<OrderStatusHistory>()
-                .HasOne(h => h.Order)
-                .WithMany(o => o.StatusHistories)
+                .HasOne(h => h.Order).WithMany(o => o.StatusHistories)
                 .HasForeignKey(h => h.OrderId);
 
             modelBuilder.Entity<InventoryBill>()
-                .HasOne(b => b.Order)
-                .WithMany(o => o.InventoryBills)
+                .HasOne(b => b.Order).WithMany(o => o.InventoryBills)
                 .HasForeignKey(b => b.OrderId);
 
             modelBuilder.Entity<LookupItem>()
-                .HasOne(li => li.LookupType)
-                .WithMany(lt => lt.LookupItems)
+                .HasOne(li => li.LookupType).WithMany(lt => lt.LookupItems)
                 .HasForeignKey(li => li.LookupDataTypeId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // Roles
+            // ---------------- Roles seed ----------------
             modelBuilder.Entity<Role>().HasData(
                 new Role { Id = 1, Name = "Super Admin", IsActive = true, IsDeleted = false },
                 new Role { Id = 2, Name = "Admin", IsActive = true, IsDeleted = false },
@@ -137,7 +149,7 @@ namespace OMS_Backend.Data
                 new Role { Id = 6, Name = "Sales", IsActive = true, IsDeleted = false }
             );
 
-            // Lookup Types
+            // ---------------- Lookups ----------------
             modelBuilder.Entity<LookupType>().HasData(
                 new LookupType { Id = 1, Name = "OrderStatus", IsActive = true, IsDeleted = false },
                 new LookupType { Id = 2, Name = "Priority", IsActive = true, IsDeleted = false },
@@ -147,7 +159,6 @@ namespace OMS_Backend.Data
                 new LookupType { Id = 6, Name = "SizeChart", IsActive = true, IsDeleted = false }
             );
 
-            // Lookup Items
             modelBuilder.Entity<LookupItem>().HasData(
                 new LookupItem { Id = 1, LookupDataTypeId = 2, Name = "Most Urgent", IsActive = true, IsDeleted = false },
                 new LookupItem { Id = 2, LookupDataTypeId = 2, Name = "PayPal Dispute", IsActive = true, IsDeleted = false },

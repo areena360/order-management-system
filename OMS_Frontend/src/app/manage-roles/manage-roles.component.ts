@@ -1,8 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
-import { FooterComponent } from "../footer/footer.component";
+import { FooterComponent } from '../footer/footer.component';
 import { FormsModule } from '@angular/forms';
+import { environment } from '../../environments/environment';
 
 interface ScreenPermission {
   screenKey: string;
@@ -34,12 +35,35 @@ export class ManageRolesComponent implements OnInit {
   saving = false;
   saved = false;
 
-  private apiUrl = 'https://localhost:44370/api/rolepermissions';
+  // ---------- Add Role modal ----------
+  addRoleOpen = false;
+  newRoleName = '';
+  addRoleSaving = false;
+  addRoleError = '';
+
+  private apiUrl = `${environment.apiUrl}/rolepermissions`;
+  private rolesApiUrl = `${environment.apiUrl}/roles`;
 
   constructor(private http: HttpClient) {}
 
   ngOnInit(): void {
+    this.loadRoles();
     this.fetchPermissions();
+  }
+
+  // =========================================================
+  // Roles list
+  // =========================================================
+  loadRoles(): void {
+    this.http.get<{ id: number; name: string }[]>(this.rolesApiUrl).subscribe({
+      next: (data) => {
+        if (Array.isArray(data) && data.length) {
+          this.roleOptions = data;
+        }
+      },
+      // Agar backend abhi nahi bana, fallback silently rahega
+      error: () => {}
+    });
   }
 
   get selectedRoleName(): string {
@@ -51,11 +75,15 @@ export class ManageRolesComponent implements OnInit {
   }
 
   selectRole(id: number): void {
+    if (this.loading || this.saving) return;
     this.selectedRoleId = id;
     this.showRoleMenu = false;
     this.fetchPermissions();
   }
 
+  // =========================================================
+  // Permissions
+  // =========================================================
   fetchPermissions(): void {
     this.loading = true;
     this.saved = false;
@@ -76,12 +104,20 @@ export class ManageRolesComponent implements OnInit {
 
   toggleAllForRow(row: ScreenPermission, checked: boolean): void {
     row.canView = checked;
-    if (!checked) { row.canAdd = false; row.canEdit = false; row.canDelete = false; }
+    if (!checked) {
+      row.canAdd = false;
+      row.canEdit = false;
+      row.canDelete = false;
+    }
   }
 
   isNoActionScreen(screenKey: string): boolean {
-  return screenKey === 'Dashboard' || screenKey === 'Manage Roles';
-}
+    return screenKey === 'Dashboard' || screenKey === 'Manage Roles';
+  }
+
+  isChatScreen(key: string): boolean {
+    return key === 'Order Customer Chat' || key === 'Order Group Chat';
+  }
 
   saveChanges(): void {
     this.saving = true;
@@ -105,6 +141,54 @@ export class ManageRolesComponent implements OnInit {
       error: () => {
         this.saving = false;
         alert('Failed to save permissions.');
+      }
+    });
+  }
+
+  // =========================================================
+  // Add Role modal
+  // =========================================================
+  openAddRole(): void {
+    this.addRoleOpen = true;
+    this.newRoleName = '';
+    this.addRoleError = '';
+  }
+
+  closeAddRole(): void {
+    if (this.addRoleSaving) return;
+    this.addRoleOpen = false;
+  }
+
+  createRole(): void {
+    const name = this.newRoleName.trim();
+    if (!name) {
+      this.addRoleError = 'Role name is required.';
+      return;
+    }
+
+    this.addRoleSaving = true;
+    this.addRoleError = '';
+
+    this.http.post<{ id: number; name: string }>(this.rolesApiUrl, { name }).subscribe({
+      next: (created) => {
+        this.addRoleSaving = false;
+        this.addRoleOpen = false;
+
+        // Naya role dropdown me add karo
+        if (!this.roleOptions.some(r => r.id === created.id)) {
+          this.roleOptions = [...this.roleOptions, created]
+            .sort((a, b) => a.name.localeCompare(b.name));
+        }
+
+        // Naya role select karo aur uska permission table load karo
+        this.selectedRoleId = created.id;
+        this.fetchPermissions();
+      },
+      error: (err) => {
+        this.addRoleSaving = false;
+        this.addRoleError =
+          err?.error?.message ??
+          (err.status === 409 ? 'This role already exists.' : 'Failed to create role. Please try again.');
       }
     });
   }

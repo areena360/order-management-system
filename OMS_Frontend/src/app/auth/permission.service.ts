@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, tap, BehaviorSubject, of } from 'rxjs';
+import { Observable, tap, BehaviorSubject, of, finalize, shareReplay } from 'rxjs';
 import { environment } from '../../environments/environment';
 
 interface ScreenPermission {
@@ -24,47 +24,21 @@ export class PermissionService {
 
   constructor(private http: HttpClient) {}
 
-  load(): Observable<ScreenPermission[]> {
-    // Agar already loaded hain toh return karo
-    if (this.loaded) {
-      this.permissionsLoadedSubject.next(true);
-      return of([]);
-    }
-
-    // Agar already loading ho rahi hai toh wait karo
-    if (this.loading) {
-      return new Observable(observer => {
-        const subscription = this.permissionsLoaded$.subscribe(loaded => {
-          if (loaded) {
-            observer.next([]);
-            observer.complete();
-            subscription.unsubscribe();
-          }
-        });
-      });
-    }
-
-    this.loading = true;
-
-    return this.http.get<ScreenPermission[]>(this.apiUrl).pipe(
-      tap({
-        next: (data) => {
-          this.map.clear();
-          data.forEach((p) => this.map.set(p.screenKey, p));
-          this.loaded = true;
-          this.loading = false;
-          this.permissionsLoadedSubject.next(true);
-          console.log('✅ Permissions loaded successfully:', data);
-        },
-        error: (error) => {
-          console.error('❌ Failed to load permissions:', error);
-          this.loading = false;
-          this.permissionsLoadedSubject.next(true);
-        }
-      })
+  private request?: Observable<ScreenPermission[]>;
+  load(force = false): Observable<ScreenPermission[]> {
+    if (this.request) return this.request;
+    if (this.loaded && !force) return of([...this.map.values()]);
+    this.request = this.http.get<ScreenPermission[]>(this.apiUrl).pipe(
+      tap(data => {
+        this.map = new Map(data.map(p => [p.screenKey, p]));
+        this.loaded = true;
+        this.permissionsLoadedSubject.next(true);
+      }),
+      finalize(() => this.request = undefined),
+      shareReplay({ bufferSize: 1, refCount: false })
     );
+    return this.request;
   }
-
   isLoaded(): boolean {
     return this.loaded;
   }

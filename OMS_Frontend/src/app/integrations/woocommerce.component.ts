@@ -19,6 +19,7 @@ interface Store {
 interface SyncLog { id: number; externalOrderId: number | null; createdDate: string; result: string; message: string; }
 
 @Component({
+  selector: 'app-woocommerce',
   standalone: true, imports: [CommonModule, FormsModule, WooSelectComponent],
   templateUrl: './woocommerce.component.html',
   styles: [`:host{display:block;background:#f9fafb;min-height:100%;padding:24px;color:#111827}button{cursor:pointer;border:1px solid #d1d5db;border-radius:8px;padding:8px 14px;font-size:14px;font-weight:500;transition:background .15s}button:hover{filter:brightness(.97)}button:focus-visible{outline:2px solid #6b7280;outline-offset:2px}button:disabled{opacity:.5;cursor:wait}label{display:block;font-size:14px;font-weight:500;color:#374151}input[type=checkbox]{accent-color:#1f2937;margin-right:6px}section{background:white;border-radius:12px;box-shadow:0 1px 2px #0000000d;outline:1px solid #e5e7eb;padding:24px;margin:16px 0}h2{font-size:16px;font-weight:600;margin-bottom:8px}th{font-size:12px;text-transform:uppercase;letter-spacing:.03em;color:#6b7280;background:#f9fafb}td{color:#4b5563}@media(max-width:640px){:host{padding:16px}section{padding:16px}}`]

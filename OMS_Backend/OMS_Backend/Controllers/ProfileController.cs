@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OMS_Backend.Common.Exceptions;
@@ -101,13 +101,14 @@ namespace OMS_Backend.Controllers
         [HttpGet("permissions")]
         public async Task<IActionResult> GetMyPermissions()
         {
-            var roleName = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value
-                ?? User.FindFirst("role")?.Value;
-
+            if (!int.TryParse(User.FindFirst("userId")?.Value, out var userId)) return Unauthorized();
+            var actor = await _db.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.Id == userId && !u.IsDeleted);
+            if (actor == null || !actor.IsActive) return Ok(Array.Empty<object>());
+            var roleName = actor.Role?.Name;
             var screens = new[]
             {
-                "Dashboard", "Manage Users", "Manage Roles", "Orders",
-            };
+        "Dashboard", "Manage Users", "Manage Roles", "Orders", "Order Customer Chat", "Order Group Chat",
+    };
 
             // Super Admin: full access always, no DB lookup needed
             if (roleName == "Super Admin")
@@ -126,7 +127,7 @@ namespace OMS_Backend.Controllers
             if (role == null) return Ok(Array.Empty<object>());
 
             var saved = await _db.RolePermissions
-                .Where(rp => rp.RoleId == role.Id && !rp.IsDeleted)
+                .Where(rp => rp.RoleId == role.Id)
                 .ToListAsync();
 
             var result = screens.Select(s =>
@@ -135,8 +136,8 @@ namespace OMS_Backend.Controllers
                 return new
                 {
                     screenKey = s,
-                    canView = match?.CanView ?? false,
-                    canAdd = match?.CanAdd ?? false,
+                    canView = s == "Order Group Chat" && roleName == "Customer" ? false : (match == null ? s == "Order Customer Chat" : !match.IsDeleted && match.IsActive && match.CanView),
+                    canAdd = s == "Order Group Chat" && roleName == "Customer" ? false : (match == null ? s == "Order Customer Chat" : !match.IsDeleted && match.IsActive && match.CanView && match.CanAdd),
                     canEdit = match?.CanEdit ?? false,
                     canDelete = match?.CanDelete ?? false
                 };

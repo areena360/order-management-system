@@ -8,7 +8,7 @@ import { AuthService } from '../auth/auth.service';
 import { LookupService } from '../orders/lookup.service';
 import { WooSelectComponent } from './woo-select.component';
 
-@Component({standalone:true,imports:[CommonModule,FormsModule,WooSelectComponent],template:`
+@Component({selector: 'app-shopify', standalone:true,imports:[CommonModule,FormsModule,WooSelectComponent],template:`
 <div class="min-h-screen bg-gray-50 p-4 sm:p-6"><div class="max-w-7xl mx-auto space-y-4">
  <div class="flex items-center justify-between"><div><h1 class="text-2xl font-bold text-gray-900">Shopify</h1><p class="mt-1 text-sm text-gray-500">Connect your store and manage automatic order synchronization.</p></div><button (click)="load()" [disabled]="busy()">Refresh</button></div>
  <p *ngIf="error()" role="alert" class="rounded-lg bg-red-50 p-4 text-sm text-red-700">{{error()}}</p>

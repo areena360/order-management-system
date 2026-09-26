@@ -9,6 +9,9 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(req).pipe(
     catchError((err: HttpErrorResponse) => {
+      // The originating request reports refresh failures after recovery ends.
+      if (req.url.endsWith('/auth/refresh') || req.url.endsWith('/auth/logout'))
+        return throwError(() => err);
       const error: ApiErrorResponse | null = err.error ?? null;
 
       const title = error?.title || 'Something went wrong. Please try again.';
@@ -30,7 +33,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
           break;
 
         case 401:
-          toastr.error(title, 'Unauthorized');
+          toastr.error(error?.title || 'Your session has expired. Please log in again.', 'Unauthorized');
           // Optional: redirect to login here via Router if needed
           break;
 

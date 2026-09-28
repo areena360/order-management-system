@@ -38,7 +38,7 @@
               d="m21 21-5.2-5.2m1.7-5.3a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" />
           </svg>
 
-          <input type="text" [(ngModel)]="searchTerm" (ngModelChange)="applyFilters()"
+          <input type="text" [(ngModel)]="searchTerm" (ngModelChange)="onSearchChange()"
             placeholder="Search across all columns..."
             class="w-full rounded-lg border border-gray-300 pl-9 pr-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-gray-500" />
         </div>
@@ -245,7 +245,7 @@
       </div>
 
       <div *ngIf="errorMsg" class="p-10 text-center text-gray-500 text-sm">
-        {{ errorMsg }}
+        {{ errorMsg }} <button type="button" (click)="fetchUsers()" class="underline">Retry</button>
       </div>
 
 
@@ -624,7 +624,7 @@
             </span>
             of
             <span class="font-medium text-gray-700">
-              {{ filteredUsers.length }}
+              {{ totalCount }}
             </span>
             users
           </p>
@@ -675,10 +675,10 @@
             Prev
           </button>
 
-          <button *ngFor="let p of [].constructor(totalPages); let i = index" (click)="goToPage(i + 1)"
-            [class.bg-gray-600]="currentPage === i + 1" [class.text-white]="currentPage === i + 1"
+          <button *ngFor="let p of pageNumbers" (click)="goToPage(p)"
+            [class.bg-gray-600]="currentPage === p" [class.text-white]="currentPage === p"
             class="px-3 py-1.5 text-sm rounded-md border border-gray-300 text-gray-600 cursor-pointer">
-            {{ i + 1 }}
+            {{ p }}
           </button>
 
           <button (click)="goToPage(currentPage + 1)" [disabled]="currentPage === totalPages"

@@ -2,10 +2,10 @@ import {
   Component, OnInit, OnDestroy, HostListener, ViewChild, ElementRef,
   ChangeDetectorRef, inject
 } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { FormsModule, NgForm } from '@angular/forms';
-import { catchError, from, map, mergeMap, of, toArray } from 'rxjs';
+import { Subscription, catchError, from, map, mergeMap, of, toArray } from 'rxjs';
 import { FooterComponent } from "../footer/footer.component";
 import { AuthService } from '../auth/auth.service';
 import { PermissionService } from '../auth/permission.service';
@@ -74,7 +74,10 @@ export class ManageUsersComponent implements OnInit, OnDestroy {
   hasHorizontalScroll = false;
 
   users: AppUser[] = [];
-  filteredUsers: AppUser[] = [];
+  totalCount = 0;
+  get filteredUsers(): AppUser[] { return this.users; }
+  private usersRequest?: Subscription;
+  private searchTimer?: ReturnType<typeof setTimeout>;
   loading = true;
   errorMsg = '';
 
@@ -117,7 +120,7 @@ export class ManageUsersComponent implements OnInit, OnDestroy {
   private updateRoleFilter(): void {
     this.roles = ['All', ...Array.from(new Set([
       ...this.allRoles.filter(r => r.name !== 'Super Admin').map(r => r.name),
-      ...this.users.filter(u => !this.isRowSuperAdmin(u)).map(u => u.role)
+      'No Role'
     ])).sort()];
   }
 
@@ -205,8 +208,7 @@ export class ManageUsersComponent implements OnInit, OnDestroy {
   selectPageSize(size: number): void {
     this.pageSize = size;
     this.showPageSizeMenu = false;
-    this.currentPage = 1;
-    setTimeout(() => this.updateHorizontalScrollState(), 0);
+    this.applyFilters();
   }
 
   // =================== Bulk selection ===================
@@ -433,7 +435,11 @@ export class ManageUsersComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void { this.loadRoles(); this.fetchUsers(); }
 
-  ngOnDestroy(): void { this.tableResizeObserver?.disconnect(); }
+  ngOnDestroy(): void {
+    this.tableResizeObserver?.disconnect();
+    this.usersRequest?.unsubscribe();
+    clearTimeout(this.searchTimer);
+  }
 
   get canAdd(): boolean { return this.auth.isSuperAdmin() || this.perm.canAdd('Manage Users'); }
   get canEdit(): boolean { return this.auth.isSuperAdmin() || this.perm.canEdit('Manage Users'); }
@@ -449,66 +455,49 @@ export class ManageUsersComponent implements OnInit, OnDestroy {
   }
 
   fetchUsers(): void {
+    clearTimeout(this.searchTimer);
+    this.usersRequest?.unsubscribe();
     this.loading = true;
     this.errorMsg = '';
-    this.http.get<AppUser[]>(this.apiUrl).subscribe({
-      next: (data) => {
-        this.users = data;
-        this.updateRoleFilter();
-        this.applyFilters();
+    const params = new HttpParams()
+      .set('pageNumber', this.currentPage).set('pageSize', this.pageSize)
+      .set('search', this.searchTerm.trim()).set('role', this.roleFilter)
+      .set('status', this.statusFilter).set('sortBy', this.sortBy)
+      .set('sortDirection', this.sortDirection);
+    this.usersRequest = this.http.get<{
+      items: AppUser[]; totalCount: number; pageNumber: number; pageSize: number;
+    }>(this.apiUrl, { params }).subscribe({
+      next: data => {
+        this.users = data.items;
+        this.totalCount = data.totalCount;
+        this.currentPage = data.pageNumber;
+        this.pageSize = data.pageSize;
+        const visibleIds = new Set(this.users.map(u => u.id));
+        this.selectedUserIds = new Set([...this.selectedUserIds].filter(id => visibleIds.has(id)));
         this.loading = false;
         setTimeout(() => this.updateHorizontalScrollState(), 0);
       },
-      error: () => { this.loading = false; }
+      error: () => {
+        this.users = [];
+        this.totalCount = 0;
+        this.selectedUserIds.clear();
+        this.loading = false;
+        this.errorMsg = 'Unable to load users. Please retry.';
+      }
     });
   }
 
+  onSearchChange(): void {
+    clearTimeout(this.searchTimer);
+    this.usersRequest?.unsubscribe();
+    this.loading = true;
+    this.searchTimer = setTimeout(() => this.applyFilters(), 300);
+  }
+
   applyFilters(): void {
-    let list = [...this.users];
-    list = list.filter(u => !this.isSuperAdmin(u));
-
-    if (this.statusFilter === 'active') list = list.filter(u => !u.isDeleted);
-    else if (this.statusFilter === 'deleted') list = list.filter(u => u.isDeleted);
-
-    if (this.roleFilter !== 'All') list = list.filter(u => u.role === this.roleFilter);
-
-    if (this.searchTerm.trim()) {
-      const term = this.searchTerm.trim().toLowerCase();
-      list = list.filter(u => {
-        const searchableValues = [
-          u.id, u.firstName, u.lastName, this.fullName(u),
-          u.firstContact, u.secondContact, u.email,
-          u.homeAddress, u.officeAddress, u.websiteUrl,
-          u.roleId, u.role, u.status,
-          u.isDeleted ? 'deleted' : 'not deleted',
-          u.createdDate, u.createdBy, u.updatedDate, u.updatedBy
-        ];
-        return searchableValues.some(value =>
-          String(value ?? '').toLowerCase().includes(term)
-        );
-      });
-    }
-
-    this.filteredUsers = list.sort((a, b) => {
-      const value = (u: AppUser): string | number => {
-        if (this.sortBy === 'fullName') return this.fullName(u);
-        if (this.sortBy === 'createdDate' || this.sortBy === 'updatedDate')
-          return Date.parse(u[this.sortBy]) || 0;
-        const v = u[this.sortBy as keyof AppUser];
-        return typeof v === 'boolean' ? Number(v) : String(v ?? '');
-      };
-      const av = value(a), bv = value(b);
-      const result = typeof av === 'number' && typeof bv === 'number'
-        ? av - bv : String(av).localeCompare(String(bv), undefined, { numeric: true, sensitivity: 'base' });
-      return (this.sortDirection === 'asc' ? result : -result) || b.id - a.id;
-    });
     this.currentPage = 1;
-    // Keep only selections still visible
-    const visibleIds = new Set(this.filteredUsers.map(u => u.id));
-    this.selectedUserIds = new Set(
-      Array.from(this.selectedUserIds).filter(id => visibleIds.has(id))
-    );
-    setTimeout(() => this.updateHorizontalScrollState(), 0);
+    this.clearUserSelection();
+    this.fetchUsers();
   }
 
   sort(column: string): void {
@@ -521,20 +510,25 @@ export class ManageUsersComponent implements OnInit, OnDestroy {
     return this.sortBy === column ? (this.sortDirection === 'asc' ? '▲' : '▼') : '';
   }
 
-  get paginatedUsers(): AppUser[] {
-    const start = (this.currentPage - 1) * this.pageSize;
-    return this.filteredUsers.slice(start, start + this.pageSize);
-  }
+  get paginatedUsers(): AppUser[] { return this.users; }
 
   get totalPages(): number {
-    return Math.max(1, Math.ceil(this.filteredUsers.length / this.pageSize));
+    return Math.max(1, Math.ceil(this.totalCount / this.pageSize));
   }
 
   goToPage(page: number): void {
-    if (page >= 1 && page <= this.totalPages) this.currentPage = page;
+    if (this.bulkBusy || page === this.currentPage || page < 1 || page > this.totalPages) return;
+    this.clearUserSelection();
+    this.currentPage = page;
+    this.fetchUsers();
   }
 
-  onPageSizeChange(): void { this.currentPage = 1; }
+  onPageSizeChange(): void { this.applyFilters(); }
+
+  get pageNumbers(): number[] {
+    const start = Math.max(1, Math.min(this.currentPage - 2, this.totalPages - 4));
+    return Array.from({ length: Math.min(5, this.totalPages) }, (_, i) => start + i);
+  }
 
   roleBadgeClass(role: string): string {
     const map: Record<string, string> = {
@@ -599,7 +593,7 @@ export class ManageUsersComponent implements OnInit, OnDestroy {
         user.roleId = roleId;
         user.role = role.name;
         this.roleSavingUserId = null;
-        this.applyFilters();
+        this.fetchUsers();
       },
       error: () => { this.roleSavingUserId = null; }
     });

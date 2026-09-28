@@ -152,7 +152,7 @@ describe('Database role catalog', () => {
       const fixture = TestBed.createComponent(ManageUsersComponent);
       fixture.detectChanges();
       http.expectOne(url).flush(catalog);
-      http.expectOne(`${environment.apiUrl}/users`).flush([]);
+      http.expectOne(r => r.url === environment.apiUrl + '/users').flush({ items: [], totalCount: 0, pageNumber: 1, pageSize: 8 });
       const component = fixture.componentInstance;
       if (modal === 'add') component.openAddModal();
       else component.openEditModal({ id: 20, roleId: 27, role: 'Auditor', firstName: 'Test', lastName: 'User' } as any);

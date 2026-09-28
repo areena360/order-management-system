@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using OMS_Backend.Common.Exceptions;
 using OMS_Backend.Data;
 using OMS_Backend.Services;
+using OMS_Backend.DTOs;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -26,10 +27,16 @@ public class UsersController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAll()
+    public async Task<IActionResult> GetAll([FromQuery] UserQueryDto request, CancellationToken cancellationToken)
     {
-        var users = await _db.Users
-            .OrderByDescending(u => u.CreatedDate).ThenByDescending(u => u.Id)
+        var query = UserListQuery.Filter(_db.Users.AsNoTracking(), request);
+        var totalCount = await query.CountAsync(cancellationToken);
+        var pageSize = Math.Clamp(request.PageSize, 1, 100);
+        var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)pageSize));
+        var pageNumber = Math.Clamp(request.PageNumber, 1, totalPages);
+        var users = await UserListQuery.Sort(query, request)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
             .Select(u => new
             {
                 u.Id,
@@ -53,9 +60,9 @@ public class UsersController : ControllerBase
                     ? u.UpdatedBy.ToString()
                     : null
             })
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
 
-        return Ok(users);
+        return Ok(new { items = users, totalCount, pageNumber, pageSize });
     }
 
     [HttpPost]

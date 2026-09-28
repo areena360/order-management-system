@@ -696,9 +696,6 @@ export class OrderFormComponent implements OnInit, OnDestroy {
   }
 
   get pageTitle(): string { return this.isEditMode ? 'Edit Order' : 'Add Order'; }
-  get pageSubtitle(): string {
-    return this.isEditMode ? 'Update the order information below.' : 'Create a new customer order.';
-  }
 
   onImagesSelected(event: Event): void {
     const input = event.target as HTMLInputElement;

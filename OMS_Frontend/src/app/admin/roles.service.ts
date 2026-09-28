@@ -16,6 +16,7 @@ export class RolesService {
     return this.getRoles().pipe(map(roles => roles.filter(r => r.isActive && r.name !== 'Super Admin')));
   }
   create(name: string) { return this.http.post<RoleOption>(this.url, { name }); }
+  rename(id: number, name: string) { return this.http.put<RoleOption>(`${this.url}/${id}`, { name }); }
   activate(id: number) { return this.http.patch(`${this.url}/${id}/activate`, {}); }
   delete(id: number) { return this.http.delete(`${this.url}/${id}`); }
 }

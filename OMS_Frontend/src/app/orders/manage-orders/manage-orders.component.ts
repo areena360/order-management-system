@@ -322,7 +322,7 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   showColumnMenu = false;
 
   columnOptions: ColumnOption[] = [
-    { key: 'amount', label: 'Amount (PKR)' },
+    { key: 'amount', label: 'Amount' },
     { key: 'customerOrderNumber', label: 'Customer Order #' },
     { key: 'manufacturerProductTitle', label: 'Manufacturer Product' },
     { key: 'priority', label: 'Priority' },
@@ -788,6 +788,14 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
       default: return;
     }
     this.openFilterDropdown = null;
+    this.currentPage = 1;
+    this.fetchOrders();
+  }
+
+  // =================== Status Filter Buttons (table header) ===================
+  selectStatusFilter(statusId: number | null): void {
+    if (this.statusFilter === statusId) return;
+    this.statusFilter = statusId;
     this.currentPage = 1;
     this.fetchOrders();
   }

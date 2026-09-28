@@ -10,7 +10,7 @@ import { WooSelectComponent } from './woo-select.component';
 
 @Component({selector: 'app-shopify', standalone:true,imports:[CommonModule,FormsModule,WooSelectComponent],template:`
 <div class="min-h-screen bg-gray-50 p-4 sm:p-6"><div class="max-w-7xl mx-auto space-y-4">
- <div class="flex items-center justify-between"><div><h1 class="text-2xl font-bold text-gray-900">Shopify</h1><p class="mt-1 text-sm text-gray-500">Connect your store and manage automatic order synchronization.</p></div><button (click)="load()" [disabled]="busy()">Refresh</button></div>
+ <div class="flex items-center justify-between"><div><h1 class="text-2xl font-bold text-gray-900">Shopify</h1></div><button (click)="load()" [disabled]="busy()">Refresh</button></div>
  <p *ngIf="error()" role="alert" class="rounded-lg bg-red-50 p-4 text-sm text-red-700">{{error()}}</p>
  <p *ngIf="message()" role="status" class="rounded-lg bg-green-50 p-4 text-sm text-green-700">{{message()}}</p>
  <section *ngIf="!ready"><h2>App setup required</h2><p class="text-sm text-gray-600">Configure your Shopify app credentials and public HTTPS addresses on the OMS server. No Shopify password or access token needs to be entered here.</p></section>

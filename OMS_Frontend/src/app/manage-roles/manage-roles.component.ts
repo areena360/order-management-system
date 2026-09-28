@@ -33,53 +33,24 @@ export class ManageRolesComponent implements OnInit {
   saving = false;
   saved = false;
 
-  // ---------- Add Role modal ----------
-  addRoleOpen = false;
+  // ---------- Manage Roles modal ----------
+  rolesModalOpen = false;
+
+  // Add role
   newRoleName = '';
   addRoleSaving = false;
   addRoleError = '';
+
+  // Inline rename
+  editingRoleId: number | null = null;
+  editRoleName = '';
+  editRoleError = '';
+  savingRoleId: number | null = null;
+
+  // Delete
   roleToDelete: RoleOption | null = null;
   deletingRole = false;
   deleteRoleError = '';
-
-  get canDeleteSelectedRole(): boolean {
-    return this.roleOptions.find(r => r.id === this.selectedRoleId)?.canDelete === true;
-  }
-
-  openDeleteRole(): void {
-    if (!this.canDeleteSelectedRole || this.saving || this.loading || this.rolesLoading) return;
-    this.roleToDelete = this.roleOptions.find(r => r.id === this.selectedRoleId) ?? null;
-    this.deleteRoleError = '';
-    this.showRoleMenu = false;
-  }
-
-  closeDeleteRole(): void {
-    if (!this.deletingRole) this.roleToDelete = null;
-  }
-
-  confirmDeleteRole(): void {
-    if (!this.roleToDelete || this.deletingRole) return;
-    const id = this.roleToDelete.id;
-    this.deletingRole = true;
-    this.deleteRoleError = '';
-    this.rolesService.delete(id).subscribe({
-      next: () => {
-        this.deletingRole = false;
-        this.roleToDelete = null;
-        this.roleOptions = this.roleOptions.filter(r => r.id !== id);
-        this.selectedRoleId = null;
-        this.permissions = [];
-        this.saved = false;
-        this.loadRoles();
-      },
-      error: err => {
-        this.deletingRole = false;
-        this.deleteRoleError = err.error?.message ?? (err.status === 404
-          ? 'This role no longer exists. Close this dialog and refresh the page.'
-          : 'Unable to delete role. Please try again.');
-      }
-    });
-  }
 
   private apiUrl = `${environment.apiUrl}/rolepermissions`;
 
@@ -124,8 +95,6 @@ export class ManageRolesComponent implements OnInit {
       error: () => { this.saving = false; this.rolesError = 'Unable to activate role.'; }
     });
   }
-
-  isFieldPermission(key: string): boolean { return key === 'Order Amount' || key === 'Order Tracking'; }
 
   get selectedRoleName(): string {
     return this.roleOptions.find(r => r.id === this.selectedRoleId)?.name || 'Select role';
@@ -211,17 +180,20 @@ export class ManageRolesComponent implements OnInit {
   }
 
   // =========================================================
-  // Add Role modal
+  // Manage Roles modal
   // =========================================================
-  openAddRole(): void {
-    this.addRoleOpen = true;
+  openRolesModal(): void {
+    this.rolesModalOpen = true;
     this.newRoleName = '';
     this.addRoleError = '';
+    this.cancelEditRole();
+    this.loadRoles();
   }
 
-  closeAddRole(): void {
-    if (this.addRoleSaving) return;
-    this.addRoleOpen = false;
+  closeRolesModal(): void {
+    if (this.addRoleSaving || this.savingRoleId !== null || this.deletingRole) return;
+    this.rolesModalOpen = false;
+    this.cancelEditRole();
   }
 
   createRole(): void {
@@ -237,15 +209,13 @@ export class ManageRolesComponent implements OnInit {
     this.rolesService.create(name).subscribe({
       next: (created) => {
         this.addRoleSaving = false;
-        this.addRoleOpen = false;
+        this.newRoleName = '';
 
-        // Naya role dropdown me add karo
         if (!this.roleOptions.some(r => r.id === created.id)) {
           this.roleOptions = [...this.roleOptions, created]
             .sort((a, b) => a.name.localeCompare(b.name));
         }
 
-        // Naya role select karo aur uska permission table load karo
         this.selectedRoleId = created.id;
         this.loadRoles();
       },
@@ -254,6 +224,86 @@ export class ManageRolesComponent implements OnInit {
         this.addRoleError =
           err?.error?.message ??
           (err.status === 409 ? 'This role already exists.' : 'Failed to create role. Please try again.');
+      }
+    });
+  }
+
+  // ---------- Inline rename ----------
+  startEditRole(role: RoleOption): void {
+    this.editingRoleId = role.id;
+    this.editRoleName = role.name;
+    this.editRoleError = '';
+  }
+
+  cancelEditRole(): void {
+    this.editingRoleId = null;
+    this.editRoleName = '';
+    this.editRoleError = '';
+  }
+
+  saveRoleName(role: RoleOption): void {
+    const name = this.editRoleName.trim();
+    if (!name) {
+      this.editRoleError = 'Role name is required.';
+      return;
+    }
+    if (name === role.name) {
+      this.cancelEditRole();
+      return;
+    }
+
+    this.savingRoleId = role.id;
+    this.editRoleError = '';
+
+    this.rolesService.rename(role.id, name).subscribe({
+      next: () => {
+        this.savingRoleId = null;
+        this.cancelEditRole();
+        this.loadRoles();
+      },
+      error: (err) => {
+        this.savingRoleId = null;
+        this.editRoleError =
+          err?.error?.message ??
+          (err.status === 409 ? 'This role name already exists.' : 'Failed to rename role.');
+      }
+    });
+  }
+
+  // ---------- Delete ----------
+  openDeleteRole(role: RoleOption): void {
+    if (!role) return;
+    if (this.saving || this.loading || this.rolesLoading) return;
+
+    this.roleToDelete = role;
+    this.deleteRoleError = '';
+    this.showRoleMenu = false;
+  }
+
+  closeDeleteRole(): void {
+    if (!this.deletingRole) this.roleToDelete = null;
+  }
+
+  confirmDeleteRole(): void {
+    if (!this.roleToDelete || this.deletingRole) return;
+    const id = this.roleToDelete.id;
+    this.deletingRole = true;
+    this.deleteRoleError = '';
+    this.rolesService.delete(id).subscribe({
+      next: () => {
+        this.deletingRole = false;
+        this.roleToDelete = null;
+        this.roleOptions = this.roleOptions.filter(r => r.id !== id);
+        this.selectedRoleId = null;
+        this.permissions = [];
+        this.saved = false;
+        this.loadRoles();
+      },
+      error: err => {
+        this.deletingRole = false;
+        this.deleteRoleError = err.error?.message ?? (err.status === 404
+          ? 'This role no longer exists. Close this dialog and refresh the page.'
+          : 'Unable to delete role. Please try again.');
       }
     });
   }

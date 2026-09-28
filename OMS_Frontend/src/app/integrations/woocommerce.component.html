@@ -1,6 +1,6 @@
 <div class="max-w-7xl mx-auto">
 <div class="flex justify-between gap-4 items-center"><div><p class="text-sm text-gray-500">Settings / Integrations</p><h1 class="text-2xl font-bold">WooCommerce</h1></div><button (click)="refresh()" [disabled]="busy()">Refresh</button></div>
-<p class="mt-3 text-gray-600">Connect stores from WooCommerce → OMS Integration. Each store belongs to one OMS customer account.</p>
+
 <p *ngIf="busy()" role="status" class="mt-4">Working…</p>
 <p *ngIf="error()" role="alert" class="p-4 my-4 bg-red-50 text-red-800 rounded-lg">{{ error() }}</p>
 <p *ngIf="message()" role="status" class="p-4 my-4 bg-green-50 text-green-800 rounded-lg">{{ message() }}</p>

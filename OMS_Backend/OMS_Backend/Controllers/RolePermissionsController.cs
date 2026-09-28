@@ -17,12 +17,18 @@ namespace OMS_Backend.Controllers
     {
         private static readonly string[] Screens =
         {
-            "Dashboard", "Manage Users", "Manage Roles", "Orders", "Order Customer Chat", "Order Group Chat", "Order Amount", "Order Tracking",
+            "Dashboard", "Manage Users", "Manage Roles", "Orders",
+            "Order Customer Chat", "Order Group Chat"
         };
 
         private readonly OMSDbContext _db;
         private readonly IHubContext<ChatHub> _hub;
-        public RolePermissionsController(OMSDbContext db, IHubContext<ChatHub> hub) { _db = db; _hub = hub; }
+
+        public RolePermissionsController(OMSDbContext db, IHubContext<ChatHub> hub)
+        {
+            _db = db;
+            _hub = hub;
+        }
 
         private async Task<bool> CanManage()
         {
@@ -35,8 +41,14 @@ namespace OMS_Backend.Controllers
         public async Task<IActionResult> GetByRole(int roleId)
         {
             if (!await CanManage()) return Forbid();
-            var roleName = await _db.Roles.Where(r => r.Id == roleId).Select(r => r.Name).FirstOrDefaultAsync();
+
+            var roleName = await _db.Roles
+                .Where(r => r.Id == roleId)
+                .Select(r => r.Name)
+                .FirstOrDefaultAsync();
+
             if (roleName == null) return NotFound();
+
             var saved = await _db.RolePermissions
                 .Where(rp => rp.RoleId == roleId)
                 .ToListAsync();
@@ -45,16 +57,13 @@ namespace OMS_Backend.Controllers
             var result = Screens.Select(s =>
             {
                 var match = saved.FirstOrDefault(p => p.ScreenKey == s);
-                if (OrderFieldPermissions.Keys.Contains(s))
-                {
-                    var edit = OrderFieldPermissions.CanEdit(roleName, s, match);
-                    return new RolePermissionDto { ScreenKey = s, CanView = true, CanEdit = edit };
-                }
                 return new RolePermissionDto
                 {
                     ScreenKey = s,
-                    CanView = match == null ? s == "Order Customer Chat" : !match.IsDeleted && match.IsActive && match.CanView,
-                    CanAdd = match == null ? s == "Order Customer Chat" : !match.IsDeleted && match.IsActive && match.CanView && match.CanAdd,
+                    CanView = match == null ? s == "Order Customer Chat"
+                                            : !match.IsDeleted && match.IsActive && match.CanView,
+                    CanAdd = match == null ? s == "Order Customer Chat"
+                                           : !match.IsDeleted && match.IsActive && match.CanView && match.CanAdd,
                     CanEdit = match?.CanEdit ?? false,
                     CanDelete = match?.CanDelete ?? false
                 };
@@ -67,23 +76,26 @@ namespace OMS_Backend.Controllers
         public async Task<IActionResult> Save([FromBody] SaveRolePermissionsDto dto)
         {
             if (!await CanManage()) return Forbid();
+
             var targetRole = await _db.Roles.FindAsync(dto.RoleId);
-            if (targetRole == null || targetRole.Name == "Super Admin") return BadRequest("This role cannot be changed.");
-            if (dto.Permissions == null || dto.Permissions.Any(p => !Screens.Contains(p.ScreenKey))
+            if (targetRole == null || targetRole.Name == "Super Admin")
+                return BadRequest("This role cannot be changed.");
+
+            if (dto.Permissions == null
+                || dto.Permissions.Any(p => !Screens.Contains(p.ScreenKey))
                 || dto.Permissions.Select(p => p.ScreenKey).Distinct().Count() != dto.Permissions.Count)
                 return BadRequest("Invalid permissions.");
-            foreach (var permission in dto.Permissions.Where(p => OrderFieldPermissions.Keys.Contains(p.ScreenKey)))
-            {
-                permission.CanEdit = targetRole.Name != "Customer" && permission.CanView && permission.CanEdit;
-                permission.CanView = true;
-                permission.CanAdd = permission.CanDelete = false;
-            }
+
+            // Chat screens: Send Messages maps to CanAdd; Edit/Delete are never allowed.
             foreach (var permission in dto.Permissions.Where(p => p.ScreenKey is "Order Customer Chat" or "Order Group Chat"))
             {
-                if (targetRole.Name == "Customer" && permission.ScreenKey == "Order Group Chat") permission.CanView = false;
+                if (targetRole.Name == "Customer" && permission.ScreenKey == "Order Group Chat")
+                    permission.CanView = false;
+
                 permission.CanAdd = permission.CanView && permission.CanAdd;
                 permission.CanEdit = permission.CanDelete = false;
             }
+
             var existing = await _db.RolePermissions
                 .Where(rp => rp.RoleId == dto.RoleId)
                 .ToListAsync();
@@ -118,8 +130,14 @@ namespace OMS_Backend.Controllers
             }
 
             await _db.SaveChangesAsync();
-            var userGroups = await _db.Users.Where(u => u.RoleId == dto.RoleId && !u.IsDeleted).Select(u => "user_" + u.Id).ToListAsync();
+
+            var userGroups = await _db.Users
+                .Where(u => u.RoleId == dto.RoleId && !u.IsDeleted)
+                .Select(u => "user_" + u.Id)
+                .ToListAsync();
+
             await _hub.Clients.Groups(userGroups).SendAsync("PermissionsChanged");
+
             return Ok(new { message = "Permissions saved successfully." });
         }
     }

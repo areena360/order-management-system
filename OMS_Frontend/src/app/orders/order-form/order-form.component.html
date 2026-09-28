@@ -3,7 +3,7 @@
     : 'min-h-screen bg-gray-50 p-6'"
   (click)="asModal ? cancel() : null">
   <div [ngClass]="asModal
-      ? 'mx-auto my-4 w-full max-w-6xl rounded-xl bg-white shadow-xl ring-1 ring-gray-200'
+      ? 'mx-auto my-4 w-full max-w-6xl rounded-xl border border-gray-200 bg-white shadow-xl ring-1 ring-gray-200'
       : 'max-w-7xl mx-auto'"
     (click)="$event.stopPropagation()">
 
@@ -22,12 +22,12 @@
           <span *ngIf="isEditMode && orderNumber"
             class="rounded-md bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700">{{ orderNumber }}</span>
         </div>
-        <p class="mt-1 text-sm text-gray-500">{{ pageSubtitle }}</p>
+
       </div>
 
       <div *ngIf="isEditMode && currentStatus" class="flex items-center gap-2">
         <span class="text-xs font-medium text-gray-500">Current status</span>
-        <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset"
+        <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset capitalize"
           [ngClass]="statusBadgeClass(currentStatus)">{{ currentStatus }}</span>
       </div>
     </div>
@@ -40,7 +40,7 @@
           <span *ngIf="isEditMode && orderNumber"
             class="rounded-md bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-700">{{ orderNumber }}</span>
         </div>
-        <p class="mt-0.5 text-xs text-gray-500 truncate">{{ pageSubtitle }}</p>
+
       </div>
       <button type="button" (click)="cancel()" [disabled]="saving"
         class="shrink-0 rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
@@ -140,7 +140,7 @@
             </div>
           </section>
 
-          <!-- 2. Order Information (status + material + size merged) -->
+          <!-- 2. Order Information -->
           <section>
             <div class="px-5 py-3 bg-gray-800 border-b border-gray-700">
               <h2 class="text-base font-semibold text-white">Order Information</h2>
@@ -152,7 +152,7 @@
                 <label class="mb-1.5 block text-sm font-medium text-gray-700">{{ isCustomer ? 'Your Name' : 'Customer Name' }} <span class="text-red-500">*</span></label>
                 <div class="relative">
                   <input type="text" [disabled]="form.controls.customerId.disabled" [value]="customerSearchTerm" (input)="onCustomerInput($any($event.target).value)"
-                    (focus)="onCustomerFocus()" autocomplete="off" placeholder="Search customer..."
+                    (focus)="onCustomerFocus()" autocomplete="off" placeholder="Search Customer..."
                     class="w-full min-w-0 truncate rounded-lg border bg-white px-3 py-2 text-sm text-gray-700 outline-none transition placeholder:text-gray-400"
                     [class.border-red-400]="isInvalid('customerId')" [class.border-gray-300]="!isInvalid('customerId')" />
                 </div>
@@ -172,11 +172,11 @@
                         {{ customer.name.charAt(0).toUpperCase() }}
                       </div>
                       <div class="min-w-0">
-                        <div class="truncate text-sm font-medium text-gray-900">{{ customer.name }}</div>
+                        <div class="truncate text-sm font-medium text-gray-900 capitalize">{{ customer.name }}</div>
                         <div class="truncate text-xs text-gray-500">{{ customer.email }}</div>
                       </div>
                     </button>
-                    <div *ngIf="customerOptions.length === 0" class="px-4 py-4 text-center text-sm text-gray-500">No customers found.</div>
+                    <div *ngIf="customerOptions.length === 0" class="px-4 py-4 text-center text-sm text-gray-500">No Customers Found.</div>
                   </div>
                 </div>
                 <p *ngIf="isInvalid('customerId')" class="mt-1.5 text-xs text-red-600">Please select a customer.</p>
@@ -185,7 +185,7 @@
               <!-- Customer Order # -->
               <div>
                 <label class="mb-1.5 block text-sm font-medium text-gray-700">Customer Order # <span class="text-red-500">*</span></label>
-                <input type="text" formControlName="customerOrderNumber" maxlength="100" placeholder="Enter customer order number"
+                <input type="text" formControlName="customerOrderNumber" maxlength="100" placeholder="Enter Customer Order Number"
                   class="w-full min-w-0 truncate rounded-lg border bg-white px-3 py-2 text-sm text-gray-700 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-gray-500"
                   [class.border-red-400]="isInvalid('customerOrderNumber')" [class.border-gray-300]="!isInvalid('customerOrderNumber')" />
                 <p *ngIf="isInvalid('customerOrderNumber')" class="mt-1.5 text-xs text-red-600">{{ getError('customerOrderNumber') }}</p>
@@ -193,16 +193,16 @@
 
               <!-- Manufacturer Order # -->
               <div *ngIf="!isCustomer">
-                <label class="mb-1.5 block text-sm font-medium text-gray-700">Manufacturer Order # (optional)</label>
-                <input type="text" formControlName="manufacturerOrderNumber" maxlength="100" placeholder="Auto-generated if left blank"
+                <label class="mb-1.5 block text-sm font-medium text-gray-700">Manufacturer Order # (Optional)</label>
+                <input type="text" formControlName="manufacturerOrderNumber" maxlength="100" placeholder="Auto-Generated If Left Blank"
                   class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700" />
                 <p *ngIf="isInvalid('manufacturerOrderNumber')" class="mt-1.5 text-xs text-red-600">{{ getError('manufacturerOrderNumber') }}</p>
               </div>
 
               <!-- Customer Title -->
               <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700">Customer Title <span *ngIf="isCustomer" class="text-red-500">*</span><span *ngIf="!isCustomer"> (optional)</span></label>
-                <input type="text" formControlName="customerProductTitle" maxlength="200" placeholder="Enter product name"
+                <label class="mb-1.5 block text-sm font-medium text-gray-700">Customer Title <span *ngIf="isCustomer" class="text-red-500">*</span><span *ngIf="!isCustomer"> (Optional)</span></label>
+                <input type="text" formControlName="customerProductTitle" maxlength="200" placeholder="Enter Product Name"
                   class="w-full rounded-lg border bg-white px-3 py-2 text-sm text-gray-700 outline-none placeholder:text-gray-400"
                   [class.border-red-400]="isInvalid('customerProductTitle')"
                   [class.border-gray-300]="!isInvalid('customerProductTitle')" />
@@ -212,7 +212,7 @@
               <!-- Manufacturer Title -->
               <div *ngIf="!isCustomer">
                 <label class="mb-1.5 block text-sm font-medium text-gray-700">Manufacturer Title <span class="text-red-500">*</span></label>
-                <input type="text" formControlName="manufacturerProductTitle" maxlength="200" placeholder="Product name used by the manufacturer"
+                <input type="text" formControlName="manufacturerProductTitle" maxlength="200" placeholder="Product Name Used By The Manufacturer"
                   class="w-full min-w-0 truncate rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-gray-500" />
                 <p *ngIf="isInvalid('manufacturerProductTitle')" class="mt-1.5 text-xs text-red-600">{{ getError('manufacturerProductTitle') }}</p>
               </div>
@@ -224,8 +224,8 @@
                   <button type="button" (click)="toggleDropdown('genderId')" [disabled]="form.controls.genderId.disabled"
                     class="w-full flex items-center justify-between rounded-lg border bg-white px-3 py-2 text-sm text-left focus:outline-none focus:ring-2 focus:ring-gray-500 hover:bg-gray-50 cursor-pointer"
                     [class.border-red-400]="isInvalid('genderId')" [class.border-gray-300]="!isInvalid('genderId')">
-                    <span class="min-w-0 flex-1 truncate whitespace-nowrap" [class.text-gray-400]="!form.controls.genderId.value" [class.text-gray-700]="form.controls.genderId.value">
-                      {{ optionName(genders, form.controls.genderId.value) || 'Select gender' }}
+                    <span class="min-w-0 flex-1 truncate whitespace-nowrap capitalize" [class.text-gray-400]="!form.controls.genderId.value" [class.text-gray-700]="form.controls.genderId.value">
+                      {{ optionName(genders, form.controls.genderId.value) || 'Select Gender' }}
                     </span>
                     <svg class="h-3.5 w-3.5 text-gray-400 transition-transform" [class.rotate-180]="openDropdown === 'genderId'" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
@@ -234,7 +234,7 @@
                   <div *ngIf="openDropdown === 'genderId'"
                     class="absolute left-0 z-20 mt-2 w-full max-h-56 overflow-y-auto rounded-lg bg-white shadow-lg ring-1 ring-gray-200 p-1.5">
                     <button *ngFor="let gender of genders" type="button" (click)="selectDropdown('genderId', gender.id)"
-                      class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors"
+                      class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors capitalize"
                       [class.bg-gray-100]="form.controls.genderId.value === gender.id"
                       [class.font-medium]="form.controls.genderId.value === gender.id">{{ gender.name }}</button>
                   </div>
@@ -248,8 +248,8 @@
                 <div class="relative" data-dd="priorityId">
                   <button type="button" (click)="toggleDropdown('priorityId')" [disabled]="form.controls.priorityId.disabled"
                     class="w-full flex items-center justify-between rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-left focus:outline-none focus:ring-2 focus:ring-gray-500 hover:bg-gray-50 cursor-pointer">
-                    <span class="min-w-0 flex-1 truncate whitespace-nowrap" [class.text-gray-400]="!form.controls.priorityId.value" [class.text-gray-700]="form.controls.priorityId.value">
-                      {{ optionName(priorities, form.controls.priorityId.value) || 'Select priority' }}
+                    <span class="min-w-0 flex-1 truncate whitespace-nowrap capitalize" [class.text-gray-400]="!form.controls.priorityId.value" [class.text-gray-700]="form.controls.priorityId.value">
+                      {{ optionName(priorities, form.controls.priorityId.value) || 'Select Priority' }}
                     </span>
                     <svg class="h-3.5 w-3.5 text-gray-400 transition-transform" [class.rotate-180]="openDropdown === 'priorityId'" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
@@ -258,7 +258,7 @@
                   <div *ngIf="openDropdown === 'priorityId'"
                     class="absolute left-0 z-20 mt-2 w-full max-h-56 overflow-y-auto rounded-lg bg-white shadow-lg ring-1 ring-gray-200 p-1.5">
                     <button *ngFor="let priority of priorities" type="button" (click)="selectDropdown('priorityId', priority.id)"
-                      class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors"
+                      class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors capitalize"
                       [class.bg-gray-100]="form.controls.priorityId.value === priority.id"
                       [class.font-medium]="form.controls.priorityId.value === priority.id">{{ priority.name }}</button>
                   </div>
@@ -273,8 +273,8 @@
                   <button type="button" (click)="!changingStatus && (showStatusDropdown = !showStatusDropdown)"
                     [disabled]="changingStatus || form.controls.statusId.disabled"
                     class="w-full flex items-center justify-between rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 cursor-pointer disabled:bg-gray-100 disabled:cursor-not-allowed">
-                    <span class="truncate" [class.text-gray-400]="!form.controls.statusId.value" [class.text-gray-700]="form.controls.statusId.value">
-                      {{ optionName(statuses, form.controls.statusId.value) || 'Select status' }}
+                    <span class="truncate capitalize" [class.text-gray-400]="!form.controls.statusId.value" [class.text-gray-700]="form.controls.statusId.value">
+                      {{ optionName(statuses, form.controls.statusId.value) || 'Select Status' }}
                     </span>
                     <svg class="h-3.5 w-3.5 text-gray-400 shrink-0 ml-2 transition-transform" [class.rotate-180]="showStatusDropdown" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
@@ -283,7 +283,7 @@
                   <div *ngIf="showStatusDropdown"
                     class="absolute left-0 right-0 z-20 mt-2 max-h-56 overflow-y-auto rounded-lg bg-white shadow-lg ring-1 ring-gray-200 p-1.5">
                     <button *ngFor="let status of statuses" type="button" (click)="onStatusSelected(status.id)"
-                      class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors"
+                      class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors capitalize"
                       [class.bg-gray-100]="form.controls.statusId.value === status.id"
                       [class.font-medium]="form.controls.statusId.value === status.id">{{ status.name }}</button>
                   </div>
@@ -299,14 +299,14 @@
 
               <!-- Customer Material -->
               <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700">Customer Material (optional)</label>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700">Customer Material (Optional)</label>
                 <div class="relative" data-dd="customerMaterialId">
                   <button type="button" (click)="toggleDropdown('customerMaterialId')" [disabled]="form.controls.customerMaterialId.disabled"
                     class="w-full flex items-center justify-between rounded-lg border bg-white px-3 py-2 text-sm text-left focus:outline-none focus:ring-2 focus:ring-gray-500 hover:bg-gray-50 cursor-pointer"
                     [class.border-red-400]="isInvalid('customerMaterialId')" [class.border-gray-300]="!isInvalid('customerMaterialId')">
-                    <span class="min-w-0 flex-1 truncate whitespace-nowrap" [class.text-gray-400]="!form.controls.customerMaterialId.value"
+                    <span class="min-w-0 flex-1 truncate whitespace-nowrap capitalize" [class.text-gray-400]="!form.controls.customerMaterialId.value"
                       [class.text-gray-700]="form.controls.customerMaterialId.value">
-                      {{ optionName(materials, form.controls.customerMaterialId.value) || 'Select customer material' }}
+                      {{ optionName(materials, form.controls.customerMaterialId.value) || 'Select Customer Material' }}
                     </span>
                     <svg class="h-3.5 w-3.5 text-gray-400 transition-transform" [class.rotate-180]="openDropdown === 'customerMaterialId'" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
@@ -314,9 +314,9 @@
                   </button>
                   <div *ngIf="openDropdown === 'customerMaterialId'"
                     class="absolute left-0 z-20 mt-2 w-full max-h-56 overflow-y-auto rounded-lg bg-white shadow-lg ring-1 ring-gray-200 p-1.5">
-                    <button type="button" (click)="selectDropdown('customerMaterialId', null)" class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50">None</button>
+                    <button type="button" (click)="selectDropdown('customerMaterialId', null)" class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 capitalize">None</button>
                     <button *ngFor="let material of materials" type="button" (click)="selectDropdown('customerMaterialId', material.id)"
-                      class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors"
+                      class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors capitalize"
                       [class.bg-gray-100]="form.controls.customerMaterialId.value === material.id"
                       [class.font-medium]="form.controls.customerMaterialId.value === material.id">{{ material.name }}</button>
                   </div>
@@ -331,9 +331,9 @@
                   <button type="button" (click)="toggleDropdown('manufacturerMaterialId')" [disabled]="form.controls.manufacturerMaterialId.disabled"
                     class="w-full flex items-center justify-between rounded-lg border bg-white px-3 py-2 text-sm text-left focus:outline-none focus:ring-2 focus:ring-gray-500 hover:bg-gray-50 cursor-pointer"
                     [class.border-red-400]="isInvalid('manufacturerMaterialId')" [class.border-gray-300]="!isInvalid('manufacturerMaterialId')">
-                    <span class="min-w-0 flex-1 truncate whitespace-nowrap" [class.text-gray-400]="!form.controls.manufacturerMaterialId.value"
+                    <span class="min-w-0 flex-1 truncate whitespace-nowrap capitalize" [class.text-gray-400]="!form.controls.manufacturerMaterialId.value"
                       [class.text-gray-700]="form.controls.manufacturerMaterialId.value">
-                      {{ optionName(materials, form.controls.manufacturerMaterialId.value) || 'Select manufacturer material' }}
+                      {{ optionName(materials, form.controls.manufacturerMaterialId.value) || 'Select Manufacturer Material' }}
                     </span>
                     <svg class="h-3.5 w-3.5 text-gray-400 transition-transform" [class.rotate-180]="openDropdown === 'manufacturerMaterialId'" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
@@ -342,7 +342,7 @@
                   <div *ngIf="openDropdown === 'manufacturerMaterialId'"
                     class="absolute left-0 z-20 mt-2 w-full max-h-56 overflow-y-auto rounded-lg bg-white shadow-lg ring-1 ring-gray-200 p-1.5">
                     <button *ngFor="let material of materials" type="button" (click)="selectDropdown('manufacturerMaterialId', material.id)"
-                      class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors"
+                      class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors capitalize"
                       [class.bg-gray-100]="form.controls.manufacturerMaterialId.value === material.id"
                       [class.font-medium]="form.controls.manufacturerMaterialId.value === material.id">{{ material.name }}</button>
                   </div>
@@ -357,9 +357,9 @@
                   <button type="button" (click)="toggleDropdown('sizeChartId')" [disabled]="form.controls.sizeChartId.disabled"
                     class="w-full flex items-center justify-between rounded-lg border bg-white px-3 py-2 text-sm text-left focus:outline-none focus:ring-2 focus:ring-gray-500 hover:bg-gray-50 cursor-pointer"
                     [class.border-red-400]="isInvalid('sizeChartId')" [class.border-gray-300]="!isInvalid('sizeChartId')">
-                    <span class="min-w-0 flex-1 truncate whitespace-nowrap" [class.text-gray-400]="!form.controls.sizeChartId.value"
+                    <span class="min-w-0 flex-1 truncate whitespace-nowrap capitalize" [class.text-gray-400]="!form.controls.sizeChartId.value"
                       [class.text-gray-700]="form.controls.sizeChartId.value">
-                      {{ optionName(sizeCharts, form.controls.sizeChartId.value) || 'Select size chart' }}
+                      {{ optionName(sizeCharts, form.controls.sizeChartId.value) || 'Select Size Chart' }}
                     </span>
                     <svg class="h-3.5 w-3.5 text-gray-400 transition-transform" [class.rotate-180]="openDropdown === 'sizeChartId'" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
@@ -368,7 +368,7 @@
                   <div *ngIf="openDropdown === 'sizeChartId'"
                     class="absolute left-0 z-20 mt-2 w-full max-h-56 overflow-y-auto rounded-lg bg-white shadow-lg ring-1 ring-gray-200 p-1.5">
                     <button *ngFor="let chart of sizeCharts" type="button" (click)="selectDropdown('sizeChartId', chart.id)"
-                      class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors"
+                      class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors capitalize"
                       [class.bg-gray-100]="form.controls.sizeChartId.value === chart.id"
                       [class.font-medium]="form.controls.sizeChartId.value === chart.id">{{ chart.name }}</button>
                   </div>
@@ -383,8 +383,8 @@
                   <button type="button" (click)="toggleDropdown('sizeId')" [disabled]="form.controls.sizeId.disabled"
                     class="w-full flex items-center justify-between rounded-lg border bg-white px-3 py-2 text-sm text-left focus:outline-none focus:ring-2 focus:ring-gray-500 hover:bg-gray-50 cursor-pointer"
                     [class.border-red-400]="isInvalid('sizeId')" [class.border-gray-300]="!isInvalid('sizeId')">
-                    <span class="min-w-0 flex-1 truncate whitespace-nowrap" [class.text-gray-400]="!form.controls.sizeId.value" [class.text-gray-700]="form.controls.sizeId.value">
-                      {{ optionName(sizes, form.controls.sizeId.value) || 'Select size' }}
+                    <span class="min-w-0 flex-1 truncate whitespace-nowrap capitalize" [class.text-gray-400]="!form.controls.sizeId.value" [class.text-gray-700]="form.controls.sizeId.value">
+                      {{ optionName(sizes, form.controls.sizeId.value) || 'Select Size' }}
                     </span>
                     <svg class="h-3.5 w-3.5 text-gray-400 transition-transform" [class.rotate-180]="openDropdown === 'sizeId'" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
@@ -393,7 +393,7 @@
                   <div *ngIf="openDropdown === 'sizeId'"
                     class="absolute left-0 z-20 mt-2 w-full max-h-56 overflow-y-auto rounded-lg bg-white shadow-lg ring-1 ring-gray-200 p-1.5">
                     <button *ngFor="let size of sizes" type="button" (click)="selectDropdown('sizeId', size.id)"
-                      class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors"
+                      class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors capitalize"
                       [class.bg-gray-100]="form.controls.sizeId.value === size.id"
                       [class.font-medium]="form.controls.sizeId.value === size.id">{{ size.name }}</button>
                   </div>
@@ -406,14 +406,14 @@
                 <label class="inline-flex items-center gap-2.5 cursor-pointer rounded-lg bg-gray-50 ring-1 ring-gray-200 px-3.5 py-2">
                   <input type="checkbox" formControlName="isCustomSize"
                     class="h-4 w-4 rounded border-gray-300 text-gray-800 focus:ring-gray-800 accent-gray-800 cursor-pointer" />
-                  <span class="text-sm font-medium text-gray-700">Use custom size</span>
+                  <span class="text-sm font-medium text-gray-700">Use Custom Size</span>
                 </label>
               </div>
 
               <!-- Custom Measurements -->
               <div *ngIf="form.controls.isCustomSize.value" class="sm:col-span-2 lg:col-span-4">
                 <label class="mb-1.5 block text-sm font-medium text-gray-700">Custom Measurements <span class="text-red-500">*</span></label>
-                <textarea formControlName="sizeDetails" rows="3" maxlength="2000" placeholder="Enter measurements and units (inches or cm)"
+                <textarea formControlName="sizeDetails" rows="3" maxlength="2000" placeholder="Enter Measurements And Units (Inches Or Cm)"
                   class="w-full resize-y rounded-lg border bg-white px-3 py-2 text-sm text-gray-700 outline-none placeholder:text-gray-400"
                   [class.border-red-400]="isInvalid('sizeDetails')" [class.border-gray-300]="!isInvalid('sizeDetails')"></textarea>
                 <p *ngIf="isInvalid('sizeDetails')" class="mt-1.5 text-xs text-red-600">{{ getError('sizeDetails') }}</p>
@@ -430,31 +430,31 @@
             <div class="grid grid-cols-1 gap-5 p-5 sm:grid-cols-2 lg:grid-cols-4">
               <div>
                 <label class="mb-1.5 block text-sm font-medium text-gray-700">Email <span class="text-red-500">*</span></label>
-                <input type="email" formControlName="shippingEmail" maxlength="320" placeholder="Shipping email"
+                <input type="email" formControlName="shippingEmail" maxlength="320" placeholder="Shipping Email"
                   class="w-full rounded-lg border bg-white px-3 py-2 text-sm text-gray-700"
                   [class.border-red-400]="isInvalid('shippingEmail')" [class.border-gray-300]="!isInvalid('shippingEmail')" />
                 <p *ngIf="isInvalid('shippingEmail')" class="mt-1.5 text-xs text-red-600">{{ getError('shippingEmail') }}</p>
               </div>
               <div>
                 <label class="mb-1.5 block text-sm font-medium text-gray-700">Contact <span class="text-red-500">*</span></label>
-                <input type="tel" formControlName="shippingContact" maxlength="100" placeholder="Shipping contact number"
+                <input type="tel" formControlName="shippingContact" maxlength="100" placeholder="Shipping Contact Number"
                   class="w-full rounded-lg border bg-white px-3 py-2 text-sm text-gray-700"
                   [class.border-red-400]="isInvalid('shippingContact')" [class.border-gray-300]="!isInvalid('shippingContact')" />
                 <p *ngIf="isInvalid('shippingContact')" class="mt-1.5 text-xs text-red-600">{{ getError('shippingContact') }}</p>
               </div>
               <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700">Courier <span *ngIf="!isCustomer" class="text-red-500">*</span><span *ngIf="isCustomer"> (optional)</span></label>
-                <select formControlName="courier" class="w-full rounded-lg border bg-white px-3 py-2 text-sm text-gray-700 disabled:bg-gray-100 disabled:text-gray-500"
+                <label class="mb-1.5 block text-sm font-medium text-gray-700">Courier <span *ngIf="!isCustomer" class="text-red-500">*</span><span *ngIf="isCustomer"> (Optional)</span></label>
+                <select formControlName="courier" class="w-full rounded-lg border bg-white px-3 py-2 text-sm text-gray-700 disabled:bg-gray-100 disabled:text-gray-500 capitalize"
                   [class.border-red-400]="isInvalid('courier')" [class.border-gray-300]="!isInvalid('courier')">
-                  <option value="">Select courier</option>
+                  <option value="">Select Courier</option>
                   <option *ngIf="form.controls.courier.value && !couriers.includes(form.controls.courier.value!)" [value]="form.controls.courier.value">{{ form.controls.courier.value }}</option>
                   <option *ngFor="let courier of couriers" [value]="courier">{{ courier }}</option>
                 </select>
                 <p *ngIf="isInvalid('courier')" class="mt-1.5 text-xs text-red-600">{{ getError('courier') }}</p>
               </div>
               <div>
-                <label class="mb-1.5 block text-sm font-medium text-gray-700">Tracking Number <span *ngIf="!isCustomer" class="text-red-500">*</span><span *ngIf="isCustomer"> (optional)</span></label>
-                <input type="text" formControlName="trackingNumber" maxlength="200" placeholder="Tracking number"
+                <label class="mb-1.5 block text-sm font-medium text-gray-700">Tracking Number <span *ngIf="!isCustomer" class="text-red-500">*</span><span *ngIf="isCustomer"> (Optional)</span></label>
+                <input type="text" formControlName="trackingNumber" maxlength="200" placeholder="Tracking Number"
                   class="w-full min-w-0 truncate rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-gray-500" />
                 <p *ngIf="isInvalid('trackingNumber')" class="mt-1.5 text-xs text-red-600">{{ getError('trackingNumber') }}</p>
               </div>
@@ -467,7 +467,7 @@
 
               <div>
                 <label class="mb-1.5 block text-sm font-medium text-gray-700">Name <span class="text-red-500">*</span></label>
-                <input type="text" formControlName="consigneeName" maxlength="200" placeholder="Name of the person receiving the order"
+                <input type="text" formControlName="consigneeName" maxlength="200" placeholder="Name Of The Person Receiving The Order"
                   class="w-full rounded-lg border bg-white px-3 py-2 text-sm text-gray-700 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-gray-500"
                   [class.border-red-400]="isInvalid('consigneeName')" [class.border-gray-300]="!isInvalid('consigneeName')" />
                 <p *ngIf="isInvalid('consigneeName')" class="mt-1.5 text-xs text-red-600">{{ getError('consigneeName') }}</p>
@@ -475,7 +475,7 @@
 
               <div>
                 <label class="mb-1.5 block text-sm font-medium text-gray-700">Shipping Address <span class="text-red-500">*</span></label>
-                <input type="text" formControlName="consigneeAddress" maxlength="1000" placeholder="Enter the complete shipping address"
+                <input type="text" formControlName="consigneeAddress" maxlength="1000" placeholder="Enter The Complete Shipping Address"
                   class="w-full rounded-lg border bg-white px-3 py-2 text-sm text-gray-700 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-gray-500"
                   [class.border-red-400]="isInvalid('consigneeAddress')" [class.border-gray-300]="!isInvalid('consigneeAddress')" />
                 <p *ngIf="isInvalid('consigneeAddress')" class="mt-1.5 text-xs text-red-600">{{ getError('consigneeAddress') }}</p>
@@ -491,12 +491,12 @@
             <div class="grid grid-cols-1 gap-5 p-5 sm:grid-cols-2">
               <div>
                 <label class="mb-1.5 block text-sm font-medium text-gray-700">{{ isCustomer ? 'Your Instructions' : 'Customer Instructions' }}</label>
-                <textarea formControlName="notesByCustomer" rows="4" maxlength="3000" placeholder="Add special requests or instructions for this order"
+                <textarea formControlName="notesByCustomer" rows="4" maxlength="3000" placeholder="Add Special Requests Or Instructions For This Order"
                   class="w-full resize-y rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-gray-500"></textarea>
               </div>
               <div>
                 <label class="mb-1.5 block text-sm font-medium text-gray-700">Manufacturer Notes</label>
-                <textarea formControlName="notesByManufacturer" rows="4" maxlength="3000" placeholder="Add production notes or updates"
+                <textarea formControlName="notesByManufacturer" rows="4" maxlength="3000" placeholder="Add Production Notes Or Updates"
                   class="w-full resize-y rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-gray-500"></textarea>
               </div>
             </div>
@@ -592,7 +592,7 @@
 
   <!-- Bill Modal -->
   <div *ngIf="showBillModal" class="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/50 p-4" (click)="closeBillModal()">
-    <div class="bg-white rounded-xl shadow-xl ring-1 ring-gray-200 w-full max-w-md" (click)="$event.stopPropagation()">
+    <div class="bg-white rounded-xl border border-gray-200 shadow-xl ring-1 ring-gray-200 w-full max-w-md" (click)="$event.stopPropagation()">
       <div class="flex items-center justify-between border-b border-gray-100 px-5 py-4">
         <h2 class="text-lg font-semibold text-gray-900">Add Inventory Bill</h2>
         <button type="button" (click)="closeBillModal()" [disabled]="savingBill" class="text-gray-400 hover:text-gray-700 cursor-pointer">
@@ -609,14 +609,14 @@
         </div>
         <div>
           <label class="block text-xs font-medium text-gray-600 mb-1">Bill Details *</label>
-          <textarea rows="3" [(ngModel)]="billForm.billDetails" [ngModelOptions]="{standalone: true}" placeholder="Bill / material details..."
+          <textarea rows="3" [(ngModel)]="billForm.billDetails" [ngModelOptions]="{standalone: true}" placeholder="Bill / Material Details..."
             class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"></textarea>
         </div>
         <div>
           <label class="block text-xs font-medium text-gray-600 mb-1">Bill Image / Document</label>
           <div *ngIf="!billImageFile" class="flex items-center justify-center rounded-lg border border-dashed border-gray-300 px-3 py-4">
             <label class="cursor-pointer text-sm font-medium text-gray-600 hover:text-gray-900">
-              Choose file (all file types, up to 10 MB)
+              Choose File (All File Types, Up To 10 MB)
               <input type="file" class="hidden" (change)="onBillImageSelected($event)" />
             </label>
           </div>
@@ -644,7 +644,7 @@
 
   <!-- Confirm Delete Modal -->
   <div *ngIf="showConfirmDeleteModal" class="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/50 p-4" (click)="closeConfirmDeleteModal()">
-    <div class="bg-white rounded-xl shadow-xl ring-1 ring-gray-200 w-full max-w-sm p-6" (click)="$event.stopPropagation()">
+    <div class="bg-white rounded-xl border border-gray-200 shadow-xl ring-1 ring-gray-200 w-full max-w-sm p-6" (click)="$event.stopPropagation()">
       <div class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-50">
         <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3m-9 0h12" />
@@ -670,8 +670,8 @@
 
   <!-- Image Preview Modal -->
   <div *ngIf="selectedImagePreviewUrl" class="fixed inset-0 z-[70] flex items-center justify-center bg-gray-900/80 p-4" (click)="closeImagePreview()">
-    <div class="relative max-w-4xl max-h-[90vh]">
-      <img [src]="selectedImagePreviewUrl" class="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl" (click)="$event.stopPropagation()" />
+    <div class="relative max-w-4xl max-h-[90vh] rounded-xl border border-gray-200 bg-white p-2 shadow-2xl" (click)="$event.stopPropagation()">
+      <img [src]="selectedImagePreviewUrl" class="max-w-full max-h-[85vh] object-contain rounded-lg" />
       <button type="button" (click)="closeImagePreview()" class="absolute -top-3 -right-3 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-lg hover:bg-gray-100 cursor-pointer text-gray-700">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
       </button>

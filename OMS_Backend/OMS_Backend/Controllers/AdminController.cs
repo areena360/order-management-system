@@ -25,8 +25,8 @@ namespace OMS_Backend.Controllers
         public async Task<IActionResult> GetAssignableRoles()
         {
             var roles = await _db.Roles
-                .Where(r => !r.IsDeleted)
-                .Select(r => new { r.Id, r.Name })
+                .Where(r => !r.IsDeleted && r.IsActive && r.Id != 1)
+                .Select(r => new { r.Id, r.Name, r.IsActive })
                 .ToListAsync();
 
             return Ok(roles);

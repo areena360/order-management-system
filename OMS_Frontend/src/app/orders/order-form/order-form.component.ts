@@ -11,6 +11,7 @@ import { LookupService, LOOKUP_TYPE } from '../lookup.service';
 import { OrdersService } from '../orders.service';
 import { CustomerOption, LookupItem, OrderDetails, OrderFormValue } from '../order.models';
 import { priorityBadgeClass, statusBadgeClass } from '../order-badge.util';
+import { PermissionService } from '../../auth/permission.service';
 import { AuthService } from '../../auth/auth.service';
 import { PollingService } from '../../core/polling/polling.service';
 
@@ -36,6 +37,7 @@ export class OrderFormComponent implements OnInit, OnDestroy {
 
   private readonly fb = inject(FormBuilder);
   private readonly authService = inject(AuthService);
+  private readonly permissionService = inject(PermissionService);
   private readonly polling = inject(PollingService);
 
   form = this.fb.group({
@@ -135,11 +137,11 @@ export class OrderFormComponent implements OnInit, OnDestroy {
   isCustomer = false;
 
   get canEditTracking(): boolean {
-    return ['Super Admin', 'Admin', 'Staff'].includes(this.authService.currentRole() ?? '');
+    return this.permissionService.canEdit('Order Tracking');
   }
 
   get canEditAmount(): boolean {
-    return ['Super Admin', 'Admin', 'Finance'].includes(this.authService.currentRole() ?? '');
+    return this.permissionService.canEdit('Order Amount');
   }
 
   get canEditDeadline(): boolean {

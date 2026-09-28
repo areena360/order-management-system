@@ -1,6 +1,10 @@
 <div class="min-h-screen bg-gray-50 p-6">
   <div class="max-w-7xl mx-auto">
 
+    <p *ngIf="rolesLoading" class="mb-4 text-sm text-gray-500">Loading roles...</p>
+    <div *ngIf="rolesError" role="alert" class="mb-4 text-sm text-red-700">
+      {{ rolesError }} <button type="button" (click)="loadRoles()" class="underline">Retry</button>
+    </div>
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
       <div>
@@ -63,7 +67,7 @@
             <button *ngFor="let r of roles" (click)="selectRole(r)"
               class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors"
               [class.bg-gray-100]="roleFilter === r" [class.font-medium]="roleFilter === r">
-              {{ r === 'All' ? 'All Roles' : r }}
+              <span class="rounded-full px-2 py-0.5 text-xs font-medium" [ngClass]="roleBadgeClass(r)" [ngStyle]="roleBadgeStyle(r)">{{ r === 'All' ? 'All Roles' : r }}</span>
             </button>
           </div>
         </div>
@@ -194,7 +198,7 @@
                 <button *ngFor="let role of roleOptions" type="button" (click)="updateSelectedRoles(role.id)"
                   [disabled]="!canEdit"
                   class="flex w-full items-center rounded-md px-2.5 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-50 focus:bg-gray-100 focus:outline-none cursor-pointer transition-colors disabled:opacity-50">
-                  {{ role.name }}
+                  <span class="rounded-full px-2 py-0.5 text-xs font-medium" [ngClass]="roleBadgeClass(role.name)" [ngStyle]="roleBadgeStyle(role.name)">{{ role.name }}</span>
                 </button>
               </div>
             </div>
@@ -453,7 +457,7 @@
                   <button type="button" (click)="toggleUserRoleMenu(user.id)"
                     [disabled]="!canEdit || user.isDeleted || user.roleId == null || isRowSuperAdmin(user) || roleSavingUserId === user.id"
                     class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset transition-all cursor-pointer hover:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                    [ngClass]="roleBadgeClass(user.role)">
+                    [ngClass]="roleBadgeClass(user.role)" [ngStyle]="roleBadgeStyle(user.role)">
 
                     {{ user.role }}
 
@@ -474,7 +478,7 @@
                       class="flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-50 cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       [class.bg-gray-100]="user.roleId === r.id" [class.font-medium]="user.roleId === r.id">
 
-                      <span>{{ r.name }}</span>
+                      <span class="rounded-full px-2 py-0.5 text-xs font-medium" [ngClass]="roleBadgeClass(r.name)" [ngStyle]="roleBadgeStyle(r.name)">{{ r.name }}</span>
 
                       <svg *ngIf="user.roleId === r.id" xmlns="http://www.w3.org/2000/svg"
                         class="h-3.5 w-3.5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke-width="2"
@@ -694,7 +698,7 @@
 <!-- ADD USER MODAL -->
 <!-- ========================================================= -->
 
-<div *ngIf="showAddModal" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 p-4">
+<div *ngIf="showAddModal" data-user-modal="add" (click)="closeUserModalOnBackdrop($event)" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 p-4">
 
   <div class="bg-white rounded-xl shadow-xl ring-1 ring-gray-200 w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
 
@@ -994,7 +998,7 @@
           <button type="button" (click)="toggleFormRoleMenu()" [disabled]="showEditModal && form.roleId == null"
             class="w-full flex items-center justify-between rounded-lg border border-gray-300 px-3 py-2 text-sm text-left focus:outline-none focus:ring-2 focus:ring-gray-500 hover:bg-gray-50 cursor-pointer">
 
-            {{ formRoleName() }}
+            <span class="rounded-full px-2 py-0.5 text-xs font-medium" [ngClass]="roleBadgeClass(formRoleName())" [ngStyle]="roleBadgeStyle(formRoleName())">{{ formRoleName() }}</span>
 
             <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-gray-400 transition-transform"
               [class.rotate-180]="showFormRoleMenu" fill="none" viewBox="0 0 24 24" stroke-width="2"
@@ -1012,7 +1016,7 @@
               class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors"
               [class.bg-gray-100]="form.roleId === r.id" [class.font-medium]="form.roleId === r.id">
 
-              {{ r.name }}
+              <span class="rounded-full px-2 py-0.5 text-xs font-medium" [ngClass]="roleBadgeClass(r.name)" [ngStyle]="roleBadgeStyle(r.name)">{{ r.name }}</span>
             </button>
 
           </div>
@@ -1029,7 +1033,7 @@
           Cancel
         </button>
 
-        <button type="submit" [disabled]="saving"
+        <button type="submit" [disabled]="saving || rolesLoading || !!rolesError || !form.roleId"
           class="px-4 py-2 text-sm rounded-lg bg-gray-600 cursor-pointer text-white hover:bg-gray-900 disabled:opacity-50">
 
           {{ saving ? 'Saving...' : 'Add User' }}
@@ -1046,7 +1050,7 @@
 <!-- EDIT USER MODAL -->
 <!-- ========================================================= -->
 
-<div *ngIf="showEditModal" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 p-4">
+<div *ngIf="showEditModal" data-user-modal="edit" (click)="closeUserModalOnBackdrop($event)" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 p-4">
 
   <div class="bg-white rounded-xl shadow-xl ring-1 ring-gray-200 w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
 
@@ -1295,7 +1299,7 @@
           <button type="button" (click)="toggleFormRoleMenu()" [disabled]="showEditModal && form.roleId == null"
             class="w-full flex items-center justify-between rounded-lg border border-gray-300 px-3 py-2 text-sm text-left focus:outline-none focus:ring-2 focus:ring-gray-500 hover:bg-gray-50 cursor-pointer">
 
-            {{ formRoleName() }}
+            <span class="rounded-full px-2 py-0.5 text-xs font-medium" [ngClass]="roleBadgeClass(formRoleName())" [ngStyle]="roleBadgeStyle(formRoleName())">{{ formRoleName() }}</span>
 
             <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-gray-400 transition-transform"
               [class.rotate-180]="showFormRoleMenu" fill="none" viewBox="0 0 24 24" stroke-width="2"
@@ -1314,7 +1318,7 @@
               class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors"
               [class.bg-gray-100]="form.roleId === r.id" [class.font-medium]="form.roleId === r.id">
 
-              {{ r.name }}
+              <span class="rounded-full px-2 py-0.5 text-xs font-medium" [ngClass]="roleBadgeClass(r.name)" [ngStyle]="roleBadgeStyle(r.name)">{{ r.name }}</span>
 
             </button>
 
@@ -1333,7 +1337,7 @@
           Cancel
         </button>
 
-        <button type="submit" [disabled]="saving"
+        <button type="submit" [disabled]="saving || rolesLoading || !!rolesError"
           class="px-4 py-2 text-sm rounded-lg bg-gray-600 cursor-pointer text-white hover:bg-gray-900 disabled:opacity-50">
 
           {{ saving ? 'Saving...' : 'Save Changes' }}
@@ -1416,7 +1420,7 @@
         <button id="approval-role" type="button" (click)="showApprovalRoleMenu = !showApprovalRoleMenu"
           [disabled]="saving" [attr.aria-expanded]="showApprovalRoleMenu" aria-controls="approval-role-options"
           class="w-full flex items-center justify-between gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-left text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 hover:bg-gray-50 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
-          <span>{{ approvalRoleId ? roleName(approvalRoleId) : 'Select a role' }}</span>
+          <span class="rounded-full px-2 py-0.5 text-xs font-medium" [ngClass]="roleBadgeClass(roleName(approvalRoleId))" [ngStyle]="approvalRoleId ? roleBadgeStyle(roleName(approvalRoleId)) : {}">{{ approvalRoleId ? roleName(approvalRoleId) : 'Select a role' }}</span>
           <svg class="h-3.5 w-3.5 text-gray-400 shrink-0 transition-transform" [class.rotate-180]="showApprovalRoleMenu"
             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
@@ -1428,7 +1432,7 @@
             (click)="approvalRoleId = role.id; showApprovalRoleMenu = false; statusError = ''"
             [class.bg-gray-100]="approvalRoleId === role.id" [class.font-medium]="approvalRoleId === role.id"
             class="flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-sm text-left text-gray-700 hover:bg-gray-50 focus:bg-gray-100 focus:outline-none cursor-pointer transition-colors">
-            <span>{{ role.name }}</span>
+            <span class="rounded-full px-2 py-0.5 text-xs font-medium" [ngClass]="roleBadgeClass(role.name)" [ngStyle]="roleBadgeStyle(role.name)">{{ role.name }}</span>
             <svg *ngIf="approvalRoleId === role.id" class="h-3.5 w-3.5 text-gray-600" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="m5 12 4 4L19 7" />

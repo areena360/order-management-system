@@ -45,10 +45,14 @@
               class="w-full text-left rounded-md px-2.5 py-1.5 text-sm hover:bg-gray-50 cursor-pointer transition-colors"
               [class.bg-gray-100]="selectedRoleId === r.id"
               [class.font-medium]="selectedRoleId === r.id">
-              {{ r.name }}
+              {{ r.name }}{{ r.isActive ? '' : ' (inactive)' }}
             </button>
           </div>
         </div>
+
+        <button *ngIf="canDeleteSelectedRole" type="button" (click)="openDeleteRole()"
+          [disabled]="saving || loading || rolesLoading || deletingRole"
+          class="ml-auto rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50">Delete Role</button>
 
         <span *ngIf="saved" class="ml-auto inline-flex items-center gap-1.5 text-sm text-emerald-600 font-medium">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
@@ -58,6 +62,13 @@
         </span>
       </div>
 
+      <p *ngIf="!rolesLoading && !rolesError && !roleOptions.length" class="p-4 text-sm text-gray-500">No roles available. Add a role to get started.</p>
+      <p *ngIf="rolesLoading" class="p-4 text-sm text-gray-500">Loading roles...</p>
+      <div *ngIf="rolesError" role="alert" class="p-4 text-sm text-red-700">{{ rolesError }} <button (click)="loadRoles()" class="underline">Retry</button></div>
+      <div *ngIf="permissionsError" role="alert" class="p-4 text-sm text-red-700">{{ permissionsError }} <button (click)="fetchPermissions()" class="underline">Retry</button></div>
+      <div *ngIf="selectedRoleInactive" class="p-4 text-sm text-amber-800">This role is inactive and cannot be assigned to users.
+        <button (click)="activateRole()" [disabled]="saving" class="underline">Activate role</button>
+      </div>
       <div *ngIf="loading" class="p-10 text-center text-gray-500 text-sm">Loading permissions...</div>
 
       <!-- ============ PERMISSIONS TABLE ============ -->
@@ -81,6 +92,7 @@
 
               <td class="px-5 py-3.5 font-medium text-gray-800">
                 {{ row.screenKey }}
+                <p *ngIf="isFieldPermission(row.screenKey)" class="mt-1 text-xs font-normal text-gray-500">Edit: allow changes to this field when creating or editing an order. Orders access is also required.</p>
                 <p *ngIf="isChatScreen(row.screenKey)" class="mt-1 text-xs font-normal text-gray-500">
                   Visible: show chat · Send: allow messages
                 </p>
@@ -88,7 +100,7 @@
 
               <td class="px-5 py-3.5 text-center">
                 <input type="checkbox"
-                  [disabled]="saving || (selectedRoleName === 'Customer' && row.screenKey === 'Order Group Chat')"
+                  [disabled]="saving || isFieldPermission(row.screenKey) || (selectedRoleName === 'Customer' && row.screenKey === 'Order Group Chat')"
                   [checked]="row.canView"
                   (change)="toggleAllForRow(row, !row.canView)"
                   class="h-4 w-4 rounded border-gray-300 text-gray-800 focus:ring-gray-800 accent-gray-800 cursor-pointer" />
@@ -96,20 +108,20 @@
 
               <td class="px-5 py-3.5 text-center">
                 <span *ngIf="isChatScreen(row.screenKey)" class="mr-2 text-xs text-gray-500">Send</span>
-                <input type="checkbox" [checked]="row.canAdd" (change)="row.canAdd = !row.canAdd"
-                  [disabled]="!row.canView || isNoActionScreen(row.screenKey)"
+                <input type="checkbox" *ngIf="!isFieldPermission(row.screenKey)" [checked]="row.canAdd" (change)="row.canAdd = !row.canAdd"
+                  [disabled]="saving || !row.canView || isNoActionScreen(row.screenKey)"
                   class="h-4 w-4 rounded border-gray-300 text-gray-800 focus:ring-gray-800 accent-gray-800 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed" />
               </td>
 
               <td class="px-5 py-3.5 text-center">
                 <input type="checkbox" *ngIf="!isChatScreen(row.screenKey)" [checked]="row.canEdit" (change)="row.canEdit = !row.canEdit"
-                  [disabled]="!row.canView || isNoActionScreen(row.screenKey)"
+                  [disabled]="saving || !row.canView || isNoActionScreen(row.screenKey) || (selectedRoleName === 'Customer' && isFieldPermission(row.screenKey))"
                   class="h-4 w-4 rounded border-gray-300 text-gray-800 focus:ring-gray-800 accent-gray-800 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed" />
               </td>
 
               <td class="px-5 py-3.5 text-center">
-                <input type="checkbox" *ngIf="!isChatScreen(row.screenKey)" [checked]="row.canDelete" (change)="row.canDelete = !row.canDelete"
-                  [disabled]="!row.canView || isNoActionScreen(row.screenKey)"
+                <input type="checkbox" *ngIf="!isChatScreen(row.screenKey) && !isFieldPermission(row.screenKey)" [checked]="row.canDelete" (change)="row.canDelete = !row.canDelete"
+                  [disabled]="saving || !row.canView || isNoActionScreen(row.screenKey)"
                   class="h-4 w-4 rounded border-gray-300 text-gray-800 focus:ring-gray-800 accent-gray-800 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed" />
               </td>
 
@@ -120,7 +132,7 @@
 
       <!-- Footer -->
       <div class="flex justify-end px-5 py-4 border-t border-gray-100 bg-white">
-        <button (click)="saveChanges()" [disabled]="saving || loading"
+        <button (click)="saveChanges()" [disabled]="saving || loading || rolesLoading || !!rolesError || !!permissionsError || !selectedRoleId"
           class="inline-flex items-center gap-2 rounded-lg bg-gray-800 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-gray-900 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
           <svg *ngIf="saving" class="h-4 w-4 animate-spin text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -202,5 +214,21 @@
     to   { opacity: 1; transform: translateY(0)    scale(1); }
   }
 </style>
+
+<div *ngIf="roleToDelete as role" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+  (click)="closeDeleteRole()" (keydown.escape)="closeDeleteRole()">
+  <section role="dialog" aria-modal="true" aria-labelledby="delete-role-title" (click)="$event.stopPropagation()"
+    class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+    <h2 id="delete-role-title" class="text-lg font-semibold text-gray-900">Delete {{ role.name }}?</h2>
+    <p class="mt-3 text-sm text-gray-600">This permanently deletes the role and its saved permissions. Roles assigned to users cannot be deleted. Reassign those users first.</p>
+    <p *ngIf="deleteRoleError" role="alert" class="mt-3 text-sm text-red-700">{{ deleteRoleError }}</p>
+    <div class="mt-6 flex justify-end gap-3">
+      <button type="button" (click)="closeDeleteRole()" [disabled]="deletingRole"
+        class="rounded-lg border border-gray-300 px-4 py-2 text-sm disabled:opacity-50">Cancel</button>
+      <button type="button" (click)="confirmDeleteRole()" [disabled]="deletingRole"
+        class="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50">{{ deletingRole ? 'Deleting...' : 'Delete Role' }}</button>
+    </div>
+  </section>
+</div>
 
 <app-footer></app-footer>

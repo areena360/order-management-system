@@ -147,11 +147,11 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   }
 
   get canEditTracking(): boolean {
-    return ['Super Admin', 'Admin', 'Staff'].includes(this.authService.currentRole() ?? '');
+    return this.permissionService.canEdit('Order Tracking');
   }
 
   get canEditAmount(): boolean {
-    return ['Super Admin', 'Admin', 'Finance'].includes(this.authService.currentRole() ?? '');
+    return this.permissionService.canEdit('Order Amount');
   }
 
   isAssigned(order: OrderListItem): boolean {

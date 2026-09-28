@@ -330,10 +330,8 @@ namespace OMS_Backend.Services
         // =====================================================================
         public async Task<OrderDetailsDto> CreateOrderAsync(CreateOrderDto dto, int userId, bool isCustomer)
         {
-            var role = await _db.Users.Where(u => u.Id == userId && !u.IsDeleted)
-                .Select(u => u.Role != null ? u.Role.Name : null).FirstOrDefaultAsync();
-            if (role is not ("Super Admin" or "Admin" or "Finance")) dto.Amount = null;
-            if (role is not ("Super Admin" or "Admin" or "Staff")) dto.TrackingNumber = null;
+            if (!await OrderFieldPermissions.CanEditAsync(_db, userId, "Order Amount")) dto.Amount = null;
+            if (!await OrderFieldPermissions.CanEditAsync(_db, userId, "Order Tracking")) dto.TrackingNumber = null;
 
             if (isCustomer)
             {
@@ -461,11 +459,9 @@ namespace OMS_Backend.Services
 
             EnsureOwnership(order, userId, isCustomer);
 
-            var role = await _db.Users.Where(u => u.Id == userId && !u.IsDeleted)
-                .Select(u => u.Role != null ? u.Role.Name : null).FirstOrDefaultAsync();
             // Preserve restricted fields even when a client submits modified values.
-            if (role is not ("Super Admin" or "Admin" or "Finance")) dto.Amount = order.Amount;
-            if (role is not ("Super Admin" or "Admin" or "Staff")) dto.TrackingNumber = order.TrackingNumber;
+            if (!await OrderFieldPermissions.CanEditAsync(_db, userId, "Order Amount")) dto.Amount = order.Amount;
+            if (!await OrderFieldPermissions.CanEditAsync(_db, userId, "Order Tracking")) dto.TrackingNumber = order.TrackingNumber;
 
             if (_wooEnabled && dto.CustomerId != order.CustomerId &&
                 await _db.Set<WooCommerceOrder>().AnyAsync(x => x.OrderId == id))

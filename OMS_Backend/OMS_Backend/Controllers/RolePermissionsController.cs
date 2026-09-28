@@ -1,3 +1,4 @@
+using OMS_Backend.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -16,7 +17,7 @@ namespace OMS_Backend.Controllers
     {
         private static readonly string[] Screens =
         {
-            "Dashboard", "Manage Users", "Manage Roles", "Orders", "Order Customer Chat", "Order Group Chat",
+            "Dashboard", "Manage Users", "Manage Roles", "Orders", "Order Customer Chat", "Order Group Chat", "Order Amount", "Order Tracking",
         };
 
         private readonly OMSDbContext _db;
@@ -34,6 +35,8 @@ namespace OMS_Backend.Controllers
         public async Task<IActionResult> GetByRole(int roleId)
         {
             if (!await CanManage()) return Forbid();
+            var roleName = await _db.Roles.Where(r => r.Id == roleId).Select(r => r.Name).FirstOrDefaultAsync();
+            if (roleName == null) return NotFound();
             var saved = await _db.RolePermissions
                 .Where(rp => rp.RoleId == roleId)
                 .ToListAsync();
@@ -42,6 +45,11 @@ namespace OMS_Backend.Controllers
             var result = Screens.Select(s =>
             {
                 var match = saved.FirstOrDefault(p => p.ScreenKey == s);
+                if (OrderFieldPermissions.Keys.Contains(s))
+                {
+                    var edit = OrderFieldPermissions.CanEdit(roleName, s, match);
+                    return new RolePermissionDto { ScreenKey = s, CanView = true, CanEdit = edit };
+                }
                 return new RolePermissionDto
                 {
                     ScreenKey = s,
@@ -64,6 +72,12 @@ namespace OMS_Backend.Controllers
             if (dto.Permissions == null || dto.Permissions.Any(p => !Screens.Contains(p.ScreenKey))
                 || dto.Permissions.Select(p => p.ScreenKey).Distinct().Count() != dto.Permissions.Count)
                 return BadRequest("Invalid permissions.");
+            foreach (var permission in dto.Permissions.Where(p => OrderFieldPermissions.Keys.Contains(p.ScreenKey)))
+            {
+                permission.CanEdit = targetRole.Name != "Customer" && permission.CanView && permission.CanEdit;
+                permission.CanView = true;
+                permission.CanAdd = permission.CanDelete = false;
+            }
             foreach (var permission in dto.Permissions.Where(p => p.ScreenKey is "Order Customer Chat" or "Order Group Chat"))
             {
                 if (targetRole.Name == "Customer" && permission.ScreenKey == "Order Group Chat") permission.CanView = false;

@@ -1,3 +1,4 @@
+using OMS_Backend.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -107,7 +108,7 @@ namespace OMS_Backend.Controllers
             var roleName = actor.Role?.Name;
             var screens = new[]
             {
-        "Dashboard", "Manage Users", "Manage Roles", "Orders", "Order Customer Chat", "Order Group Chat",
+        "Dashboard", "Manage Users", "Manage Roles", "Orders", "Order Customer Chat", "Order Group Chat", "Order Amount", "Order Tracking",
     };
 
             // Super Admin: full access always, no DB lookup needed
@@ -124,7 +125,7 @@ namespace OMS_Backend.Controllers
             }
 
             var role = await _db.Roles.FirstOrDefaultAsync(r => r.Name == roleName);
-            if (role == null) return Ok(Array.Empty<object>());
+            if (role == null || !role.IsActive) return Ok(Array.Empty<object>());
 
             var saved = await _db.RolePermissions
                 .Where(rp => rp.RoleId == role.Id)
@@ -133,6 +134,11 @@ namespace OMS_Backend.Controllers
             var result = screens.Select(s =>
             {
                 var match = saved.FirstOrDefault(p => p.ScreenKey == s);
+                if (OrderFieldPermissions.Keys.Contains(s))
+                {
+                    var edit = OrderFieldPermissions.CanEdit(roleName, s, match);
+                    return new { screenKey = s, canView = true, canAdd = false, canEdit = edit, canDelete = false };
+                }
                 return new
                 {
                     screenKey = s,

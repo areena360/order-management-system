@@ -65,7 +65,7 @@ public class UsersController : ControllerBase
         if (emailExists)
             throw new ConflictException($"A user with email '{dto.Email}' already exists.");
 
-        if (dto.RoleId == null || !await _db.Roles.AnyAsync(r => r.Id == dto.RoleId && r.Id != 1 && !r.IsDeleted))
+        if (dto.RoleId == null || !await _db.Roles.AnyAsync(r => r.Id == dto.RoleId && r.Id != 1 && r.IsActive && !r.IsDeleted))
             return BadRequest(new { message = "Select a valid role." });
 
         var user = new User
@@ -102,8 +102,11 @@ public class UsersController : ControllerBase
             ?? throw new NotFoundException(nameof(User), id);
 
         if (user.IsDeleted) return BadRequest(new { message = "Deleted users cannot be edited." });
-        if (user.RoleId != null && (dto.RoleId == null || !await _db.Roles.AnyAsync(r => r.Id == dto.RoleId && !r.IsDeleted)))
+        if (user.RoleId != null && dto.RoleId != user.RoleId &&
+            (dto.RoleId == null || !await _db.Roles.AnyAsync(r => r.Id == dto.RoleId && r.Id != 1 && r.IsActive && !r.IsDeleted)))
             return BadRequest(new { message = "Select a valid role." });
+        if (user.RoleId == 1 && dto.RoleId != user.RoleId)
+            return BadRequest(new { message = "The Super Admin role cannot be changed." });
         user.FirstName = dto.FirstName;
         user.LastName = dto.LastName;
         user.Email = dto.Email;

@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { FooterComponent } from '../footer/footer.component';
 import { FormsModule } from '@angular/forms';
+import { RolesService, RoleOption } from '../admin/roles.service';
 import { environment } from '../../environments/environment';
 
 interface ScreenPermission {
@@ -20,15 +21,12 @@ interface ScreenPermission {
   templateUrl: './manage-roles.component.html'
 })
 export class ManageRolesComponent implements OnInit {
-  roleOptions: { id: number; name: string }[] = [
-    { id: 2, name: 'Admin' },
-    { id: 3, name: 'Finance' },
-    { id: 4, name: 'Customer' },
-    { id: 5, name: 'Staff' },
-    { id: 6, name: 'Sales' }
-  ];
+  roleOptions: RoleOption[] = [];
+  rolesLoading = false;
+  rolesError = '';
+  permissionsError = '';
 
-  selectedRoleId = 2;
+  selectedRoleId: number | null = null;
   showRoleMenu = false;
   permissions: ScreenPermission[] = [];
   loading = false;
@@ -40,31 +38,94 @@ export class ManageRolesComponent implements OnInit {
   newRoleName = '';
   addRoleSaving = false;
   addRoleError = '';
+  roleToDelete: RoleOption | null = null;
+  deletingRole = false;
+  deleteRoleError = '';
+
+  get canDeleteSelectedRole(): boolean {
+    return this.roleOptions.find(r => r.id === this.selectedRoleId)?.canDelete === true;
+  }
+
+  openDeleteRole(): void {
+    if (!this.canDeleteSelectedRole || this.saving || this.loading || this.rolesLoading) return;
+    this.roleToDelete = this.roleOptions.find(r => r.id === this.selectedRoleId) ?? null;
+    this.deleteRoleError = '';
+    this.showRoleMenu = false;
+  }
+
+  closeDeleteRole(): void {
+    if (!this.deletingRole) this.roleToDelete = null;
+  }
+
+  confirmDeleteRole(): void {
+    if (!this.roleToDelete || this.deletingRole) return;
+    const id = this.roleToDelete.id;
+    this.deletingRole = true;
+    this.deleteRoleError = '';
+    this.rolesService.delete(id).subscribe({
+      next: () => {
+        this.deletingRole = false;
+        this.roleToDelete = null;
+        this.roleOptions = this.roleOptions.filter(r => r.id !== id);
+        this.selectedRoleId = null;
+        this.permissions = [];
+        this.saved = false;
+        this.loadRoles();
+      },
+      error: err => {
+        this.deletingRole = false;
+        this.deleteRoleError = err.error?.message ?? (err.status === 404
+          ? 'This role no longer exists. Close this dialog and refresh the page.'
+          : 'Unable to delete role. Please try again.');
+      }
+    });
+  }
 
   private apiUrl = `${environment.apiUrl}/rolepermissions`;
-  private rolesApiUrl = `${environment.apiUrl}/roles`;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient, private rolesService: RolesService) {}
 
   ngOnInit(): void {
     this.loadRoles();
-    this.fetchPermissions();
   }
 
   // =========================================================
   // Roles list
   // =========================================================
   loadRoles(): void {
-    this.http.get<{ id: number; name: string }[]>(this.rolesApiUrl).subscribe({
-      next: (data) => {
-        if (Array.isArray(data) && data.length) {
-          this.roleOptions = data;
-        }
+    this.rolesLoading = true;
+    this.rolesError = '';
+    this.rolesService.getRoles().subscribe({
+      next: data => {
+        this.roleOptions = data.filter(r => r.name !== 'Super Admin');
+        if (!this.roleOptions.some(r => r.id === this.selectedRoleId))
+          this.selectedRoleId = this.roleOptions[0]?.id ?? null;
+        this.rolesLoading = false;
+        this.fetchPermissions();
       },
-      // Agar backend abhi nahi bana, fallback silently rahega
-      error: () => {}
+      error: () => {
+        this.roleOptions = [];
+        this.permissions = [];
+        this.rolesLoading = false;
+        this.rolesError = 'Unable to load roles. Please retry.';
+      }
     });
   }
+
+  get selectedRoleInactive(): boolean {
+    return this.roleOptions.some(r => r.id === this.selectedRoleId && !r.isActive);
+  }
+
+  activateRole(): void {
+    if (!this.selectedRoleId || this.saving) return;
+    this.saving = true;
+    this.rolesService.activate(this.selectedRoleId).subscribe({
+      next: () => { this.saving = false; this.loadRoles(); },
+      error: () => { this.saving = false; this.rolesError = 'Unable to activate role.'; }
+    });
+  }
+
+  isFieldPermission(key: string): boolean { return key === 'Order Amount' || key === 'Order Tracking'; }
 
   get selectedRoleName(): string {
     return this.roleOptions.find(r => r.id === this.selectedRoleId)?.name || 'Select role';
@@ -75,7 +136,7 @@ export class ManageRolesComponent implements OnInit {
   }
 
   selectRole(id: number): void {
-    if (this.loading || this.saving) return;
+    if (this.loading || this.saving || this.rolesLoading) return;
     this.selectedRoleId = id;
     this.showRoleMenu = false;
     this.fetchPermissions();
@@ -85,6 +146,9 @@ export class ManageRolesComponent implements OnInit {
   // Permissions
   // =========================================================
   fetchPermissions(): void {
+    this.permissions = [];
+    this.permissionsError = '';
+    if (!this.selectedRoleId) return;
     this.loading = true;
     this.saved = false;
     this.http.get<any[]>(`${this.apiUrl}/${this.selectedRoleId}`).subscribe({
@@ -98,7 +162,7 @@ export class ManageRolesComponent implements OnInit {
         }));
         this.loading = false;
       },
-      error: () => this.loading = false
+      error: () => { this.loading = false; this.permissionsError = 'Unable to load permissions. Please retry.'; }
     });
   }
 
@@ -120,6 +184,7 @@ export class ManageRolesComponent implements OnInit {
   }
 
   saveChanges(): void {
+    if (!this.selectedRoleId || this.loading || this.rolesLoading || this.permissionsError || this.rolesError) return;
     this.saving = true;
     this.saved = false;
     const payload = {
@@ -169,7 +234,7 @@ export class ManageRolesComponent implements OnInit {
     this.addRoleSaving = true;
     this.addRoleError = '';
 
-    this.http.post<{ id: number; name: string }>(this.rolesApiUrl, { name }).subscribe({
+    this.rolesService.create(name).subscribe({
       next: (created) => {
         this.addRoleSaving = false;
         this.addRoleOpen = false;
@@ -182,7 +247,7 @@ export class ManageRolesComponent implements OnInit {
 
         // Naya role select karo aur uska permission table load karo
         this.selectedRoleId = created.id;
-        this.fetchPermissions();
+        this.loadRoles();
       },
       error: (err) => {
         this.addRoleSaving = false;

@@ -10,6 +10,9 @@ import { FooterComponent } from "../footer/footer.component";
 import { AuthService } from '../auth/auth.service';
 import { PermissionService } from '../auth/permission.service';
 
+import { RolesService, RoleOption } from '../admin/roles.service';
+import { environment } from '../../environments/environment';
+
 type UserStatus = 'Pending' | 'Approved' | 'Rejected';
 
 export interface AppUser {
@@ -87,13 +90,36 @@ export class ManageUsersComponent implements OnInit, OnDestroy {
   roleFilter = 'All';
   statusFilter: 'active' | 'deleted' | 'all' = 'active';
   roles: string[] = ['All'];
-  roleOptions: { id: number; name: string }[] = [
-    { id: 2, name: 'Admin' },
-    { id: 3, name: 'Finance' },
-    { id: 4, name: 'Customer' },
-    { id: 5, name: 'Staff' },
-    { id: 6, name: 'Sales' }
-  ];
+  roleOptions: RoleOption[] = [];
+  allRoles: RoleOption[] = [];
+  rolesLoading = false;
+  rolesError = '';
+  private readonly rolesService = inject(RolesService);
+
+  loadRoles(): void {
+    this.rolesLoading = true;
+    this.rolesError = '';
+    this.rolesService.getRoles().subscribe({
+      next: roles => {
+        this.allRoles = roles;
+        this.roleOptions = roles.filter(r => r.isActive && r.name !== 'Super Admin');
+        this.updateRoleFilter();
+        this.rolesLoading = false;
+      },
+      error: () => {
+        this.roleOptions = [];
+        this.rolesLoading = false;
+        this.rolesError = 'Unable to load roles. Retry before assigning a role.';
+      }
+    });
+  }
+
+  private updateRoleFilter(): void {
+    this.roles = ['All', ...Array.from(new Set([
+      ...this.allRoles.filter(r => r.name !== 'Super Admin').map(r => r.name),
+      ...this.users.filter(u => !this.isRowSuperAdmin(u)).map(u => u.role)
+    ])).sort()];
+  }
 
   currentPage = 1;
   pageSize = 8;
@@ -149,7 +175,7 @@ export class ManageUsersComponent implements OnInit, OnDestroy {
   }
 
   formRoleName(): string {
-    return this.roleOptions.find((r) => r.id === this.form.roleId)?.name || 'Select role';
+    return this.allRoles.find((r) => r.id === this.form.roleId)?.name || 'Select role';
   }
 
   toggleColumn(key: string): void {
@@ -397,7 +423,7 @@ export class ManageUsersComponent implements OnInit, OnDestroy {
   form: UserForm = this.emptyForm();
   saving = false;
 
-  private apiUrl = 'https://localhost:44370/api/users';
+  private apiUrl = `${environment.apiUrl}/users`;
 
   constructor(
     private http: HttpClient,
@@ -405,7 +431,7 @@ export class ManageUsersComponent implements OnInit, OnDestroy {
     public perm: PermissionService
   ) {}
 
-  ngOnInit(): void { this.fetchUsers(); }
+  ngOnInit(): void { this.loadRoles(); this.fetchUsers(); }
 
   ngOnDestroy(): void { this.tableResizeObserver?.disconnect(); }
 
@@ -418,7 +444,7 @@ export class ManageUsersComponent implements OnInit, OnDestroy {
       firstName: '', lastName: '', email: '',
       firstContact: '', secondContact: '',
       homeAddress: '', officeAddress: '', websiteUrl: '',
-      roleId: 4, isActive: true, password: ''
+      roleId: null, isActive: true, password: ''
     };
   }
 
@@ -428,7 +454,7 @@ export class ManageUsersComponent implements OnInit, OnDestroy {
     this.http.get<AppUser[]>(this.apiUrl).subscribe({
       next: (data) => {
         this.users = data;
-        this.roles = ['All', ...Array.from(new Set(data.map(u => u.role)))];
+        this.updateRoleFilter();
         this.applyFilters();
         this.loading = false;
         setTimeout(() => this.updateHorizontalScrollState(), 0);
@@ -521,8 +547,25 @@ export class ManageUsersComponent implements OnInit, OnDestroy {
     return map[role] || 'bg-gray-100 text-gray-700 ring-gray-600/20';
   }
 
+  roleBadgeStyle(role: string): Record<string, string> {
+    if (['Admin', 'Finance', 'Customer', 'Staff', 'Sales', 'Super Admin', 'All', 'No Role', 'Select role', 'Select a role'].includes(role)) return {};
+    // A stable ID-based hue gives each new role its own color without a schema change.
+    const id = this.allRoles.find(r => r.name === role)?.id;
+    const seed = id ?? Array.from(role).reduce((hash, c) => (hash * 31 + c.charCodeAt(0)) >>> 0, 0);
+    const hue = ((seed * 137.508) % 360).toFixed(3);
+    return {
+      'background-color': `hsl(${hue} 75% 94%)`,
+      color: `hsl(${hue} 65% 25%)`,
+      '--tw-ring-color': `hsl(${hue} 60% 75%)`
+    };
+  }
+
+  closeUserModalOnBackdrop(event: MouseEvent): void {
+    if (event.target === event.currentTarget) this.closeModals();
+  }
+
   roleName(roleId: number | null): string {
-    return this.roleOptions.find(r => r.id === roleId)?.name || 'Unknown';
+    return this.allRoles.find(r => r.id === roleId)?.name || 'Unknown';
   }
 
   openUserRoleId: number | null = null;
@@ -589,6 +632,7 @@ export class ManageUsersComponent implements OnInit, OnDestroy {
   }
 
   submitAdd(addForm?: NgForm): void {
+    if (this.rolesLoading || this.rolesError || !this.roleOptions.some(r => r.id === this.form.roleId)) return;
     if (addForm && addForm.invalid) {
       Object.values(addForm.controls).forEach(c => c.markAsTouched());
       return;
@@ -613,6 +657,7 @@ export class ManageUsersComponent implements OnInit, OnDestroy {
   }
 
   submitEdit(editForm?: NgForm): void {
+    if (this.rolesLoading || this.rolesError) return;
     if (!this.selectedUser) return;
     if (editForm && editForm.invalid) {
       Object.values(editForm.controls).forEach(c => c.markAsTouched());
@@ -669,6 +714,7 @@ export class ManageUsersComponent implements OnInit, OnDestroy {
     this.showToggleActiveModal = false;
     this.showApprovalRoleMenu = false;
     this.selectedUser = null;
+    this.showFormRoleMenu = false;
     this.bulkDeleteUserIds = [];
   }
 

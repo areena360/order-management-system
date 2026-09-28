@@ -1,4 +1,6 @@
 import { TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { ActivatedRoute, Router } from '@angular/router';
 import { EMPTY, of, Subject } from 'rxjs';
 import { AuthService } from '../auth/auth.service';
@@ -13,6 +15,7 @@ import { OrderDetails, OrderListItem } from './order.models';
 
 describe('Order field permissions and shared bulk selection', () => {
   let role: string;
+  let customFieldEdit = false;
   let orders: jasmine.SpyObj<OrdersService>;
   const requiredShipping = { customerOrderNumber: 'REF-42', sizeId: 5, sizeChartId: 6,
     consigneeName: 'Recipient', consigneeAddress: 'Delivery address',
@@ -20,10 +23,12 @@ describe('Order field permissions and shared bulk selection', () => {
 
   beforeEach(async () => {
     role = 'Customer';
+    customFieldEdit = false;
     orders = jasmine.createSpyObj('OrdersService', ['assignOrders', 'deleteOrder', 'getOrder', 'getOrders', 'updateOrder', 'createOrder', 'getImageUrl']);
     await TestBed.configureTestingModule({
       imports: [OrderFormComponent, ManageOrdersComponent],
       providers: [
+        provideHttpClient(), provideHttpClientTesting(),
         { provide: AuthService, useValue: {
           currentRole: () => role, isCustomer: () => role === 'Customer', getToken: () => null,
           getProfile: () => of({ id: 4, firstName: 'Test', lastName: 'Customer', email: 'test@example.test' })
@@ -31,26 +36,45 @@ describe('Order field permissions and shared bulk selection', () => {
         { provide: OrdersService, useValue: orders },
         { provide: LookupService, useValue: { getByType: () => of([{ id: 10, name: 'new' }, { id: 11, name: 'assign' }]), getCustomers: () => of([]) } },
         { provide: PollingService, useValue: { poll: () => EMPTY } },
-        { provide: ChatSignalrService, useValue: { onMessage: () => () => {} } },
-        { provide: PermissionService, useValue: { canView: () => true, canAdd: () => true, canEdit: () => false, canDelete: () => false } },
+        { provide: ChatSignalrService, useValue: { onMessage: () => () => {}, onGroupMessage: () => () => {} } },
+        { provide: PermissionService, useValue: {
+          canView: () => true, canAdd: () => true, canDelete: () => false,
+          canEdit: (key: string) => {
+            if (key === 'Order Tracking') return ['Super Admin', 'Admin', 'Staff'].includes(role) || (role === 'Auditor' && customFieldEdit);
+            if (key === 'Order Amount') return ['Super Admin', 'Admin', 'Finance'].includes(role) || (role === 'Auditor' && customFieldEdit);
+            return false;
+          }
+        } },
         { provide: Router, useValue: { navigate: jasmine.createSpy('navigate') } },
         { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => null } } } }
       ]
     }).compileComponents();
   });
 
+  for (const allowed of [false, true]) {
+    it(`uses granted field permissions for a custom Auditor role (${allowed})`, () => {
+      role = 'Auditor';
+      customFieldEdit = allowed;
+      const fixture = TestBed.createComponent(OrderFormComponent);
+      fixture.detectChanges();
+      expect(fixture.componentInstance.form.controls.amount.enabled).toBe(allowed);
+      expect(fixture.componentInstance.form.controls.trackingNumber.enabled).toBe(allowed);
+      const list = TestBed.createComponent(ManageOrdersComponent).componentInstance;
+      expect(list.canEditAmount).toBe(allowed);
+      expect(list.canEditTracking).toBe(allowed);
+    });
+  }
+
   for (const [name, tracking, amount] of [
     ['Customer', false, false], ['Admin', true, true], ['Super Admin', true, true],
     ['Staff', true, false], ['Finance', false, true], ['Sales', false, false]
   ] as const) {
-    it(`shows tracking and amount with the correct edit permissions for ${name}`, () => {
+    it(`enables tracking and amount form controls with the correct permissions for ${name}`, () => {
       role = name;
       const fixture = TestBed.createComponent(OrderFormComponent);
       fixture.detectChanges();
       for (const [field, enabled] of [['trackingNumber', tracking], ['amount', amount]] as const) {
-        const input = fixture.nativeElement.querySelector(`[formControlName="${field}"]`) as HTMLInputElement;
-        expect(input).withContext(field + ' remains visible').not.toBeNull();
-        expect(input.disabled).withContext(field + ' permission').toBe(!enabled);
+        expect(fixture.componentInstance.form.controls[field].enabled).withContext(field + ' permission').toBe(enabled);
       }
     });
   }

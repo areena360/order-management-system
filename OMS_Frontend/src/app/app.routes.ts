@@ -9,8 +9,7 @@ import { DashboardComponent } from './dashboard/dashboard.component';
 import {
   authGuard,
   ordersGuard,
-  ordersAddGuard,
-  ordersEditGuard
+  ordersAddGuard
 } from './guards/auth.guard';
 
 import { ManageUsersComponent } from './manage-user/manage-users.component';
@@ -103,13 +102,11 @@ export const routes: Routes = [
             canActivate: [ordersAddGuard]
           },
 
-          // /dashboard/orders/:id/edit (MUST be before :id)
+          // Keep old edit links on the details page; editing uses its modal.
           {
             path: ':id/edit',
-            loadComponent: () =>
-              import('./orders/order-form/order-form.component')
-                .then(m => m.OrderFormComponent),
-            canActivate: [ordersEditGuard]
+            redirectTo: ':id',
+            pathMatch: 'full'
           },
 
           // /dashboard/orders/:id

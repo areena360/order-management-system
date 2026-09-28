@@ -877,6 +877,7 @@
   [asModal]="true"
   [selectedOrderId]="detailsOrderId"
   (closed)="closeOrderDetails()"
+  (updated)="onOrderSaved()"
   (deleted)="onDetailsDeleted()">
 </app-order-details>
 

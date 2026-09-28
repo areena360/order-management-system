@@ -6,6 +6,7 @@ import { Subject, takeUntil } from 'rxjs';
 
 import { OrdersService } from '../orders.service';
 import { OrderDetails } from '../order.models';
+import { OrderFormComponent } from '../order-form/order-form.component';
 import {
   statusBadgeClass,
   priorityBadgeClass
@@ -20,7 +21,8 @@ import { PollingService } from '../../core/polling/polling.service';
   standalone: true,
   imports: [
     CommonModule,
-    FormsModule
+    FormsModule,
+    OrderFormComponent
   ],
   templateUrl: './order-details.component.html'
 })
@@ -29,6 +31,7 @@ export class OrderDetailsComponent implements OnInit, OnDestroy {
   @Input() selectedOrderId: number | null = null;
   @Output() closed = new EventEmitter<void>();
   @Output() deleted = new EventEmitter<void>();
+  @Output() updated = new EventEmitter<void>();
 
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -46,6 +49,7 @@ export class OrderDetailsComponent implements OnInit, OnDestroy {
   errorMsg = '';
 
   showDeleteModal = false;
+  showEditOrderModal = false;
   deletingOrder = false;
   deleteError = '';
 
@@ -84,7 +88,7 @@ export class OrderDetailsComponent implements OnInit, OnDestroy {
   // The inner card uses (click)="$event.stopPropagation()" so clicks inside won't reach here.
   onBackdropClick(event: MouseEvent): void {
     if (!this.asModal) return;
-    if (this.deletingOrder || this.showDeleteModal) return;
+    if (this.deletingOrder || this.showDeleteModal || this.showEditOrderModal) return;
     if (event.target === event.currentTarget) {
       this.closed.emit();
     }
@@ -98,7 +102,7 @@ export class OrderDetailsComponent implements OnInit, OnDestroy {
 
   private silentRefresh(): void {
     if (this.silentRefreshBusy) return;
-    if (this.showDeleteModal) return;
+    if (this.showDeleteModal || this.showEditOrderModal) return;
     if (this.loading) return;
 
     this.silentRefreshBusy = true;
@@ -147,8 +151,18 @@ export class OrderDetailsComponent implements OnInit, OnDestroy {
   }
 
   editOrder(): void {
-    if (!this.order) return;
-    this.router.navigate(['/dashboard/orders', this.order.id, 'edit']);
+    if (!this.order || !this.canEditOrder()) return;
+    this.showEditOrderModal = true;
+  }
+
+  closeEditOrderModal(): void {
+    this.showEditOrderModal = false;
+    this.loadOrder();
+  }
+
+  onOrderSaved(): void {
+    this.closeEditOrderModal();
+    this.updated.emit();
   }
 
   goBack(): void {

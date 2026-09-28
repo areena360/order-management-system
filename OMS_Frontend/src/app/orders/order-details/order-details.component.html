@@ -386,6 +386,10 @@
     </div>
   </div>
 
+  <app-order-form *ngIf="showEditOrderModal && order" [asModal]="true" [orderId]="order.id"
+    (closed)="closeEditOrderModal()" (saved)="onOrderSaved()">
+  </app-order-form>
+
   <!-- Delete Order Modal -->
   <div *ngIf="showDeleteModal" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 p-4"
     (click)="closeDeleteModal()">

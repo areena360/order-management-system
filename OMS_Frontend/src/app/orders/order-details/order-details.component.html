@@ -65,8 +65,8 @@
                 <div class="flex items-center gap-3 flex-wrap">
                   <h1 class="text-xl sm:text-2xl font-bold text-gray-900">{{ order.manufacturerOrderNumber }}</h1>
                   <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset"
-                    [ngClass]="statusBadgeClass(order.status)">
-                    {{ order.assignmentStatus === 'inprogress' ? 'In Progress' : (order.assignmentStatus || order.status) }}
+                    [ngClass]="statusBadgeClass(assignedOnly ? (order.assignmentStatus || 'assigned') : order.status)">
+                    {{ assignedOnly ? (order.assignmentStatus === 'inprogress' ? 'In Progress' : (order.assignmentStatus === 'done' ? 'Done' : 'Assigned')) : order.status }}
                   </span>
                   <span *ngIf="!isCustomer && order.priority"
                     class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset"
@@ -116,12 +116,12 @@
               <p class="mt-1 text-sm font-semibold text-gray-900 truncate">{{ order.manufacturerOrderNumber }}</p>
             </div>
 
-            <div class="min-w-0">
+            <div *ngIf="!assignedOnly" class="min-w-0">
               <p class="text-xs font-medium uppercase tracking-wide text-gray-400">Customer Order #</p>
               <p class="mt-1 text-sm text-gray-700">{{ order.customerOrderNumber || '—' }}</p>
             </div>
 
-            <div class="min-w-0">
+            <div *ngIf="!assignedOnly" class="min-w-0">
               <p class="text-xs font-medium uppercase tracking-wide text-gray-400">Customer</p>
               <p class="mt-1 text-sm font-medium text-gray-900">{{ order.customerName }}</p>
             </div>
@@ -131,7 +131,7 @@
               <p class="mt-1 text-sm text-gray-700">{{ order.gender || '—' }}</p>
             </div>
 
-            <div class="min-w-0">
+            <div *ngIf="!assignedOnly" class="min-w-0">
               <p class="text-xs font-medium uppercase tracking-wide text-gray-400">Amount</p>
               <p *ngIf="order.amount != null" class="mt-1 inline-flex items-center gap-2 text-sm font-semibold text-gray-900">
                 <span class="text-xs font-medium text-gray-500">PKR</span>
@@ -204,7 +204,7 @@
       <!-- Production & Delivery -->
       <div class="bg-white rounded-xl shadow-sm ring-1 ring-gray-200 overflow-hidden">
         <div class="px-4 py-3 bg-gray-800 border-b border-gray-700">
-          <h2 class="text-base font-semibold text-white">Production & Delivery</h2>
+          <h2 class="text-base font-semibold text-white">{{ assignedOnly ? 'Production' : 'Production & Delivery' }}</h2>
         </div>
 
         <div class="p-4">
@@ -222,17 +222,17 @@
               </p>
             </div>
 
-            <div class="min-w-0">
+            <div *ngIf="!assignedOnly" class="min-w-0">
               <p class="text-xs font-medium uppercase tracking-wide text-gray-400">Tracking Number</p>
               <p class="mt-1 text-sm text-gray-700 break-all">{{ order.trackingNumber || '—' }}</p>
             </div>
 
-            <div class="min-w-0">
+            <div *ngIf="!assignedOnly" class="min-w-0">
               <p class="text-xs font-medium uppercase tracking-wide text-gray-400">Receiver Name</p>
               <p class="mt-1 text-sm text-gray-700">{{ order.consigneeName }}</p>
             </div>
 
-            <div class="min-w-0 sm:col-span-2 md:col-span-3 lg:col-span-2">
+            <div *ngIf="!assignedOnly" class="min-w-0 sm:col-span-2 md:col-span-3 lg:col-span-2">
               <p class="text-xs font-medium uppercase tracking-wide text-gray-400">Shipping Address</p>
               <p class="mt-1 text-sm text-gray-700 whitespace-pre-wrap">{{ order.consigneeAddress }}</p>
             </div>
@@ -268,7 +268,7 @@
       </div>
 
       <!-- Status History -->
-      <div class="bg-white rounded-xl shadow-sm ring-1 ring-gray-200 overflow-hidden">
+      <div *ngIf="!assignedOnly" class="bg-white rounded-xl shadow-sm ring-1 ring-gray-200 overflow-hidden">
         <div class="px-4 py-3 bg-gray-800 border-b border-gray-700">
           <h2 class="text-base font-semibold text-white">Status History</h2>
 
@@ -336,7 +336,7 @@
       </div>
 
       <!-- Inventory Bills -->
-      <div class="bg-white rounded-xl shadow-sm ring-1 ring-gray-200 overflow-hidden">
+      <div *ngIf="!assignedOnly" class="bg-white rounded-xl shadow-sm ring-1 ring-gray-200 overflow-hidden">
         <div class="px-4 py-3 bg-gray-800 border-b border-gray-700">
           <h2 class="text-base font-semibold text-white">Inventory Bills</h2>
 

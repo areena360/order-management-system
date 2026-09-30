@@ -476,7 +476,11 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   showPageSizeMenu = false;
   showColumnMenu = false;
 
-  columnOptions: ColumnOption[] = [
+  get columnOptions(): ColumnOption[] {
+    return this.allColumnOptions.filter(c => !this.assignedOnly || !['amount', 'customerOrderNumber', 'trackingNumber'].includes(c.key));
+  }
+  set columnOptions(value: ColumnOption[]) { this.allColumnOptions = value; }
+  private allColumnOptions: ColumnOption[] = [
     { key: 'amount', label: 'Amount' },
     { key: 'customerOrderNumber', label: 'Customer Order #' },
     { key: 'manufacturerProductTitle', label: 'Manufacturer Product' },
@@ -872,11 +876,11 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
       sortBy: this.sortBy,
       sortDirection: this.sortDirection,
       statusId: this.assignedOnly ? null : this.statusFilter,
-      source: this.sourceFilter || undefined,
+      source: this.assignedOnly ? undefined : this.sourceFilter || undefined,
       priorityId: this.isCustomer ? null : this.priorityFilter,
       genderId: this.isCustomer ? null : this.genderFilter,
       materialId: this.isCustomer ? null : this.materialFilter,
-      customerId: this.isCustomer ? null : this.customerFilter,
+      customerId: this.isCustomer || this.assignedOnly ? null : this.customerFilter,
       dateFrom: this.dateFrom,
       dateTo: this.dateTo
     };
@@ -901,6 +905,7 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe({ next: r => this.materials = r });
 
+    if (this.assignedOnly) return;
     this.lookupService.getCustomers()
       .pipe(takeUntil(this.destroy$))
       .subscribe({ next: r => this.customerOptions = r });
@@ -1046,7 +1051,7 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   toggleColumnMenu(): void { this.showColumnMenu = !this.showColumnMenu; }
 
   isColumnVisible(key: string): boolean {
-    return !(this.isCustomer && key === 'priority') && !this.hiddenColumns.has(key);
+    return !(this.assignedOnly && ['amount', 'customerOrderNumber', 'trackingNumber'].includes(key)) && !(this.isCustomer && key === 'priority') && !this.hiddenColumns.has(key);
   }
 
   toggleColumn(key: string): void {

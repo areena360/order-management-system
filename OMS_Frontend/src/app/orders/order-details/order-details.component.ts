@@ -38,6 +38,7 @@ export class OrderDetailsComponent implements OnInit, OnDestroy {
   private readonly ordersService = inject(OrdersService);
   private readonly permissionService = inject(PermissionService);
   private readonly authService = inject(AuthService);
+  get assignedOnly(): boolean { return this.permissionService.adminAssignedOrdersOnly(); }
   get isCustomer(): boolean { return this.authService.isCustomer(); }
   private readonly polling = inject(PollingService);
 

@@ -48,6 +48,8 @@ static class AdminAssignmentChecks
             var status = await db.LookupItems.FirstAsync(OrderStatusCatalog.Selectable);
             var gender = await db.LookupItems.FirstAsync(x => x.LookupDataTypeId == 3);
             Order NewOrder(string suffix) => new() { ManufacturerOrderNumber = tag + suffix, CustomerId = customer.Id,
+                Amount = 987654, CustomerOrderNumber = "Private Reference", TrackingNumber = "Private Tracking",
+                ShippingEmail = "private@example.test", ShippingContact = "Private Phone", Courier = "Private Courier",
                 CustomerProductTitle = tag, ConsigneeName = "Test", ConsigneeAddress = "Test", GenderId = gender.Id,
                 OrderStatusId = status.Id, RequiresCustomerAssignment = false, IsActive = true, IsCustomSize = true, SizeDetails = "Test" };
             var order = NewOrder("-one");
@@ -83,8 +85,24 @@ static class AdminAssignmentChecks
             {
                 var list = await service.GetOrdersAsync(query, user.Id, false);
                 Check(list.TotalCount == 1 && list.Items.Single().Id == order.Id && list.Items.Single().AssignmentStatus == "assigned", "Each assignee sees only their assigned order");
+                Check(list.Items.Single().Amount == null && list.Items.Single().CustomerName == ""
+                    && list.Items.Single().CustomerOrderNumber == null && list.Items.Single().TrackingNumber == null
+                    && list.Items.Single().Status == "" && list.Items.Single().AssignedUserIds.Count == 0,
+                    "Assigned list redacts business fields");
+                var detail = await service.GetOrderByIdAsync(order.Id, user.Id, false);
+                Check(detail.Amount == null && detail.CustomerId == 0 && detail.CustomerName == ""
+                    && detail.CustomerOrderNumber == null && detail.ConsigneeName == "" && detail.ConsigneeAddress == ""
+                    && detail.ShippingEmail == null && detail.ShippingContact == null && detail.Courier == null
+                    && detail.TrackingNumber == null && detail.Status == "" && detail.StatusHistory.Count == 0
+                    && detail.InventoryBills.Count == 0, "Assigned details redact business fields");
+                Check(detail.CustomerProductTitle == tag && detail.SizeDetails == "Test" && detail.AssignmentStatus == "assigned",
+                    "Production details remain visible");
+                Check((await service.GetInventoryBillsAsync(order.Id, user.Id, false)).Count == 0, "Assigned bill endpoint is redacted");
+                Check((await service.GetOrdersAsync(new() { Search = "Private Reference" }, user.Id, false)).TotalCount == 0,
+                    "Search cannot reveal hidden customer references");
                 await Expect<NotFoundException>(() => service.GetOrderByIdAsync(other.Id, user.Id, false), "Unassigned detail URL denied");
             }
+            Check((await service.GetOrderByIdAsync(order.Id, admin.Id, false)).Amount == 987654, "Admin retains amount visibility");
             Check((await service.GetOrdersAsync(query, admin.Id, false)).TotalCount == 2, "Admin keeps full order visibility");
             Check(await Controller(first.Id).Save(order.Id, new() { UserIds = [first.Id] }) is ForbidResult, "Assignee cannot change assignments");
             Check(await adminApi.Save(order.Id, new() { UserIds = [customer.Id] }) is BadRequestObjectResult, "Customers cannot be assigned");

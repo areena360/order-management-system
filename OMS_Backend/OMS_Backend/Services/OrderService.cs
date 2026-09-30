@@ -32,6 +32,14 @@ namespace OMS_Backend.Services
         public async Task<PagedResult<OrderListDto>> GetOrdersAsync(OrderQueryDto q, int userId, bool isCustomer)
         {
             var restricted = await OrderVisibility.IsRestrictedAsync(_db, userId);
+            if (restricted)
+            {
+                q.Source = null;
+                q.CustomerId = null;
+                q.StatusId = null;
+                if (new[] { "amount", "customer", "status" }.Contains(q.SortBy?.ToLowerInvariant()))
+                    q.SortBy = "AssignedDate";
+            }
             var query = _db.Orders.AsNoTracking().Where(OrderVisibility.ForUser(_db, userId, isCustomer));
 
             if (q.Source == "WooCommerce" || q.Source == "Shopify")
@@ -49,13 +57,13 @@ namespace OMS_Backend.Services
                 var s = q.Search.Trim();
                 query = query.Where(o =>
                     o.ManufacturerOrderNumber.Contains(s) ||
-                    (o.CustomerOrderNumber != null && o.CustomerOrderNumber.Contains(s)) ||
+                    (!restricted && o.CustomerOrderNumber != null && o.CustomerOrderNumber.Contains(s)) ||
                     o.CustomerProductTitle.Contains(s) ||
                     (o.ManufacturerProductTitle != null && o.ManufacturerProductTitle.Contains(s)) ||
-                    (o.TrackingNumber != null && o.TrackingNumber.Contains(s)) ||
-                    o.ConsigneeName.Contains(s) ||
+                    (!restricted && o.TrackingNumber != null && o.TrackingNumber.Contains(s)) ||
+                    (!restricted && (o.ConsigneeName.Contains(s) ||
                     o.Customer.FirstName.Contains(s) ||
-                    o.Customer.LastName.Contains(s));
+                    o.Customer.LastName.Contains(s))));
             }
 
             if (q.StatusId.HasValue) query = query.Where(o => o.OrderStatusId == q.StatusId);
@@ -148,6 +156,19 @@ namespace OMS_Backend.Services
                 }
             }
 
+            if (restricted)
+                foreach (var item in items)
+                {
+                    item.Amount = null;
+                    item.CustomerName = "";
+                    item.CustomerOrderNumber = null;
+                    item.TrackingNumber = null;
+                    item.Source = "";
+                    item.Status = "";
+                    item.OrderStatusId = 0;
+                    item.AssignedUserIds.Clear();
+                }
+
             return new PagedResult<OrderListDto>
             {
                 Items = items,
@@ -207,8 +228,25 @@ namespace OMS_Backend.Services
 
             var details = await MapDetailsAsync(order);
             if (await OrderVisibility.IsRestrictedAsync(_db, userId))
+            {
                 details.AssignmentStatus = await _db.AdminOrderAssignments
                     .Where(a => a.OrderId == id && a.UserId == userId).Select(a => a.Status).SingleOrDefaultAsync();
+                details.Amount = null;
+                details.CustomerId = 0;
+                details.CustomerName = "";
+                details.CustomerOrderNumber = null;
+                details.ConsigneeName = "";
+                details.ConsigneeAddress = "";
+                details.ShippingEmail = null;
+                details.ShippingContact = null;
+                details.Courier = null;
+                details.TrackingNumber = null;
+                details.Source = "";
+                details.Status = "";
+                details.OrderStatusId = 0;
+                details.StatusHistory.Clear();
+                details.InventoryBills.Clear();
+            }
             return details;
         }
 
@@ -720,6 +758,8 @@ namespace OMS_Backend.Services
                 ?? throw new NotFoundException(nameof(Order), orderId);
 
             await EnsureOwnership(order, userId, isCustomer);
+
+            if (await OrderVisibility.IsRestrictedAsync(_db, userId)) return new();
 
             return await _db.InventoryBills
                 .Where(b => b.OrderId == orderId && !b.IsDeleted)

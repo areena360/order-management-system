@@ -10,7 +10,8 @@ import { ChatSignalrService } from '../core/signalr/chat-signalr.service';
 import { ManageOrdersComponent } from './manage-orders/manage-orders.component';
 import { RolesAndPermissionsComponent } from '../roles-and-permissions/roles-and-permissions.component';
 import { OrdersService } from './orders.service';
-import { OrderListItem } from './order.models';
+import { OrderDetailsComponent } from './order-details/order-details.component';
+import { OrderDetails, OrderListItem } from './order.models';
 
 describe('Admin assigned orders', () => {
   let role: string;
@@ -50,6 +51,46 @@ describe('Admin assigned orders', () => {
     expect(permissions.canEdit('Orders')).toBeFalse();
     expect(permissions.canDelete('Orders')).toBeFalse();
     expect(permissions.canEdit('Order Amount')).toBeFalse();
+  });
+
+  it('hides sensitive columns even after resetting column preferences', () => {
+    loadRestricted();
+    const fixture = TestBed.createComponent(ManageOrdersComponent);
+    spyOn(fixture.componentInstance, 'ngOnInit');
+    fixture.componentInstance.resetColumns();
+    for (const key of ['amount', 'customerOrderNumber', 'trackingNumber']) {
+      expect(fixture.componentInstance.isColumnVisible(key)).toBeFalse();
+      expect(fixture.componentInstance.columnOptions.some(c => c.key === key)).toBeFalse();
+    }
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-dd="customerFilter"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-dd="sourceFilter"]')).toBeNull();
+  });
+
+  it('hides business details and normal history while preserving production information', () => {
+    loadRestricted();
+    const fixture = TestBed.createComponent(OrderDetailsComponent);
+    fixture.detectChanges();
+    fixture.componentInstance.errorMsg = '';
+    spyOn(fixture.componentInstance, 'ngOnInit');
+    fixture.componentInstance.loading = false;
+    fixture.componentInstance.order = { id: 42, manufacturerOrderNumber: 'AD42',
+      customerName: 'Private Buyer', customerOrderNumber: 'Private Reference', amount: 987654,
+      consigneeName: 'Private Receiver', consigneeAddress: 'Private Address', trackingNumber: 'Private Tracking',
+      status: 'Private Status', assignmentStatus: 'inprogress', customerProductTitle: 'Production Product',
+      manufacturerMaterial: 'Cotton', sizeDetails: 'Production Measurements', isCustomSize: true,
+      statusHistory: [], inventoryBills: [], images: [] } as unknown as OrderDetails;
+    fixture.detectChanges();
+    const text = fixture.nativeElement.textContent;
+    for (const value of ['Private', '987,654', 'Amount', 'Status History', 'Inventory Bills', 'Shipping Address'])
+      expect(text).not.toContain(value);
+    for (const value of ['Production Product', 'Cotton', 'Production Measurements', 'In Progress'])
+      expect(text).toContain(value);
+    loadRestricted(false);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Private Buyer');
+    expect(fixture.nativeElement.textContent).toContain('987,654');
+    expect(fixture.nativeElement.textContent).toContain('Status History');
   });
 
   it('renders assignment progress instead of the main status dropdown', () => {

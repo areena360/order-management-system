@@ -64,7 +64,7 @@
         </div>
 
         <!-- Source -->
-        <div class="relative" data-dd="sourceFilter">
+        <div *ngIf="!assignedOnly" class="relative" data-dd="sourceFilter">
           <label class="mb-1.5 block text-xs font-medium text-gray-500">Source</label>
           <button type="button" (click)="toggleFilterDropdown('sourceFilter')"
             class="w-full flex items-center justify-between rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 cursor-pointer">
@@ -120,7 +120,7 @@
         </div>
 
         <!-- Customer (non-customer) -->
-        <div *ngIf="!isCustomer" class="relative" data-dd="customerFilter">
+        <div *ngIf="!isCustomer && !assignedOnly" class="relative" data-dd="customerFilter">
           <label class="mb-1.5 block text-xs font-medium text-gray-500">Customer</label>
           <button type="button" (click)="toggleFilterDropdown('customerFilter')"
             class="w-full flex items-center justify-between rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 cursor-pointer">
@@ -402,7 +402,7 @@
                 <span class="ml-1">{{ sortIcon('ManufacturerOrderNumber') }}</span>
               </th>
 
-              <th *ngIf="!isCustomer" (click)="sort('Customer')"
+              <th *ngIf="!isCustomer && !assignedOnly" (click)="sort('Customer')"
                 class="px-4 py-3 text-left text-xs font-semibold text-gray-100 uppercase tracking-wider cursor-pointer select-none hover:text-white">
                 Customer
                 <span class="ml-1">{{ sortIcon('Customer') }}</span>
@@ -475,14 +475,14 @@
 
             <ng-container *ngIf="loading">
               <tr *ngFor="let row of [1,2,3,4,5]">
-                <td [attr.colspan]="(isCustomer ? 6 : 7) + visibleColumnCount() + (canAssignUsers ? 1 : 0)" class="px-4 py-4">
+                <td [attr.colspan]="((isCustomer || assignedOnly) ? 6 : 7) + visibleColumnCount() + (canAssignUsers ? 1 : 0)" class="px-4 py-4">
                   <div class="h-5 w-full animate-pulse rounded bg-gray-100"></div>
                 </td>
               </tr>
             </ng-container>
 
             <tr *ngIf="!loading && orders.length === 0">
-              <td [attr.colspan]="(isCustomer ? 6 : 7) + visibleColumnCount() + (canAssignUsers ? 1 : 0)"
+              <td [attr.colspan]="((isCustomer || assignedOnly) ? 6 : 7) + visibleColumnCount() + (canAssignUsers ? 1 : 0)"
                 class="px-6 py-10 text-center text-sm text-gray-400">
                 No orders found.
               </td>
@@ -524,10 +524,10 @@
                   class="ml-1 inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-600/20">
                   ASSIGNED
                 </span>
-                <span *ngIf="order.source === 'WooCommerce' || order.source === 'Shopify'" class="block text-xs text-purple-700">{{order.source}}</span>
+                <span *ngIf="!assignedOnly && (order.source === 'WooCommerce' || order.source === 'Shopify')" class="block text-xs text-purple-700">{{order.source}}</span>
               </td>
 
-              <td *ngIf="!isCustomer" class="px-4 py-4 align-top font-medium text-gray-900 break-words">
+              <td *ngIf="!isCustomer && !assignedOnly" class="px-4 py-4 align-top font-medium text-gray-900 break-words">
                 {{ order.customerName }}
               </td>
 

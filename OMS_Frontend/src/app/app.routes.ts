@@ -16,7 +16,7 @@ import {
 import { ManageUsersComponent } from './manage-user/manage-users.component';
 import { RegisterComponent } from './register/register.component';
 import { ProfileComponent } from './profile/profile.component';
-import { ManageRolesComponent } from './manage-roles/manage-roles.component';
+import { RolesAndPermissionsComponent } from './roles-and-permissions/roles-and-permissions.component';
 
 import { ManageOrdersComponent } from './orders/manage-orders/manage-orders.component';
 
@@ -77,10 +77,11 @@ export const routes: Routes = [
         component: ProfileComponent
       },
 
-      // Manage Roles
+      // Roles and Permissions
+      { path: 'manage-roles', redirectTo: 'roles-and-permissions', pathMatch: 'full' },
       {
-        path: 'manage-roles',
-        component: ManageRolesComponent
+        path: 'roles-and-permissions',
+        component: RolesAndPermissionsComponent
       },
 
       // Orders - IMPORTANT: Path order matters!

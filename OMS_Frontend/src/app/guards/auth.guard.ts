@@ -38,7 +38,7 @@ export const assignedRoleGuard: CanActivateChildFn = (route, state) => {
   const screen = paths.includes('orders') || paths.some(path => path?.startsWith('integrations/'))
     ? 'Orders'
     : route.routeConfig?.path === 'manage-users' ? 'Manage Users'
-    : route.routeConfig?.path === 'manage-roles' ? 'Manage Roles'
+    : route.routeConfig?.path === 'roles-and-permissions' ? 'Manage Roles'
     : route.routeConfig?.path === '' ? 'Dashboard' : null;
   return permissions.load().pipe(
     map(() => {

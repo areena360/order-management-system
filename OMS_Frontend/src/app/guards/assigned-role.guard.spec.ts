@@ -59,7 +59,7 @@ describe('Profile-only access for users without a role', () => {
           { path: '', component: TestPage },
           { path: 'profile', component: TestPage },
           { path: 'manage-users', component: TestPage },
-          { path: 'manage-roles', component: TestPage },
+          { path: 'roles-and-permissions', component: TestPage },
           { path: 'integrations/shopify', component: TestPage },
           { path: 'integrations/woocommerce', component: TestPage },
           { path: 'orders', children: [
@@ -78,7 +78,7 @@ describe('Profile-only access for users without a role', () => {
   it('redirects direct URLs and subsequent navigation to profile', async () => {
     const harness = await RouterTestingHarness.create();
     for (const path of ['', '/orders', '/orders/add', '/orders/42', '/manage-users',
-      '/manage-roles', '/integrations/shopify', '/integrations/woocommerce']) {
+      '/roles-and-permissions', '/integrations/shopify', '/integrations/woocommerce']) {
       await harness.navigateByUrl('/dashboard' + path);
       expect(TestBed.inject(Router).url).withContext(path).toBe('/dashboard/profile');
     }
@@ -118,7 +118,7 @@ describe('Profile-only access for users without a role', () => {
     auth.currentRole.set('New Role');
     const harness = await RouterTestingHarness.create();
     for (const path of ['', '/orders', '/orders/add', '/orders/42', '/manage-users',
-      '/manage-roles', '/integrations/shopify', '/integrations/woocommerce']) {
+      '/roles-and-permissions', '/integrations/shopify', '/integrations/woocommerce']) {
       await harness.navigateByUrl('/dashboard' + path);
       expect(TestBed.inject(Router).url).withContext(path).toBe('/dashboard/profile');
     }

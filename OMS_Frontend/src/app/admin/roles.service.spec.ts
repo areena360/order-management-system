@@ -4,7 +4,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { RolesService } from './roles.service';
 import { environment } from '../../environments/environment';
 import { ManageUsersComponent } from '../manage-user/manage-users.component';
-import { ManageRolesComponent } from '../manage-roles/manage-roles.component';
+import { RolesAndPermissionsComponent } from '../roles-and-permissions/roles-and-permissions.component';
 
 describe('Database role catalog', () => {
   let http: HttpTestingController;
@@ -51,7 +51,7 @@ describe('Database role catalog', () => {
   });
 
   it('refreshes the catalog after creation and loads the new role permissions', () => {
-    const component = TestBed.createComponent(ManageRolesComponent).componentInstance;
+    const component = TestBed.createComponent(RolesAndPermissionsComponent).componentInstance;
     component.newRoleName = 'Auditor';
     component.createRole();
     const request = http.expectOne(url);
@@ -65,7 +65,7 @@ describe('Database role catalog', () => {
   });
 
   it('activates a previously inactive role and reloads the catalog', () => {
-    const component = TestBed.createComponent(ManageRolesComponent).componentInstance;
+    const component = TestBed.createComponent(RolesAndPermissionsComponent).componentInstance;
     component.selectedRoleId = 28;
     component.roleOptions = catalog;
     expect(component.selectedRoleInactive).toBeTrue();
@@ -79,7 +79,7 @@ describe('Database role catalog', () => {
   });
 
   it('renders the inactive-role recovery action and permission controls', () => {
-    const fixture = TestBed.createComponent(ManageRolesComponent);
+    const fixture = TestBed.createComponent(RolesAndPermissionsComponent);
     fixture.detectChanges();
     http.expectOne(url).flush([catalog[2]]);
     http.expectOne(`${environment.apiUrl}/rolepermissions/28`).flush([
@@ -92,7 +92,7 @@ describe('Database role catalog', () => {
   });
 
   it('requires confirmation and reloads the catalog after deleting a custom role', () => {
-    const component = TestBed.createComponent(ManageRolesComponent).componentInstance;
+    const component = TestBed.createComponent(RolesAndPermissionsComponent).componentInstance;
     component.roleOptions = catalog;
     component.selectedRoleId = 27;
     component.openDeleteRole();
@@ -113,7 +113,7 @@ describe('Database role catalog', () => {
   });
 
   it('keeps the role and shows the API explanation when it is assigned to a user', () => {
-    const component = TestBed.createComponent(ManageRolesComponent).componentInstance;
+    const component = TestBed.createComponent(RolesAndPermissionsComponent).componentInstance;
     component.roleOptions = catalog;
     component.selectedRoleId = 27;
     component.openDeleteRole();
@@ -128,7 +128,7 @@ describe('Database role catalog', () => {
   });
 
   it('does not offer deletion for protected roles', () => {
-    const component = TestBed.createComponent(ManageRolesComponent).componentInstance;
+    const component = TestBed.createComponent(RolesAndPermissionsComponent).componentInstance;
     component.roleOptions = [{ id: 2, name: 'Admin', isActive: true, canDelete: false }];
     component.selectedRoleId = 2;
     component.openDeleteRole();

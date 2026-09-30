@@ -16,12 +16,12 @@ interface ScreenPermission {
 }
 
 @Component({
-  selector: 'app-manage-roles',
+  selector: 'app-roles-and-permissions',
   standalone: true,
   imports: [CommonModule, FooterComponent, FormsModule],
-  templateUrl: './manage-roles.component.html'
+  templateUrl: './roles-and-permissions.component.html'
 })
-export class ManageRolesComponent implements OnInit {
+export class RolesAndPermissionsComponent implements OnInit {
   roleOptions: RoleOption[] = [];
   rolesLoading = false;
   rolesError = '';

@@ -8,7 +8,7 @@ import { PermissionService } from '../auth/permission.service';
 import { PollingService } from '../core/polling/polling.service';
 import { ChatSignalrService } from '../core/signalr/chat-signalr.service';
 import { ManageOrdersComponent } from './manage-orders/manage-orders.component';
-import { ManageRolesComponent } from '../manage-roles/manage-roles.component';
+import { RolesAndPermissionsComponent } from '../roles-and-permissions/roles-and-permissions.component';
 import { OrdersService } from './orders.service';
 import { OrderListItem } from './order.models';
 
@@ -23,7 +23,7 @@ describe('Admin assigned orders', () => {
     orders.getImageUrl.and.returnValue('');
     orders.getOrders.and.returnValue(of({ items: [], totalCount: 0, pageNumber: 1, pageSize: 25 }));
     TestBed.configureTestingModule({
-      imports: [ManageOrdersComponent, ManageRolesComponent],
+      imports: [ManageOrdersComponent, RolesAndPermissionsComponent],
       providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]),
         { provide: AuthService, useValue: { currentRole: () => role, isCustomer: () => false, sessionChanged$: EMPTY,
           getToken: () => null, getProfile: () => of({ id: 7 }) } },
@@ -143,7 +143,7 @@ describe('Admin assigned orders', () => {
   });
 
   it('disables Visible, Add, Edit and Delete when assigned-only access is checked', () => {
-    const fixture = TestBed.createComponent(ManageRolesComponent);
+    const fixture = TestBed.createComponent(RolesAndPermissionsComponent);
     const component = fixture.componentInstance;
     spyOn(component, 'ngOnInit');
     component.selectedRoleId = 7;
@@ -186,7 +186,7 @@ describe('Admin assigned orders', () => {
   });
 
   it('restores the checkbox if immediate saving fails', () => {
-    const component = TestBed.createComponent(ManageRolesComponent).componentInstance;
+    const component = TestBed.createComponent(RolesAndPermissionsComponent).componentInstance;
     component.selectedRoleId = 7;
     component.roleOptions = [{ id: 7, name: 'Production', isActive: true }];
     const row = { screenKey: 'Orders', canView: true, canAdd: true, canEdit: true, canDelete: true, adminAssignedOnly: false };

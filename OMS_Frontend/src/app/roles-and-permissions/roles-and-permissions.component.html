@@ -3,7 +3,7 @@
 
     <!-- Page Title -->
     <div class="mb-6">
-      <h1 class="text-2xl font-bold text-gray-900">Roles &amp; Permissions</h1>
+      <h1 class="text-2xl font-bold text-gray-900">Roles and Permissions</h1>
 
     </div>
 
@@ -89,10 +89,7 @@
               [class.hover:bg-blue-50]="true">
 
               <td class="px-5 py-3.5 font-medium text-gray-800">
-                {{ row.screenKey }}
-                <p *ngIf="row.screenKey === 'Orders'" class="mt-1 text-xs font-normal text-gray-500">
-                  Admin Assigned Orders limits users with the {{ selectedRoleName }} role to their own assignments. Saves immediately.
-                </p>
+                {{ row.screenKey === 'Manage Roles' ? 'Roles and Permissions' : row.screenKey }}
                 <p *ngIf="isChatScreen(row.screenKey)" class="mt-1 text-xs font-normal text-gray-500">
                   Visible: show chat · Send Messages: allow sending messages
                 </p>
@@ -168,12 +165,12 @@
 
   <div class="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden
               animate-[modalIn_.18s_ease-out]"
-    role="dialog" aria-modal="true" aria-labelledby="manageRolesTitle">
+    role="dialog" aria-modal="true" aria-labelledby="rolesAndPermissionsTitle">
 
     <!-- Modal Header -->
     <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
       <div>
-        <h3 id="manageRolesTitle" class="text-base font-semibold text-gray-900">Manage Roles</h3>
+        <h3 id="rolesAndPermissionsTitle" class="text-base font-semibold text-gray-900">Roles and Permissions</h3>
 
       </div>
       <button type="button" (click)="closeRolesModal()"

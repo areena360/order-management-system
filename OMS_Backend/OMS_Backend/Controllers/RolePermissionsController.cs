@@ -60,9 +60,10 @@ namespace OMS_Backend.Controllers
                 return new RolePermissionDto
                 {
                     ScreenKey = s,
-                    CanView = match == null ? s == "Order Customer Chat"
+                    AdminAssignedOnly = s == "Orders" && match != null && match.IsActive && !match.IsDeleted && match.AdminAssignedOnly,
+                    CanView = match == null ? false
                                             : !match.IsDeleted && match.IsActive && match.CanView,
-                    CanAdd = match == null ? s == "Order Customer Chat"
+                    CanAdd = match == null ? false
                                            : !match.IsDeleted && match.IsActive && match.CanView && match.CanAdd,
                     CanEdit = match?.CanEdit ?? false,
                     CanDelete = match?.CanDelete ?? false
@@ -85,6 +86,14 @@ namespace OMS_Backend.Controllers
                 || dto.Permissions.Any(p => !Screens.Contains(p.ScreenKey))
                 || dto.Permissions.Select(p => p.ScreenKey).Distinct().Count() != dto.Permissions.Count)
                 return BadRequest("Invalid permissions.");
+
+            foreach (var permission in dto.Permissions)
+            {
+                permission.AdminAssignedOnly = permission.ScreenKey == "Orders"
+                    && targetRole.Name != "Customer" && permission.AdminAssignedOnly;
+                if (permission.AdminAssignedOnly)
+                    permission.CanView = permission.CanAdd = permission.CanEdit = permission.CanDelete = false;
+            }
 
             // Chat screens: Send Messages maps to CanAdd; Edit/Delete are never allowed.
             foreach (var permission in dto.Permissions.Where(p => p.ScreenKey is "Order Customer Chat" or "Order Group Chat"))
@@ -113,6 +122,7 @@ namespace OMS_Backend.Controllers
                         CanAdd = perm.CanAdd,
                         CanEdit = perm.CanEdit,
                         CanDelete = perm.CanDelete,
+                        AdminAssignedOnly = perm.AdminAssignedOnly,
                         IsActive = true,
                         CreatedDate = DateTime.UtcNow
                     });
@@ -125,6 +135,7 @@ namespace OMS_Backend.Controllers
                     row.CanAdd = perm.CanAdd;
                     row.CanEdit = perm.CanEdit;
                     row.CanDelete = perm.CanDelete;
+                    row.AdminAssignedOnly = perm.AdminAssignedOnly;
                     row.UpdatedDate = DateTime.UtcNow;
                 }
             }

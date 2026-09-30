@@ -248,6 +248,11 @@ export class AuthService {
     return this.currentRole() === 'Customer';
   }
 
+  hasAssignedRole(): boolean {
+    const role = this.currentRole()?.trim().toLowerCase();
+    return !!role && role !== 'no role';
+  }
+
   private persistSession(res: AuthResponse): void {
 
     localStorage.setItem(

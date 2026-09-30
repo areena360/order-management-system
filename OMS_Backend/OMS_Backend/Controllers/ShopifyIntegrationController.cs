@@ -114,7 +114,7 @@ public class ShopifyIntegrationController(OMSDbContext db,ShopifyApi api,IConfig
     }
     [Authorize,HttpGet("orders/{orderId:int}")]
     public async Task<IActionResult> Snapshot(int orderId) {
-        if(!await db.Orders.Where(OrderVisibility.ForUser(UserId,User.IsInRole("Customer"))).AnyAsync(o=>o.Id==orderId))return NotFound();
+        if(!await db.Orders.Where(OrderVisibility.ForUser(db, UserId,User.IsInRole("Customer"))).AnyAsync(o=>o.Id==orderId))return NotFound();
         var link=await db.Set<WooCommerceOrder>().Include(x=>x.Buyer).Include(x=>x.Connection).SingleOrDefaultAsync(x=>x.OrderId==orderId&&x.Connection.Provider=="Shopify"&&!x.Order.IsDeleted);
         if(link==null)return NotFound();var store=await db.Set<ShopifyStore>().SingleAsync(x=>x.ConnectionId==link.ConnectionId);await Managed(store.Id);
         return Ok(new{link.ExternalOrderId,link.ExternalLineId,link.UnitNumber,link.IsCurrentUnit,link.ExternalStatus,link.Currency,link.Total,link.ModifiedAt,link.PaymentMethod,link.ItemsJson,link.BillingJson,link.ShippingJson,link.Connection.StoreName,buyer=new{link.Buyer.Name,link.Buyer.Email,link.Buyer.Phone}});

@@ -10,6 +10,8 @@ export interface CustomerOption {
 }
 
 export interface OrderListItem {
+  assignedUserIds?: number[];
+  assignmentStatus?: string | null;
   source?: string;
   id: number;
 
@@ -63,6 +65,7 @@ export interface InventoryBillItem {
 }
 
 export interface OrderDetails {
+  assignmentStatus?: string | null;
   source?: string;
   id: number;
 

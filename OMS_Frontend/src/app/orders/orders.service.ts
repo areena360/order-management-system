@@ -19,10 +19,35 @@ import {
 
 import { environment } from '../../environments/environment';
 
+export interface AssignmentRole {
+  id: number;
+  name: string;
+  users: { id: number; name: string; email: string }[];
+}
+
+export interface ManufacturingEvent {
+  id: number; userId: number; userName: string; roleId: number; roleName: string;
+  status: string; occurredAt: string; isSnapshot: boolean;
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class OrdersService {
+  getManufacturing(id: number): Observable<{ events: ManufacturingEvent[] }> {
+    return this.http.get<{ events: ManufacturingEvent[] }>(`${this.apiUrl}/${id}/manufacturing`);
+  }
+  getAssignmentOptions(): Observable<AssignmentRole[]> {
+    return this.http.get<AssignmentRole[]>(`${this.apiUrl}/assignment-options`);
+  }
+
+  saveAdminAssignments(id: number, userIds: number[]): Observable<{ assignedUserIds: number[] }> {
+    return this.http.put<{ assignedUserIds: number[] }>(`${this.apiUrl}/${id}/admin-assignments`, { userIds });
+  }
+
+  updateAssignmentStatus(id: number, status: string): Observable<{ assignmentStatus: string }> {
+    return this.http.patch<{ assignmentStatus: string }>(`${this.apiUrl}/${id}/assignment-status`, { status });
+  }
 
   private readonly apiUrl =
     `${environment.apiUrl}/orders`;

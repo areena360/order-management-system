@@ -8,6 +8,7 @@ import { DashboardComponent } from './dashboard/dashboard.component';
 
 import {
   authGuard,
+  assignedRoleGuard,
   ordersGuard,
   ordersAddGuard
 } from './guards/auth.guard';
@@ -50,6 +51,7 @@ export const routes: Routes = [
     path: 'dashboard',
     component: LayoutComponent,
     canActivate: [authGuard],
+    canActivateChild: [assignedRoleGuard],
 
     children: [
       { path: 'integrations/shopify', loadComponent: () => import('./integrations/shopify.component').then(m => m.ShopifyComponent) },

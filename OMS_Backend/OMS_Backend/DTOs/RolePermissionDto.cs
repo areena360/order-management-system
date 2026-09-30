@@ -7,6 +7,7 @@
         public bool CanAdd { get; set; }
         public bool CanEdit { get; set; }
         public bool CanDelete { get; set; }
+        public bool AdminAssignedOnly { get; set; }
     }
 
     public class SaveRolePermissionsDto

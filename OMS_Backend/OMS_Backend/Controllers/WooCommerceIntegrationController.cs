@@ -203,7 +203,7 @@ public class WooCommerceIntegrationController(OMSDbContext db, WooCommerceIntegr
     [Authorize, HttpGet("orders/{orderId:int}")]
     public async Task<IActionResult> OrderSnapshot(int orderId)
     {
-        if (!await db.Orders.Where(OrderVisibility.ForUser(UserId, User.IsInRole("Customer"))).AnyAsync(o => o.Id == orderId))
+        if (!await db.Orders.Where(OrderVisibility.ForUser(db, UserId, User.IsInRole("Customer"))).AnyAsync(o => o.Id == orderId))
             return NotFound();
         var link = await db.Set<WooCommerceOrder>().AsNoTracking().Include(x => x.Buyer).Include(x => x.Connection)
             .SingleOrDefaultAsync(x => x.OrderId == orderId && !x.Order.IsDeleted);

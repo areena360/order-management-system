@@ -38,6 +38,7 @@ describe('Order field permissions and shared bulk selection', () => {
         { provide: PollingService, useValue: { poll: () => EMPTY } },
         { provide: ChatSignalrService, useValue: { onMessage: () => () => {}, onGroupMessage: () => () => {} } },
         { provide: PermissionService, useValue: {
+          adminAssignedOrdersOnly: () => false, permissionsLoaded$: EMPTY,
           canView: () => true, canAdd: () => true, canDelete: () => false,
           canEdit: (key: string) => {
             if (key === 'Order Tracking') return ['Super Admin', 'Admin', 'Staff'].includes(role) || (role === 'Auditor' && customFieldEdit);
@@ -304,7 +305,7 @@ describe('Order field permissions and shared bulk selection', () => {
 
   it('prevents a customer inline tracking edit from sending any request', () => {
     const fixture = listFixture();
-    expect(fixture.nativeElement.querySelector('input[placeholder="Add tracking"]').disabled).toBeTrue();
+    expect(fixture.nativeElement.querySelector('input[placeholder="Add Tracking"]').disabled).toBeTrue();
     fixture.componentInstance.onTrackingChange(fixture.componentInstance.orders[0], 'unauthorized');
     expect(orders.getOrder).not.toHaveBeenCalled();
     expect(orders.updateOrder).not.toHaveBeenCalled();

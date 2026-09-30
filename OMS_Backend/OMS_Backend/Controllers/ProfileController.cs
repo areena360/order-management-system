@@ -117,6 +117,7 @@ namespace OMS_Backend.Controllers
                 return Ok(screens.Select(s => new
                 {
                     screenKey = s,
+                    adminAssignedOnly = false,
                     canView = true,
                     canAdd = true,
                     canEdit = true,
@@ -134,16 +135,21 @@ namespace OMS_Backend.Controllers
             var result = screens.Select(s =>
             {
                 var match = saved.FirstOrDefault(p => p.ScreenKey == s);
+                var assignedOnly = roleName != "Customer" && saved.Any(p => p.ScreenKey == "Orders"
+                    && p.IsActive && !p.IsDeleted && p.AdminAssignedOnly);
                 if (OrderFieldPermissions.Keys.Contains(s))
                 {
-                    var edit = OrderFieldPermissions.CanEdit(roleName, s, match);
-                    return new { screenKey = s, canView = true, canAdd = false, canEdit = edit, canDelete = false };
+                    var edit = !assignedOnly && OrderFieldPermissions.CanEdit(roleName, s, match);
+                    return new { screenKey = s, adminAssignedOnly = false, canView = true, canAdd = false, canEdit = edit, canDelete = false };
                 }
+                if (s == "Orders" && assignedOnly)
+                    return new { screenKey = s, adminAssignedOnly = true, canView = false, canAdd = false, canEdit = false, canDelete = false };
                 return new
                 {
                     screenKey = s,
-                    canView = s == "Order Group Chat" && roleName == "Customer" ? false : (match == null ? s == "Order Customer Chat" : !match.IsDeleted && match.IsActive && match.CanView),
-                    canAdd = s == "Order Group Chat" && roleName == "Customer" ? false : (match == null ? s == "Order Customer Chat" : !match.IsDeleted && match.IsActive && match.CanView && match.CanAdd),
+                    adminAssignedOnly = false,
+                    canView = s == "Order Group Chat" && roleName == "Customer" ? false : (match == null ? false : !match.IsDeleted && match.IsActive && match.CanView),
+                    canAdd = s == "Order Group Chat" && roleName == "Customer" ? false : (match == null ? false : !match.IsDeleted && match.IsActive && match.CanView && match.CanAdd),
                     canEdit = match?.CanEdit ?? false,
                     canDelete = match?.CanDelete ?? false
                 };

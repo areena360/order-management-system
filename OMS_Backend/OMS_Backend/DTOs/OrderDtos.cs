@@ -30,6 +30,8 @@ namespace OMS_Backend.DTOs
 
     public class OrderListDto
     {
+        public List<int> AssignedUserIds { get; set; } = new();
+        public string? AssignmentStatus { get; set; }
         public string Source { get; set; } = "Manual";
         public int Id { get; set; }
         public string ManufacturerOrderNumber { get; set; } = default!;
@@ -54,6 +56,7 @@ namespace OMS_Backend.DTOs
 
     public class OrderDetailsDto
     {
+        public string? AssignmentStatus { get; set; }
         public string Source { get; set; } = "Manual";
         public int Id { get; set; }
         public string ManufacturerOrderNumber { get; set; } = default!;

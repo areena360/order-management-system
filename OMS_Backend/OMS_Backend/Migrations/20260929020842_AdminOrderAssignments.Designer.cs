@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using OMS_Backend.Data;
 
@@ -11,9 +12,11 @@ using OMS_Backend.Data;
 namespace OMS_Backend.Migrations
 {
     [DbContext(typeof(OMSDbContext))]
-    partial class OMSDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260929020842_AdminOrderAssignments")]
+    partial class AdminOrderAssignments
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -677,51 +680,6 @@ namespace OMS_Backend.Migrations
                     b.HasKey("UserId", "OrderId", "Channel");
 
                     b.ToTable("ChatReadStates");
-                });
-
-            modelBuilder.Entity("OMS_Backend.Models.ManufacturingEvent", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
-
-                    b.Property<bool>("IsSnapshot")
-                        .HasColumnType("bit");
-
-                    b.Property<DateTime>("OccurredAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("OrderId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("RoleId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("RoleName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("UserName")
-                        .IsRequired()
-                        .HasMaxLength(400)
-                        .HasColumnType("nvarchar(400)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("OrderId", "OccurredAt");
-
-                    b.ToTable("ManufacturingEvents");
                 });
 
             modelBuilder.Entity("OMS_Backend.Models.PasswordResetToken", b =>
@@ -1741,17 +1699,6 @@ namespace OMS_Backend.Migrations
                     b.Navigation("Order");
 
                     b.Navigation("Sender");
-                });
-
-            modelBuilder.Entity("OMS_Backend.Models.ManufacturingEvent", b =>
-                {
-                    b.HasOne("Order", "Order")
-                        .WithMany()
-                        .HasForeignKey("OrderId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Order");
                 });
 
             modelBuilder.Entity("OMS_Backend.Models.PasswordResetToken", b =>

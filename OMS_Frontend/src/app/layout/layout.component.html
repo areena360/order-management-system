@@ -99,7 +99,7 @@
       <div class="flex items-center gap-2">
 
         <!-- ⚙️ Settings Button -->
-        <button type="button" (click)="openSettings()"
+        <button *ngIf="canView('Settings')" type="button" (click)="openSettings()"
           class="p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-800 transition"
           title="Settings" aria-label="Open settings">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"

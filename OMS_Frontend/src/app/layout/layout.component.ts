@@ -14,6 +14,7 @@ import {
 } from '@angular/router';
 
 import { AuthService } from '../auth/auth.service';
+import { PermissionService } from '../auth/permission.service';
 import { ShopifyComponent } from '../integrations/shopify.component';
 import { WooCommerceComponent } from '../integrations/woocommerce.component';
 
@@ -33,6 +34,7 @@ import { WooCommerceComponent } from '../integrations/woocommerce.component';
 export class LayoutComponent {
   private auth = inject(AuthService);
   private router = inject(Router);
+  private permissions = inject(PermissionService);
 
   /* =========================================================
    * Sidebar
@@ -42,6 +44,7 @@ export class LayoutComponent {
 
   constructor() {
     this.updateIsMobile();
+    this.permissions.load().subscribe({ error: () => {} });
   }
 
   @HostListener('window:resize')
@@ -73,31 +76,10 @@ export class LayoutComponent {
     return (f + l).toUpperCase() || u.email?.charAt(0).toUpperCase() || '?';
   });
 
-  /**
-   * Universal permission check — tries multiple AuthService APIs
-   * and falls back gracefully.
-   */
   canView(permission: string): boolean {
-    const auth = this.auth as any;
-
-    if (typeof auth.hasPermission === 'function')      return !!auth.hasPermission(permission);
-    if (typeof auth.can === 'function')                return !!auth.can(permission);
-    if (typeof auth.hasViewPermission === 'function')  return !!auth.hasViewPermission(permission);
-    if (typeof auth.canView === 'function')            return !!auth.canView(permission);
-
-    const permsSignal = auth.permissions;
-    const perms =
-      (typeof permsSignal === 'function' ? permsSignal() : permsSignal) ??
-      auth.currentUser?.()?.permissions ??
-      auth.currentUser?.()?.viewPermissions ??
-      null;
-
-    if (Array.isArray(perms)) return perms.includes(permission);
-
-    const role = auth.currentRole?.() ?? auth.currentUser?.()?.role;
-    if (role === 'Admin' || role === 'Super Admin') return true;
-
-    return true;
+    if (!this.auth.hasAssignedRole()) return false;
+    if (permission === 'Settings' && this.permissions.adminAssignedOrdersOnly()) return false;
+    return this.permissions.canView(permission === 'Settings' ? 'Orders' : permission);
   }
 
   logout() {
@@ -128,6 +110,7 @@ export class LayoutComponent {
   private closeTimer?: ReturnType<typeof setTimeout>;
 
   openSettings(tab?: 'shopify' | 'woocommerce') {
+    if (!this.canView('Settings')) return;
     if (tab) this.settingsTab.set(tab);
     if (this.closeTimer) {
       clearTimeout(this.closeTimer);

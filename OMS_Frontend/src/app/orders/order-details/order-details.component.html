@@ -66,7 +66,7 @@
                   <h1 class="text-xl sm:text-2xl font-bold text-gray-900">{{ order.manufacturerOrderNumber }}</h1>
                   <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset"
                     [ngClass]="statusBadgeClass(order.status)">
-                    {{ order.status }}
+                    {{ order.assignmentStatus === 'inprogress' ? 'In Progress' : (order.assignmentStatus || order.status) }}
                   </span>
                   <span *ngIf="!isCustomer && order.priority"
                     class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset"

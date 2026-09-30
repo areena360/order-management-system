@@ -10,7 +10,9 @@ import { catchError, debounceTime, distinctUntilChanged, finalize, from, map, me
 import { FooterComponent } from '../../footer/footer.component';
 import { PermissionService } from '../../auth/permission.service';
 import { AuthService } from '../../auth/auth.service';
-import { OrdersService } from '../orders.service';
+import { AssignmentRole, OrdersService } from '../orders.service';
+import { ManufacturingProgressComponent } from '../manufacturing-progress/manufacturing-progress.component';
+import { manufacturingStatusClass, manufacturingStatusLabel } from '../manufacturing-status.util';
 import { LookupService, LOOKUP_TYPE } from '../lookup.service';
 import { PollingService } from '../../core/polling/polling.service';
 import { ChatService } from '../chat/chat.service';
@@ -30,10 +32,154 @@ interface ColumnOption { key: string; label: string; }
 @Component({
   selector: 'app-manage-orders',
   standalone: true,
-  imports: [CommonModule, FormsModule, FooterComponent, ChatModalComponent, OrderFormComponent, OrderDetailsComponent],
-  templateUrl: './manage-orders.component.html'
+  imports: [CommonModule, FormsModule, FooterComponent, ChatModalComponent, OrderFormComponent, OrderDetailsComponent, ManufacturingProgressComponent],
+  templateUrl: './manage-orders.component.html',
+  styles: [`.manufacturing-menu { animation: menu-enter .16s ease-out; } @keyframes menu-enter { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:none; } } @media(prefers-reduced-motion:reduce) { .manufacturing-menu { animation:none; } }`]
 })
 export class ManageOrdersComponent implements OnInit, OnDestroy {
+  get assignedOnly(): boolean { return this.permissionService.adminAssignedOrdersOnly(); }
+  get canAssignUsers(): boolean {
+    return !this.assignedOnly && ['Admin', 'Super Admin'].includes(this.authService.currentRole() ?? '');
+  }
+  assignmentRoles: AssignmentRole[] = [];
+  assignmentOrderId: number | null = null;
+  assignmentDraft = new Set<number>();
+  assignmentLoading = false;
+  assignmentOptionsLoaded = false;
+  assignmentSaving = false;
+  assignmentError = '';
+  assignmentTop = 0;
+  assignmentLeft = 0;
+  assignmentMaxHeight = 480;
+  private assignmentTrigger: HTMLElement | null = null;
+  private readonly repositionAssignment = (event?: Event): void => {
+    if (this.assignmentOrderId === null || !this.assignmentTrigger) return;
+    if (event?.target instanceof Element && event.target.closest('#manufacturing-assignment-menu')) return;
+    const rect = this.assignmentTrigger.getBoundingClientRect();
+    this.assignmentLeft = Math.max(8, Math.min(rect.left, window.innerWidth - 376));
+    this.assignmentTop = rect.bottom + 8;
+    this.assignmentMaxHeight = Math.max(0, window.innerHeight - this.assignmentTop - 8);
+    if (rect.bottom <= 0 || rect.top >= window.innerHeight || rect.right <= 0 || rect.left >= window.innerWidth) {
+      this.assignmentOrderId = null;
+    }
+  };
+  assignmentStatusSavingId: number | null = null;
+  assignmentStatusError = '';
+  manufacturingOrder: OrderListItem | null = null;
+  assignmentStatusOrder: OrderListItem | null = null;
+  statusMenuTop = 0;
+  statusMenuLeft = 0;
+  statusMenuMaxHeight = 208;
+  private assignmentStatusTrigger: HTMLElement | null = null;
+  private readonly repositionAssignmentStatus = (event?: Event): void => {
+    if (!this.assignmentStatusOrder || !this.assignmentStatusTrigger) return;
+    if (event?.target instanceof Element && event.target.closest('#manufacturing-status-menu')) return;
+    const rect = this.assignmentStatusTrigger.getBoundingClientRect();
+    this.statusMenuLeft = Math.max(8, Math.min(rect.left, window.innerWidth - 232));
+    this.statusMenuTop = rect.bottom + 8;
+    this.statusMenuMaxHeight = Math.max(0, window.innerHeight - this.statusMenuTop - 8);
+    if (rect.bottom <= 0 || rect.top >= window.innerHeight || rect.right <= 0 || rect.left >= window.innerWidth) {
+      this.assignmentStatusOrder = null;
+    }
+  };
+  expandedAssignmentRoles = new Set<number>();
+  assignmentSearch = '';
+  manufacturingStatusClass = manufacturingStatusClass;
+  manufacturingStatusLabel = manufacturingStatusLabel;
+  get filteredAssignmentRoles(): AssignmentRole[] {
+    const term = this.assignmentSearch.trim().toLowerCase();
+    return this.assignmentRoles.map(role => ({ ...role, users: role.name.toLowerCase().includes(term)
+      ? role.users : role.users.filter(user => `${user.name} ${user.email}`.toLowerCase().includes(term)) }))
+      .filter(role => !term || role.users.length || role.name.toLowerCase().includes(term));
+  }
+  trackAssignmentRole(_index: number, role: AssignmentRole): number { return role.id; }
+  selectedRoleCount(role: AssignmentRole): number { return role.users.filter(user => this.assignmentDraft.has(user.id)).length; }
+  toggleAssignmentRole(id: number): void {
+    if (this.expandedAssignmentRoles.has(id)) this.expandedAssignmentRoles.delete(id);
+    else this.expandedAssignmentRoles.add(id);
+  }
+  openManufacturing(order: OrderListItem, event: MouseEvent): void {
+    event.stopPropagation();
+    if (!this.canAssignUsers) return;
+    this.assignmentOrderId = null;
+    this.manufacturingOrder = order;
+  }
+  openAssignmentStatus(order: OrderListItem, event: MouseEvent): void {
+    event.stopPropagation();
+    if (!this.assignedOnly || this.assignmentStatusSavingId !== null) return;
+    this.assignmentStatusOrder = this.assignmentStatusOrder?.id === order.id ? null : order;
+    this.assignmentStatusTrigger = event.currentTarget as HTMLElement;
+    this.repositionAssignmentStatus();
+    document.addEventListener('scroll', this.repositionAssignmentStatus, true);
+    window.addEventListener('resize', this.repositionAssignmentStatus);
+  }
+  @HostListener('document:keydown.escape') closeManufacturingMenus(): void {
+    if (!this.assignmentSaving) this.assignmentOrderId = null;
+    this.assignmentStatusOrder = null;
+  }
+  readonly assignmentStatuses = [
+    { value: 'assigned', label: 'Assigned' },
+    { value: 'inprogress', label: 'In Progress' },
+    { value: 'done', label: 'Done' }
+  ];
+
+  openUserAssignments(order: OrderListItem, event: MouseEvent): void {
+    event.stopPropagation();
+    if (!this.canAssignUsers || this.assignmentSaving) return;
+    if (this.assignmentOrderId === order.id) { this.assignmentOrderId = null; return; }
+    this.assignmentOrderId = order.id;
+    this.assignmentSearch = '';
+    this.expandedAssignmentRoles.clear();
+    this.assignmentDraft = new Set(order.assignedUserIds ?? []);
+    this.assignmentError = '';
+    this.assignmentTrigger = event.currentTarget as HTMLElement;
+    this.repositionAssignment();
+    // Capture nested layout/table scrolling as well as page scrolling so the menu
+    // stays attached to its button instead of remaining at a viewport coordinate.
+    document.addEventListener('scroll', this.repositionAssignment, true);
+    window.addEventListener('resize', this.repositionAssignment);
+    this.assignmentLoading = true;
+    this.assignmentOptionsLoaded = false;
+    this.ordersService.getAssignmentOptions().pipe(takeUntil(this.destroy$),
+      finalize(() => this.assignmentLoading = false)).subscribe({
+      next: roles => { this.assignmentRoles = roles; this.assignmentOptionsLoaded = true; },
+      error: () => this.assignmentError = 'Unable to load users. Close and retry.'
+    });
+  }
+
+  toggleAssignee(userId: number): void {
+    if (this.assignmentSaving) return;
+    if (this.assignmentDraft.has(userId)) this.assignmentDraft.delete(userId);
+    else this.assignmentDraft.add(userId);
+  }
+
+  saveUserAssignments(): void {
+    if (!this.canAssignUsers || this.assignmentOrderId === null || this.assignmentSaving || !this.assignmentOptionsLoaded) return;
+    const orderId = this.assignmentOrderId;
+    this.assignmentSaving = true;
+    this.assignmentError = '';
+    this.ordersService.saveAdminAssignments(orderId, [...this.assignmentDraft])
+      .pipe(takeUntil(this.destroy$), finalize(() => this.assignmentSaving = false)).subscribe({
+        next: result => {
+          const order = this.orders.find(o => o.id === orderId);
+          if (order) order.assignedUserIds = result.assignedUserIds;
+          this.assignmentOrderId = null;
+        },
+        error: err => this.assignmentError = err?.error?.message ?? 'Unable to save assignments. Please retry.'
+      });
+  }
+
+  changeAssignmentStatus(order: OrderListItem, status: string): void {
+    if (!this.assignedOnly || this.assignmentStatusSavingId !== null) return;
+    this.assignmentStatusOrder = null;
+    this.assignmentStatusSavingId = order.id;
+    this.assignmentStatusError = '';
+    this.ordersService.updateAssignmentStatus(order.id, status)
+      .pipe(takeUntil(this.destroy$), finalize(() => this.assignmentStatusSavingId = null)).subscribe({
+        next: result => { order.assignmentStatus = result.assignmentStatus; },
+        error: () => { this.assignmentStatusError = 'Unable to update assignment status. Please retry.'; this.fetchOrders(); }
+      });
+  }
 
   private readonly polling = inject(PollingService);
   private readonly chatSignalr = inject(ChatSignalrService);
@@ -156,6 +302,15 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
 
   isAssigned(order: OrderListItem): boolean {
     return !!(order as any).isAssigned;
+  }
+
+  showAssignedBadge(order: OrderListItem): boolean {
+    return this.isAssigned(order) || (
+      !this.isCustomer && !this.assignedOnly &&
+      !['Admin', 'Super Admin'].includes(this.authService.currentRole() ?? '') &&
+      order.requiresCustomerAssignment === false &&
+      (!order.source || order.source === 'Manual')
+    );
   }
 
   getAssignedDays(order: OrderListItem): number {
@@ -349,6 +504,7 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   private readonly rowColors = ['bg-gray-100', 'bg-white'];
 
   private silentRefreshBusy = false;
+  private ordersRequestVersion = 0;
 
   constructor(
     private ordersService: OrdersService,
@@ -366,6 +522,31 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
 
     this.isCustomer = this.authService.isCustomer();
     this.canDelete = this.canDelete || this.isCustomer;
+    let previousAssignedOnly = this.assignedOnly;
+    this.permissionService.permissionsLoaded$.pipe(takeUntil(this.destroy$)).subscribe(loaded => {
+      this.canView = this.permissionService.canView('Orders');
+      this.canAdd = this.permissionService.canAdd('Orders');
+      this.canEdit = this.permissionService.canEdit('Orders');
+      this.canDelete = this.permissionService.canDelete('Orders') || this.isCustomer;
+      if (this.assignedOnly) {
+        this.showAddOrderModal = this.showEditOrderModal = this.showDeleteModal = false;
+        this.openStatusId = this.assignmentOrderId = null;
+        this.manufacturingOrder = this.assignmentStatusOrder = null;
+        this.selectedOrderIds.clear();
+      }
+      if (loaded && previousAssignedOnly !== this.assignedOnly) {
+        previousAssignedOnly = this.assignedOnly;
+        this.ordersRequestVersion++;
+        this.orders = [];
+        this.totalCount = 0;
+        this.currentPage = 1;
+        this.statusFilter = null;
+        this.detailsOrderId = null;
+        this.showChatModal = false;
+        this.loading = false;
+        this.fetchOrders();
+      }
+    });
     this.currentUserId = this.readUserIdFromToken();
 
     if (this.isCustomer) {
@@ -402,6 +583,10 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    document.removeEventListener('scroll', this.repositionAssignmentStatus, true);
+    window.removeEventListener('resize', this.repositionAssignmentStatus);
+    document.removeEventListener('scroll', this.repositionAssignment, true);
+    window.removeEventListener('resize', this.repositionAssignment);
     this.unregisterGroupChatListener?.();
     if (this.unregisterChatListener) this.unregisterChatListener();
     this.tableResizeObserver?.disconnect();
@@ -410,6 +595,7 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   }
 
   addOrder(): void {
+    if (!this.canAdd) return;
     this.showAddOrderModal = true;
   }
 
@@ -427,6 +613,7 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   // =================== Edit Order Modal ===================
   editOrder(order: OrderListItem, event: Event): void {
     event.stopPropagation();
+    if (!this.canEdit) return;
     this.editOrderId = order.id;
     this.showEditOrderModal = true;
   }
@@ -649,6 +836,7 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   }
 
   private silentRefresh(): void {
+    if (this.assignmentOrderId !== null || this.assignmentStatusSavingId !== null || this.assignmentStatusOrder || this.manufacturingOrder) return;
     if (this.silentRefreshBusy || this.bulkBusy || this.selectedOrderIds.size > 0) return;
     if (this.showDeleteModal || this.showImageModal || this.showChatModal || this.showAddOrderModal || this.showAssignModal || this.showEditOrderModal) return;
     if (this.loading) return;
@@ -656,11 +844,13 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
     if (this.statusSavingId !== null) return;
 
     this.silentRefreshBusy = true;
+    const requestVersion = this.ordersRequestVersion;
 
     this.ordersService.getOrders(this.buildQuery())
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: response => {
+          if (requestVersion !== this.ordersRequestVersion) { this.silentRefreshBusy = false; return; }
           if (this.bulkBusy || this.selectedOrderIds.size > 0 || this.loading) {
             this.silentRefreshBusy = false;
             return;
@@ -681,7 +871,7 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
       search: this.searchTerm || undefined,
       sortBy: this.sortBy,
       sortDirection: this.sortDirection,
-      statusId: this.statusFilter,
+      statusId: this.assignedOnly ? null : this.statusFilter,
       source: this.sourceFilter || undefined,
       priorityId: this.isCustomer ? null : this.priorityFilter,
       genderId: this.isCustomer ? null : this.genderFilter,
@@ -726,6 +916,7 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
 
   fetchOrders(preserveSelection = false): void {
     if (this.bulkBusy) return;
+    const requestVersion = ++this.ordersRequestVersion;
     if (!preserveSelection) this.clearOrderSelection();
     this.loading = true;
     this.errorMsg = '';
@@ -734,6 +925,7 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: response => {
+          if (requestVersion !== this.ordersRequestVersion) return;
           this.orders = response.items;
           this.selectedOrderIds = new Set(this.orders.filter(order => this.selectedOrderIds.has(order.id)).map(order => order.id));
           this.totalCount = response.totalCount;
@@ -746,6 +938,7 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
           setTimeout(() => this.updateHorizontalScrollState(), 0);
         },
         error: error => {
+          if (requestVersion !== this.ordersRequestVersion) return;
           this.errorMsg = error?.error?.message ?? 'Unable to load orders. Please try again.';
           this.loading = false;
         }
@@ -991,6 +1184,9 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
 
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: Event): void {
+    if (!(event.target as HTMLElement).closest('[data-assignment-status]')) this.assignmentStatusOrder = null;
+    if (!(event.target as HTMLElement).closest('[data-user-assignment]') && !this.assignmentSaving)
+      this.assignmentOrderId = null;
     const target = event.target as HTMLElement;
     if (this.showDeleteModal || this.showImageModal || this.showChatModal || this.showAddOrderModal || this.showAssignModal || this.showEditOrderModal) return;
 

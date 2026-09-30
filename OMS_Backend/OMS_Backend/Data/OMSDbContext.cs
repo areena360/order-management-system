@@ -11,6 +11,8 @@ namespace OMS_Backend.Data
         public DbSet<AuthSession> AuthSessions { get; set; }
         public DbSet<Role> Roles { get; set; }
         public DbSet<Order> Orders { get; set; }
+        public DbSet<AdminOrderAssignment> AdminOrderAssignments { get; set; }
+        public DbSet<ManufacturingEvent> ManufacturingEvents { get; set; }
         public DbSet<OrderImage> OrderImages { get; set; }
         public DbSet<OrderStatusHistory> OrderStatusHistories { get; set; }
         public DbSet<InventoryBill> InventoryBills { get; set; }
@@ -25,6 +27,18 @@ namespace OMS_Backend.Data
         {
             WooCommerceModel.Configure(modelBuilder);
             ShopifyModel.Configure(modelBuilder);
+            modelBuilder.Entity<ManufacturingEvent>().HasOne(e => e.Order).WithMany()
+                .HasForeignKey(e => e.OrderId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<ManufacturingEvent>().HasIndex(e => new { e.OrderId, e.OccurredAt });
+            modelBuilder.Entity<ManufacturingEvent>().Property(e => e.UserName).HasMaxLength(400);
+            modelBuilder.Entity<ManufacturingEvent>().Property(e => e.RoleName).HasMaxLength(200);
+            modelBuilder.Entity<ManufacturingEvent>().Property(e => e.Status).HasMaxLength(20);
+            modelBuilder.Entity<AdminOrderAssignment>().HasKey(a => new { a.OrderId, a.UserId });
+            modelBuilder.Entity<AdminOrderAssignment>().Property(a => a.Status).HasMaxLength(20);
+            modelBuilder.Entity<AdminOrderAssignment>().HasOne(a => a.Order).WithMany()
+                .HasForeignKey(a => a.OrderId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<AdminOrderAssignment>().HasOne(a => a.User).WithMany()
+                .HasForeignKey(a => a.UserId).OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<ChatReadState>().HasKey(r => new { r.UserId, r.OrderId, r.Channel });
             modelBuilder.Entity<ChatReadState>().Property(r => r.Channel).HasMaxLength(20);

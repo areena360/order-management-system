@@ -20,9 +20,9 @@ namespace OMS_Backend.Services
         }
 
         // OWNERSHIP GUARD
-        private static void EnsureOwnership(Order order, int userId, bool isCustomer)
+        private async Task EnsureOwnership(Order order, int userId, bool isCustomer)
         {
-            if (!OrderVisibility.CanAccess(order, userId, isCustomer))
+            if (!await _db.Orders.Where(OrderVisibility.ForUser(_db, userId, isCustomer)).AnyAsync(o => o.Id == order.Id))
                 throw new NotFoundException(nameof(Order), order.Id);
         }
 
@@ -31,7 +31,8 @@ namespace OMS_Backend.Services
         // =====================================================================
         public async Task<PagedResult<OrderListDto>> GetOrdersAsync(OrderQueryDto q, int userId, bool isCustomer)
         {
-            var query = _db.Orders.AsNoTracking().Where(OrderVisibility.ForUser(userId, isCustomer));
+            var restricted = await OrderVisibility.IsRestrictedAsync(_db, userId);
+            var query = _db.Orders.AsNoTracking().Where(OrderVisibility.ForUser(_db, userId, isCustomer));
 
             if (q.Source == "WooCommerce" || q.Source == "Shopify")
                 query = _wooEnabled
@@ -81,6 +82,11 @@ namespace OMS_Backend.Services
                 .Select(o => new OrderListDto
                 {
                     Id = o.Id,
+                    AssignedUserIds = _db.AdminOrderAssignments.Where(a => a.OrderId == o.Id
+                        && a.User.RoleId == a.RoleId && a.User.IsActive && !a.User.IsDeleted)
+                        .Select(a => a.UserId).ToList(),
+                    AssignmentStatus = restricted ? _db.AdminOrderAssignments
+                        .Where(a => a.OrderId == o.Id && a.UserId == userId).Select(a => a.Status).FirstOrDefault() : null,
                     ManufacturerOrderNumber = o.ManufacturerOrderNumber,
                     CustomerOrderNumber = o.CustomerOrderNumber,
                     CustomerName = o.Customer.FirstName + " " + o.Customer.LastName,
@@ -197,9 +203,13 @@ namespace OMS_Backend.Services
                 .FirstOrDefaultAsync(o => o.Id == id && !o.IsDeleted)
                 ?? throw new NotFoundException(nameof(Order), id);
 
-            EnsureOwnership(order, userId, isCustomer);
+            await EnsureOwnership(order, userId, isCustomer);
 
-            return await MapDetailsAsync(order);
+            var details = await MapDetailsAsync(order);
+            if (await OrderVisibility.IsRestrictedAsync(_db, userId))
+                details.AssignmentStatus = await _db.AdminOrderAssignments
+                    .Where(a => a.OrderId == id && a.UserId == userId).Select(a => a.Status).SingleOrDefaultAsync();
+            return details;
         }
 
         private async Task<OrderDetailsDto> MapDetailsAsync(Order o)
@@ -330,6 +340,8 @@ namespace OMS_Backend.Services
         // =====================================================================
         public async Task<OrderDetailsDto> CreateOrderAsync(CreateOrderDto dto, int userId, bool isCustomer)
         {
+            if (await OrderVisibility.IsRestrictedAsync(_db, userId))
+                throw new ForbiddenAppException("Assigned-orders access does not allow changing orders.");
             if (!await OrderFieldPermissions.CanEditAsync(_db, userId, "Order Amount")) dto.Amount = null;
             if (!await OrderFieldPermissions.CanEditAsync(_db, userId, "Order Tracking")) dto.TrackingNumber = null;
 
@@ -454,10 +466,12 @@ namespace OMS_Backend.Services
         // =====================================================================
         public async Task<OrderDetailsDto> UpdateOrderAsync(int id, UpdateOrderDto dto, int userId, bool isCustomer)
         {
+            if (await OrderVisibility.IsRestrictedAsync(_db, userId))
+                throw new ForbiddenAppException("Assigned-orders access does not allow changing orders.");
             var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == id && !o.IsDeleted)
                 ?? throw new NotFoundException(nameof(Order), id);
 
-            EnsureOwnership(order, userId, isCustomer);
+            await EnsureOwnership(order, userId, isCustomer);
 
             // Preserve restricted fields even when a client submits modified values.
             if (!await OrderFieldPermissions.CanEditAsync(_db, userId, "Order Amount")) dto.Amount = order.Amount;
@@ -540,10 +554,12 @@ namespace OMS_Backend.Services
         // =====================================================================
         public async Task<OrderDetailsDto> UpdateOrderStatusAsync(int id, UpdateOrderStatusDto dto, int userId, bool isCustomer)
         {
+            if (await OrderVisibility.IsRestrictedAsync(_db, userId))
+                throw new ForbiddenAppException("Assigned-orders access does not allow changing orders.");
             var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == id && !o.IsDeleted)
                 ?? throw new NotFoundException(nameof(Order), id);
 
-            EnsureOwnership(order, userId, isCustomer);
+            await EnsureOwnership(order, userId, isCustomer);
 
             var statusExists = await _db.LookupItems
                 .Where(OrderStatusCatalog.Selectable)
@@ -575,6 +591,8 @@ namespace OMS_Backend.Services
         // =====================================================================
         public async Task<AssignOrdersResultDto> AssignOrdersAsync(AssignOrdersDto dto, int userId, bool isCustomer)
         {
+            if (await OrderVisibility.IsRestrictedAsync(_db, userId))
+                throw new ForbiddenAppException("Assigned-orders access does not allow changing orders.");
             if (dto?.OrderIds == null || dto.OrderIds.Count == 0)
                 throw new ValidationAppException("No orders selected for assignment.");
 
@@ -607,10 +625,12 @@ namespace OMS_Backend.Services
         // =====================================================================
         public async Task<List<OrderImageDto>> AddOrderImagesAsync(int orderId, List<IFormFile> files, int userId, bool isCustomer)
         {
+            if (await OrderVisibility.IsRestrictedAsync(_db, userId))
+                throw new ForbiddenAppException("Assigned-orders access does not allow changing orders.");
             var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == orderId && !o.IsDeleted)
                 ?? throw new NotFoundException(nameof(Order), orderId);
 
-            EnsureOwnership(order, userId, isCustomer);
+            await EnsureOwnership(order, userId, isCustomer);
 
             var allowedExt = new[] { ".jpg", ".jpeg", ".png", ".webp" };
             const long maxSize = 5 * 1024 * 1024;
@@ -654,10 +674,12 @@ namespace OMS_Backend.Services
 
         public async Task DeleteOrderImageAsync(int orderId, int imageId, int userId, bool isCustomer)
         {
+            if (await OrderVisibility.IsRestrictedAsync(_db, userId))
+                throw new ForbiddenAppException("Assigned-orders access does not allow changing orders.");
             var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == orderId && !o.IsDeleted)
                 ?? throw new NotFoundException(nameof(Order), orderId);
 
-            EnsureOwnership(order, userId, isCustomer);
+            await EnsureOwnership(order, userId, isCustomer);
 
             var image = await _db.OrderImages
                 .FirstOrDefaultAsync(x => x.Id == imageId && x.OrderId == orderId);
@@ -674,11 +696,13 @@ namespace OMS_Backend.Services
         // =====================================================================
         public async Task DeleteOrderAsync(int id, int userId, bool isCustomer)
         {
+            if (await OrderVisibility.IsRestrictedAsync(_db, userId))
+                throw new ForbiddenAppException("Assigned-orders access does not allow changing orders.");
             var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == id && !o.IsDeleted);
 
             if (order == null) throw new NotFoundException(nameof(Order), id);
 
-            EnsureOwnership(order, userId, isCustomer);
+            await EnsureOwnership(order, userId, isCustomer);
 
             order.IsDeleted = true;
             order.IsActive = false;
@@ -695,7 +719,7 @@ namespace OMS_Backend.Services
             var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == orderId && !o.IsDeleted)
                 ?? throw new NotFoundException(nameof(Order), orderId);
 
-            EnsureOwnership(order, userId, isCustomer);
+            await EnsureOwnership(order, userId, isCustomer);
 
             return await _db.InventoryBills
                 .Where(b => b.OrderId == orderId && !b.IsDeleted)
@@ -712,11 +736,13 @@ namespace OMS_Backend.Services
 
         public async Task<InventoryBillDto> AddInventoryBillAsync(int orderId, SaveInventoryBillDto dto, int userId, bool isCustomer)
         {
+            if (await OrderVisibility.IsRestrictedAsync(_db, userId))
+                throw new ForbiddenAppException("Assigned-orders access does not allow changing orders.");
             if (isCustomer) throw new ForbiddenAppException("Only staff can manage inventory bills.");
             var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == orderId && !o.IsDeleted)
                 ?? throw new NotFoundException(nameof(Order), orderId);
 
-            EnsureOwnership(order, userId, isCustomer);
+            await EnsureOwnership(order, userId, isCustomer);
 
             var billImageUrl = await SaveBillFileAsync(orderId, dto.BillImageFile);
 
@@ -744,11 +770,13 @@ namespace OMS_Backend.Services
 
         public async Task DeleteInventoryBillAsync(int orderId, int billId, int userId, bool isCustomer)
         {
+            if (await OrderVisibility.IsRestrictedAsync(_db, userId))
+                throw new ForbiddenAppException("Assigned-orders access does not allow changing orders.");
             if (isCustomer) throw new ForbiddenAppException("Only staff can manage inventory bills.");
             var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == orderId && !o.IsDeleted)
                 ?? throw new NotFoundException(nameof(Order), orderId);
 
-            EnsureOwnership(order, userId, isCustomer);
+            await EnsureOwnership(order, userId, isCustomer);
 
             var bill = await _db.InventoryBills
                 .FirstOrDefaultAsync(x => x.Id == billId && x.OrderId == orderId);
@@ -762,10 +790,12 @@ namespace OMS_Backend.Services
 
         public async Task<InventoryBillDto> UpdateInventoryBillAsync(int orderId, int billId, SaveInventoryBillDto dto, int userId, bool isCustomer)
         {
+            if (await OrderVisibility.IsRestrictedAsync(_db, userId))
+                throw new ForbiddenAppException("Assigned-orders access does not allow changing orders.");
             if (isCustomer) throw new ForbiddenAppException("Only staff can manage inventory bills.");
             var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == orderId && !o.IsDeleted)
                 ?? throw new NotFoundException(nameof(Order), orderId);
-            EnsureOwnership(order, userId, isCustomer);
+            await EnsureOwnership(order, userId, isCustomer);
             var bill = await _db.InventoryBills.FirstOrDefaultAsync(b => b.Id == billId && b.OrderId == orderId && !b.IsDeleted)
                 ?? throw new NotFoundException(nameof(InventoryBill), billId);
             var fileUrl = await SaveBillFileAsync(orderId, dto.BillImageFile);

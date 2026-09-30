@@ -1,5 +1,5 @@
 import { inject } from '@angular/core';
-import { CanActivateFn, Router } from '@angular/router';
+import { CanActivateChildFn, CanActivateFn, Router } from '@angular/router';
 import { map, of, catchError } from 'rxjs';
 import { AuthService } from '../auth/auth.service';
 import { PermissionService } from '../auth/permission.service';
@@ -15,6 +15,38 @@ export const authGuard: CanActivateFn = (_route, state) => {
 
   router.navigate(['/login'], { queryParams: { returnUrl: state.url } });
   return false;
+};
+
+// Apply to every dashboard child, including navigation within an existing layout.
+export const assignedRoleGuard: CanActivateChildFn = (route, state) => {
+  const authService = inject(AuthService);
+  const router = inject(Router);
+
+  if (!authService.getToken()) {
+    return router.createUrlTree(['/login'], { queryParams: { returnUrl: state.url } });
+  }
+
+  if (route.routeConfig?.path === 'profile') {
+    return true;
+  }
+
+  const denied = router.parseUrl('/dashboard/profile');
+  if (!authService.hasAssignedRole()) return denied;
+
+  const permissions = inject(PermissionService);
+  const paths = route.pathFromRoot.map(part => part.routeConfig?.path);
+  const screen = paths.includes('orders') || paths.some(path => path?.startsWith('integrations/'))
+    ? 'Orders'
+    : route.routeConfig?.path === 'manage-users' ? 'Manage Users'
+    : route.routeConfig?.path === 'manage-roles' ? 'Manage Roles'
+    : route.routeConfig?.path === '' ? 'Dashboard' : null;
+  return permissions.load().pipe(
+    map(() => {
+      if (paths.some(path => path?.startsWith('integrations/')) && permissions.adminAssignedOrdersOnly()) return denied;
+      return screen && permissions.canView(screen) ? true : denied;
+    }),
+    catchError(() => of(denied))
+  );
 };
 
 // Blocks route unless logged-in user's role is "Super Admin"
@@ -86,8 +118,7 @@ export const ordersGuard: CanActivateFn = () => {
       return router.parseUrl('/dashboard');
     }),
     catchError(() => {
-      // Error ki surat mein access allow karo
-      return of(true);
+      return of(router.parseUrl('/dashboard/profile'));
     })
   );
 };
@@ -117,7 +148,7 @@ export const ordersAddGuard: CanActivateFn = () => {
       return router.parseUrl('/dashboard/orders');
     }),
     catchError(() => {
-      return of(true);
+      return of(router.parseUrl('/dashboard/profile'));
     })
   );
 };
@@ -147,7 +178,7 @@ export const ordersEditGuard: CanActivateFn = () => {
       return router.parseUrl('/dashboard/orders');
     }),
     catchError(() => {
-      return of(true);
+      return of(router.parseUrl('/dashboard/profile'));
     })
   );
 };

@@ -21,7 +21,7 @@ namespace OMS_Backend.Services
             isCustomer = await IsCustomerAsync(userId);
             var groupAllowed = !isCustomer && await CanUserAccessGroupChatAsync(userId);
             var customerAllowed = await ChatAccess.CanAccess(_db, userId, false);
-            var orders = _db.Orders.Where(OrderVisibility.ForUser(userId, isCustomer))
+            var orders = _db.Orders.Where(OrderVisibility.ForUser(_db, userId, isCustomer))
                 .Where(o => !o.RequiresCustomerAssignment || o.IsAssigned).Select(o => o.Id);
             return await _db.ChatMessages.AsNoTracking()
                 .Where(m => !m.IsDeleted && m.SenderUserId != userId && orders.Contains(m.OrderId)
@@ -40,7 +40,7 @@ namespace OMS_Backend.Services
                 throw new ValidationAppException("Invalid chat channel.");
             if (!await ChatAccess.CanAccess(_db, userId, dto.Channel == "Group"))
                 throw new ForbiddenAppException("You cannot view this chat.");
-            if (!await _db.Orders.Where(OrderVisibility.ForUser(userId, isCustomer))
+            if (!await _db.Orders.Where(OrderVisibility.ForUser(_db, userId, isCustomer))
                 .AnyAsync(o => o.Id == orderId && (!o.RequiresCustomerAssignment || o.IsAssigned)))
                 throw new NotFoundException(nameof(Order), orderId);
             if (!await _db.ChatMessages.AnyAsync(m => m.Id == dto.LastReadMessageId
@@ -69,7 +69,7 @@ namespace OMS_Backend.Services
                 throw new ValidationAppException("Message is too long.");
 
             var order = await _db.Orders
-                .Where(OrderVisibility.ForUser(senderUserId, isCustomer))
+                .Where(OrderVisibility.ForUser(_db, senderUserId, isCustomer))
                 .Where(o => o.Id == orderId && (!o.RequiresCustomerAssignment || o.IsAssigned))
                 .Select(o => new { o.Id, o.CustomerId })
                 .FirstOrDefaultAsync()
@@ -112,7 +112,7 @@ namespace OMS_Backend.Services
             isCustomer = await IsCustomerAsync(currentUserId);
             if (!await ChatAccess.CanAccess(_db, currentUserId, false)) throw new ForbiddenAppException("You cannot view customer chat.");
             var order = await _db.Orders
-                .Where(OrderVisibility.ForUser(currentUserId, isCustomer))
+                .Where(OrderVisibility.ForUser(_db, currentUserId, isCustomer))
                 .Where(o => o.Id == orderId && (!o.RequiresCustomerAssignment || o.IsAssigned))
                 .Select(o => new { o.Id, o.CustomerId })
                 .FirstOrDefaultAsync()
@@ -152,7 +152,7 @@ namespace OMS_Backend.Services
                 throw new ValidationAppException("Message is too long.");
 
             var order = await _db.Orders
-                .Where(OrderVisibility.ForUser(senderUserId, false))
+                .Where(OrderVisibility.ForUser(_db, senderUserId, false))
                 .Where(o => o.Id == orderId && (!o.RequiresCustomerAssignment || o.IsAssigned))
                 .Select(o => new { o.Id, o.CustomerId })
                 .FirstOrDefaultAsync()
@@ -196,7 +196,7 @@ namespace OMS_Backend.Services
         public async Task<List<ChatMessageDto>> GetGroupConversationAsync(int orderId, int userId)
         {
             if (!await ChatAccess.CanAccess(_db, userId, true)) throw new ForbiddenAppException("You cannot view group chat.");
-            if (!await _db.Orders.Where(OrderVisibility.ForUser(userId, false)).AnyAsync(o => o.Id == orderId)) throw new NotFoundException(nameof(Order), orderId);
+            if (!await _db.Orders.Where(OrderVisibility.ForUser(_db, userId, false)).AnyAsync(o => o.Id == orderId)) throw new NotFoundException(nameof(Order), orderId);
             return await _db.ChatMessages
                 .Where(m => m.OrderId == orderId
                          && !m.IsDeleted
@@ -240,8 +240,11 @@ namespace OMS_Backend.Services
         public async Task<List<string>> GetRecipientGroupsAsync(int orderId, bool group)
         {
             var customerId = await _db.Orders.Where(o => o.Id == orderId).Select(o => o.CustomerId).SingleAsync();
+            var restricted = OrderVisibility.RestrictedUsers(_db);
             var ids = await ChatAccess.AllowedUsers(_db, group)
                 .Where(u => u.Role!.Name != "Customer" || u.Id == customerId)
+                .Where(u => !restricted.Any(r => r.Id == u.Id) || _db.AdminOrderAssignments
+                    .Any(a => a.OrderId == orderId && a.UserId == u.Id && a.RoleId == u.RoleId))
                 .Select(u => u.Id).ToListAsync();
             return ids.Select(id => $"user_{id}").ToList();
         }

@@ -59,6 +59,7 @@
 
       <p *ngIf="!rolesLoading && !rolesError && !roleOptions.length" class="p-4 text-sm text-gray-500">No roles available. Add a role to get started.</p>
       <p *ngIf="rolesLoading" class="p-4 text-sm text-gray-500">Loading roles...</p>
+      <p *ngIf="assignmentPermissionError" role="alert" class="p-4 text-sm text-red-700">{{ assignmentPermissionError }}</p>
       <div *ngIf="rolesError" role="alert" class="p-4 text-sm text-red-700">{{ rolesError }} <button (click)="loadRoles()" class="underline">Retry</button></div>
       <div *ngIf="permissionsError" role="alert" class="p-4 text-sm text-red-700">{{ permissionsError }} <button (click)="fetchPermissions()" class="underline">Retry</button></div>
       <div *ngIf="selectedRoleInactive" class="p-4 text-sm text-amber-800">This role is inactive and cannot be assigned to users.
@@ -73,6 +74,7 @@
             <tr class="bg-gray-50 border-b border-gray-200">
               <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Screen / Module</th>
               <th class="px-5 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Visible</th>
+              <th class="px-5 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Admin Assigned Orders</th>
               <th class="px-5 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Add</th>
               <th class="px-5 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Edit</th>
               <th class="px-5 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Delete</th>
@@ -88,6 +90,9 @@
 
               <td class="px-5 py-3.5 font-medium text-gray-800">
                 {{ row.screenKey }}
+                <p *ngIf="row.screenKey === 'Orders'" class="mt-1 text-xs font-normal text-gray-500">
+                  Admin Assigned Orders limits users with the {{ selectedRoleName }} role to their own assignments. Saves immediately.
+                </p>
                 <p *ngIf="isChatScreen(row.screenKey)" class="mt-1 text-xs font-normal text-gray-500">
                   Visible: show chat · Send Messages: allow sending messages
                 </p>
@@ -95,10 +100,17 @@
 
               <td class="px-5 py-3.5 text-center">
                 <input type="checkbox"
-                  [disabled]="saving || (selectedRoleName === 'Customer' && row.screenKey === 'Order Group Chat')"
+                  [disabled]="saving || row.adminAssignedOnly || (selectedRoleName === 'Customer' && row.screenKey === 'Order Group Chat')"
                   [checked]="row.canView"
                   (change)="toggleAllForRow(row, !row.canView)"
                   class="h-4 w-4 rounded border-gray-300 text-gray-800 focus:ring-gray-800 accent-gray-800 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed" />
+              </td>
+
+              <td class="px-5 py-3.5 text-center">
+                <input *ngIf="row.screenKey === 'Orders'" type="checkbox" aria-label="Admin assigned orders only"
+                  [checked]="row.adminAssignedOnly" (change)="toggleAdminAssigned(row, !row.adminAssignedOnly)"
+                  [disabled]="saving || selectedRoleName === 'Customer'"
+                  class="h-4 w-4 rounded accent-gray-800 disabled:opacity-30 cursor-pointer" />
               </td>
 
               <td class="px-5 py-3.5 text-center">

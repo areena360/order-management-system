@@ -12,6 +12,7 @@ interface ScreenPermission {
   canAdd: boolean;
   canEdit: boolean;
   canDelete: boolean;
+  adminAssignedOnly: boolean;
 }
 
 @Component({
@@ -25,6 +26,7 @@ export class ManageRolesComponent implements OnInit {
   rolesLoading = false;
   rolesError = '';
   permissionsError = '';
+  assignmentPermissionError = '';
 
   selectedRoleId: number | null = null;
   showRoleMenu = false;
@@ -127,7 +129,8 @@ export class ManageRolesComponent implements OnInit {
           canView: d.canView,
           canAdd: d.canAdd,
           canEdit: d.canEdit,
-          canDelete: d.canDelete
+          canDelete: d.canDelete,
+          adminAssignedOnly: d.adminAssignedOnly === true
         }));
         this.loading = false;
       },
@@ -136,6 +139,7 @@ export class ManageRolesComponent implements OnInit {
   }
 
   toggleAllForRow(row: ScreenPermission, checked: boolean): void {
+    if (row.adminAssignedOnly) return;
     row.canView = checked;
     if (!checked) {
       row.canAdd = false;
@@ -146,6 +150,24 @@ export class ManageRolesComponent implements OnInit {
 
   isNoActionScreen(screenKey: string): boolean {
     return screenKey === 'Dashboard' || screenKey === 'Manage Roles';
+  }
+
+  toggleAdminAssigned(row: ScreenPermission, checked: boolean): void {
+    if (row.screenKey !== 'Orders' || this.selectedRoleName === 'Customer' || !this.selectedRoleId || this.saving || this.loading) return;
+    const previous = { ...row };
+    row.adminAssignedOnly = checked;
+    if (checked) row.canView = row.canAdd = row.canEdit = row.canDelete = false;
+    this.saving = true;
+    this.assignmentPermissionError = '';
+    // Save only this row; other unsaved permission edits stay in the matrix.
+    this.http.put(this.apiUrl, { roleId: this.selectedRoleId, permissions: [{ ...row }] }).subscribe({
+      next: () => { this.saving = false; },
+      error: () => {
+        Object.assign(row, previous);
+        this.saving = false;
+        this.assignmentPermissionError = 'Assignment access was not saved. Please retry.';
+      }
+    });
   }
 
   isChatScreen(key: string): boolean {
@@ -163,7 +185,8 @@ export class ManageRolesComponent implements OnInit {
         canView: p.canView,
         canAdd: p.canAdd,
         canEdit: p.canEdit,
-        canDelete: p.canDelete
+        canDelete: p.canDelete,
+        adminAssignedOnly: p.adminAssignedOnly
       }))
     };
     this.http.put(this.apiUrl, payload).subscribe({

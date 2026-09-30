@@ -19,6 +19,11 @@ if (!(host.Equals(Environment.MachineName, StringComparison.OrdinalIgnoreCase)
     throw new InvalidOperationException("This smoke test is restricted to a local development SQL Server.");
 await using var db = new OMSDbContext(new DbContextOptionsBuilder<OMSDbContext>().UseSqlServer(connection.ConnectionString).Options);
 if (args.Contains("--chat-permissions")) { await ChatPermissionChecks.Run(db); return; }
+if (args.Contains("--live-assignment")) {
+    var roleId = int.Parse(args.Single(a => a.StartsWith("--role-id="))[10..]);
+    await LiveAssignmentChecks.Run(db, config, roleId, args.Contains("--enable")); return;
+}
+if (args.Contains("--admin-assignment")) { await AdminAssignmentChecks.Run(db, config, args.Contains("--apply")); return; }
 if (args.Contains("--chat-read")) { await ChatReadChecks.Run(db, args.Contains("--apply")); return; }
 if (args.Contains("--forms"))
 {

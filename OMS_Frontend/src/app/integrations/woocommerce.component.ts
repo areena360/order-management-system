@@ -16,7 +16,6 @@ interface Store {
   defaultGenderId: number; defaultMaterialId: number; defaultStatusId: number;
   statusMappingsJson: string; mappings: Record<string, string>;
 }
-interface SyncLog { id: number; externalOrderId: number | null; createdDate: string; result: string; message: string; }
 
 @Component({
   selector: 'app-woocommerce',
@@ -32,20 +31,31 @@ export class WooCommerceComponent implements OnInit {
   auth = inject(AuthService);
   private base = `${environment.apiUrl}/integrations/woocommerce`;
   busy = signal(false); error = signal(''); message = signal('');
-  stores = signal<Store[]>([]); logs = signal<SyncLog[]>([]); logStore = signal<Store | null>(null);
+  stores = signal<Store[]>([]);
   review = signal<{storeName: string; storeUrl: string; expiresAt: string} | null>(null);
   code = this.route.snapshot.queryParamMap.get('code') ?? '';
   genders: LookupItem[] = []; materials: LookupItem[] = []; statuses: LookupItem[] = []; owners: CustomerOption[] = [];
   ownerUserId: number | null = null; defaultGenderId = 0; defaultMaterialId = 0; defaultStatusId = 0;
-  accepted = false; disconnecting = signal<Store | null>(null);
-  wcStatuses = ['pending', 'processing', 'on-hold', 'completed', 'cancelled', 'refunded', 'failed'];
-  wcOptions = this.wcStatuses.map(id => ({id, name: id.charAt(0).toUpperCase() + id.slice(1).replace('-', ' ')}));
+  storeUrl = '';
+  openStore() {
+    try {
+      const url = new URL(this.storeUrl.includes('://') ? this.storeUrl.trim() : 'https://' + this.storeUrl.trim());
+      if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password || url.search || url.hash) throw new Error();
+      url.pathname = url.pathname.replace(/\/$/, '') + '/wp-admin/admin.php';
+      url.search = 'page=oms-woocommerce';
+      window.location.assign(url.toString());
+    } catch { this.error.set('Enter a valid store address, such as https://your-store.com.'); }
+  }
+   disconnecting = signal<Store | null>(null);
   get ownerOptions() { return this.owners.map(o => ({id: o.id, name: `${o.name} — ${o.email}`})); }
   get admin() { return ['Admin', 'Super Admin'].includes(this.auth.currentRole() ?? ''); }
   async ngOnInit() {
     await this.run(async () => {
       const [g, m, s] = await Promise.all([firstValueFrom(this.lookup.getByType(3)), firstValueFrom(this.lookup.getByType(4)), firstValueFrom(this.lookup.getByType(1))]);
       this.genders = g; this.materials = m; this.statuses = s;
+      this.defaultGenderId = g[0]?.id ?? 0; this.defaultMaterialId = m[0]?.id ?? 0;
+      this.defaultStatusId = s.find(x => x.name.toLowerCase() === 'new')?.id ?? s.find(x => x.name.toLowerCase() === 'assign')?.id ?? 0;
+      if (!this.defaultGenderId || !this.defaultMaterialId || !this.defaultStatusId) throw {error: {message: 'Your administrator needs to configure order defaults before you can connect.'}};
       if (this.admin) this.owners = await firstValueFrom(this.http.get<CustomerOption[]>(`${this.base}/owners`));
       if (this.code) this.review.set(await firstValueFrom(this.http.get<{storeName: string; storeUrl: string; expiresAt: string}>(`${this.base}/authorize/review`, {params: {code: this.code}})));
       await this.load();
@@ -60,7 +70,7 @@ export class WooCommerceComponent implements OnInit {
   }
   private async load() {
     const stores = await firstValueFrom(this.http.get<Store[]>(`${this.base}/connections`));
-    this.stores.set(stores.map(s => ({...s, mappings: JSON.parse(s.statusMappingsJson)})));
+    this.stores.set(stores);
   }
   refresh() { return this.run(() => this.load()); }
   approve() { return this.run(async () => {
@@ -72,23 +82,9 @@ export class WooCommerceComponent implements OnInit {
     await this.router.navigate([], {relativeTo: this.route, queryParams: {}, replaceUrl: true});
     await this.load(); this.message.set('Store authorized. Return to WordPress and click Finish connection.');
   }); }
-  save(s: Store) { return this.run(async () => {
-    const statusMappings = Object.fromEntries(Object.entries(s.mappings)
-      .filter(([id, value]) => !!value && this.statuses.some(status => status.id === Number(id))));
-    await firstValueFrom(this.http.put(`${this.base}/connections/${s.id}/settings`, {...s, statusMappings}));
-    this.message.set('Defaults and status mappings saved.');
-  }); }
-  sync(s: Store) { return this.run(async () => {
-    await firstValueFrom(this.http.post(`${this.base}/connections/${s.id}/sync`, {}));
-    this.message.set('Reconciliation requested. WordPress will pick it up on its next scheduled run.');
-  }); }
   disconnect(s: Store) { return this.run(async () => {
     await firstValueFrom(this.http.post(`${this.base}/connections/${s.id}/disconnect`, {}));
     this.disconnecting.set(null); await this.load(); this.message.set('Disconnected. Existing orders retained.');
   }); }
-  showLogs(s: Store, older = false) { return this.run(async () => {
-    const params: Record<string, string> = older && this.logs().length ? {before: String(this.logs()[this.logs().length - 1].id)} : {};
-    const logs = await firstValueFrom(this.http.get<SyncLog[]>(`${this.base}/connections/${s.id}/logs`, {params}));
-    this.logStore.set(s); this.logs.set(older ? [...this.logs(), ...logs] : logs);
-  }); }
+
 }

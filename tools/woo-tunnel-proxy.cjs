@@ -14,8 +14,8 @@ http.createServer((req,res) => {
   try { url = new URL(req.url, 'http://localhost'); } catch { res.writeHead(400).end(); return; }
   const p = url.pathname;
   const allowed = p.startsWith('/api/integrations/woocommerce/') ||
-    (req.method === 'POST' && p === '/api/auth/login') ||
-    (req.method === 'GET' && (/^\/api\/lookups\/by-type\/\d+$/.test(p) || /^\/api\/rolepermissions\/\d+$/i.test(p) || p === '/api/profile/me'));
+    (req.method === 'POST' && ['/api/auth/login', '/api/auth/refresh', '/api/auth/logout'].includes(p)) ||
+    (req.method === 'GET' && (/^\/api\/lookups\/by-type\/\d+$/.test(p) || /^\/api\/rolepermissions\/\d+$/i.test(p) || ['/api/profile/me', '/api/profile/permissions'].includes(p)));
   if (allowed) {
     const key = String(req.headers['cf-connecting-ip'] || req.socket.remoteAddress);
     const count = (attempts.get(key) || 0) + 1; attempts.set(key,count);

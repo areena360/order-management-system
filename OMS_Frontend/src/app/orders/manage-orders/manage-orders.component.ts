@@ -129,7 +129,6 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
       this.assignmentStatusOrder = null;
     }
   };
-  expandedAssignmentRoles = new Set<number>();
   assignmentSearch = '';
   manufacturingStatusClass = manufacturingStatusClass;
   manufacturingStatusLabel = manufacturingStatusLabel;
@@ -141,10 +140,6 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   }
   trackAssignmentRole(_index: number, role: AssignmentRole): number { return role.id; }
   selectedRoleCount(role: AssignmentRole): number { return role.users.filter(user => this.assignmentDraft.has(user.id)).length; }
-  toggleAssignmentRole(id: number): void {
-    if (this.expandedAssignmentRoles.has(id)) this.expandedAssignmentRoles.delete(id);
-    else this.expandedAssignmentRoles.add(id);
-  }
   openManufacturing(order: OrderListItem, event: MouseEvent): void {
     event.stopPropagation();
     if (!this.canAssignUsers || this.assignmentSaving) return;
@@ -176,7 +171,6 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
     if (this.assignmentOrderId === order.id) { this.assignmentOrderId = null; return; }
     this.assignmentOrderId = order.id;
     this.assignmentSearch = '';
-    this.expandedAssignmentRoles.clear();
     this.assignmentDraft = new Set(order.assignedUserIds ?? []);
     this.assignmentError = '';
     this.assignmentLoading = true;
@@ -726,6 +720,8 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
 
     this.tableResizeObserver = new ResizeObserver(() => this.updateHorizontalScrollState());
     this.tableResizeObserver.observe(el);
+    const table = el.querySelector('table');
+    if (table) this.tableResizeObserver.observe(table);
 
     setTimeout(() => this.updateHorizontalScrollState(), 0);
   }

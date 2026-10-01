@@ -34,7 +34,69 @@ interface ColumnOption { key: string; label: string; }
   standalone: true,
   imports: [CommonModule, FormsModule, FooterComponent, ChatModalComponent, OrderFormComponent, OrderDetailsComponent, ManufacturingProgressComponent],
   templateUrl: './manage-orders.component.html',
-  styles: [`.manufacturing-menu { animation: menu-enter .16s ease-out; } @keyframes menu-enter { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:none; } } @media(prefers-reduced-motion:reduce) { .manufacturing-menu { animation:none; } }`]
+  styles: [`
+    .manufacturing-menu { animation: menu-enter .16s ease-out; }
+    @keyframes menu-enter { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:none; } }
+    @media(prefers-reduced-motion:reduce) { .manufacturing-menu { animation:none; } }
+
+    /* ---- per-row horizontal grab bar ---- */
+    .row-scrollbar-row > td { padding: 0 !important; }
+    .row-scrollbar-row { border-top-width: 0 !important; }
+
+    .row-scrollbar-sticky {
+      position: sticky;
+      left: 0;
+      box-sizing: border-box;
+      padding: 4px 0 8px;
+    }
+
+    /* Full-width track */
+    .row-scrollbar-track {
+      position: relative;
+      height: 24px;                 /* taller for easier grab */
+      margin: 0 12px;               /* keep in sync with SCROLL_TRACK_INSET */
+      border-radius: 999px;
+      background: rgba(17, 24, 39, .08);
+      box-shadow: inset 0 1px 2px rgba(17, 24, 39, .08);
+      cursor: grab;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .row-scrollbar-track:hover { background: rgba(17, 24, 39, .12); }
+    .row-scrollbar-track:active { cursor: grabbing; }
+
+    /* Half-width, full-height button — light gray */
+    .row-scrollbar-thumb {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;                 /* 24px — matches track */
+      border-radius: 999px;
+      background: #d1d5db;          /* gray-300 */
+      border: 1px solid #9ca3af;    /* gray-400 — subtle definition */
+      box-shadow: 0 1px 2px rgba(17, 24, 39, .12);
+      will-change: transform;
+      transition: background-color .12s ease, border-color .12s ease;
+    }
+    .row-scrollbar-thumb::after {
+      content: '';
+      position: absolute;
+      inset: 8px 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, .55);
+    }
+
+    /* Slightly deeper gray on hover/active so it’s clearly interactive */
+    .row-scrollbar-track:hover .row-scrollbar-thumb {
+      background: #9ca3af;          /* gray-400 */
+      border-color: #6b7280;        /* gray-500 */
+    }
+    .row-scrollbar-track:active .row-scrollbar-thumb {
+      background: #6b7280;          /* gray-500 */
+      border-color: #4b5563;        /* gray-600 */
+    }
+  `]
 })
 export class ManageOrdersComponent implements OnInit, OnDestroy {
   get assignedOnly(): boolean { return this.permissionService.adminAssignedOrdersOnly(); }
@@ -48,21 +110,6 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   assignmentOptionsLoaded = false;
   assignmentSaving = false;
   assignmentError = '';
-  assignmentTop = 0;
-  assignmentLeft = 0;
-  assignmentMaxHeight = 480;
-  private assignmentTrigger: HTMLElement | null = null;
-  private readonly repositionAssignment = (event?: Event): void => {
-    if (this.assignmentOrderId === null || !this.assignmentTrigger) return;
-    if (event?.target instanceof Element && event.target.closest('#manufacturing-assignment-menu')) return;
-    const rect = this.assignmentTrigger.getBoundingClientRect();
-    this.assignmentLeft = Math.max(8, Math.min(rect.left, window.innerWidth - 376));
-    this.assignmentTop = rect.bottom + 8;
-    this.assignmentMaxHeight = Math.max(0, window.innerHeight - this.assignmentTop - 8);
-    if (rect.bottom <= 0 || rect.top >= window.innerHeight || rect.right <= 0 || rect.left >= window.innerWidth) {
-      this.assignmentOrderId = null;
-    }
-  };
   assignmentStatusSavingId: number | null = null;
   assignmentStatusError = '';
   manufacturingOrder: OrderListItem | null = null;
@@ -100,7 +147,7 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   }
   openManufacturing(order: OrderListItem, event: MouseEvent): void {
     event.stopPropagation();
-    if (!this.canAssignUsers) return;
+    if (!this.canAssignUsers || this.assignmentSaving) return;
     this.assignmentOrderId = null;
     this.manufacturingOrder = order;
   }
@@ -132,12 +179,6 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
     this.expandedAssignmentRoles.clear();
     this.assignmentDraft = new Set(order.assignedUserIds ?? []);
     this.assignmentError = '';
-    this.assignmentTrigger = event.currentTarget as HTMLElement;
-    this.repositionAssignment();
-    // Capture nested layout/table scrolling as well as page scrolling so the menu
-    // stays attached to its button instead of remaining at a viewport coordinate.
-    document.addEventListener('scroll', this.repositionAssignment, true);
-    window.addEventListener('resize', this.repositionAssignment);
     this.assignmentLoading = true;
     this.assignmentOptionsLoaded = false;
     this.ordersService.getAssignmentOptions().pipe(takeUntil(this.destroy$),
@@ -195,6 +236,30 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   private tableResizeObserver?: ResizeObserver;
 
   hasHorizontalScroll = false;
+
+  // =================== Per-row horizontal grab bar ===================
+  /** Keep in sync with `.row-scrollbar-track { margin: 0 12px }` in the styles. */
+  private readonly SCROLL_TRACK_INSET = 12;
+  /** The draggable button occupies half of the track width. */
+  private readonly SCROLL_THUMB_WIDTH_RATIO = 0.5;
+
+  tableViewportWidth = 0;
+  scrollThumbWidth = 0;
+  scrollThumbLeft = 0;
+  tableMaxScroll = 0;
+  tableScrollLeft = 0;
+
+  private draggingScrollbar = false;
+  private dragTrackLeft = 0;
+  private dragGrabOffset = 0;
+  private dragTravel = 0;
+  private dragMaxScroll = 0;
+
+  get tableColspan(): number {
+    return ((this.isCustomer || this.assignedOnly) ? 6 : 7)
+      + this.visibleColumnCount()
+      + (this.canAssignUsers ? 1 : 0);
+  }
 
   orders: OrderListItem[] = [];
   totalCount = 0;
@@ -587,10 +652,9 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.onScrollbarPointerUp();
     document.removeEventListener('scroll', this.repositionAssignmentStatus, true);
     window.removeEventListener('resize', this.repositionAssignmentStatus);
-    document.removeEventListener('scroll', this.repositionAssignment, true);
-    window.removeEventListener('resize', this.repositionAssignment);
     this.unregisterGroupChatListener?.();
     if (this.unregisterChatListener) this.unregisterChatListener();
     this.tableResizeObserver?.disconnect();
@@ -649,11 +713,134 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   private updateHorizontalScrollState(): void {
     const el = this.tableScrollEl?.nativeElement;
     const hasOverflow = !!el && el.scrollWidth > el.clientWidth + 2;
-    if (hasOverflow !== this.hasHorizontalScroll) {
-      this.hasHorizontalScroll = hasOverflow;
-      this.cdr.detectChanges();
+    const overflowChanged = hasOverflow !== this.hasHorizontalScroll;
+    this.hasHorizontalScroll = hasOverflow;
+
+    const metricsChanged = this.updateScrollbarMetrics();
+
+    if (overflowChanged || metricsChanged) {
+      try { this.cdr.detectChanges(); } catch { /* view already being checked */ }
     }
   }
+
+  /** Recomputes the sticky thumb size/position for every row bar. Returns true when something changed. */
+  private updateScrollbarMetrics(): boolean {
+    const el = this.tableScrollEl?.nativeElement;
+    if (!el) {
+      const changed = this.tableViewportWidth !== 0 || this.scrollThumbWidth !== 0 || this.scrollThumbLeft !== 0;
+      this.tableViewportWidth = this.scrollThumbWidth = this.scrollThumbLeft = 0;
+      this.tableMaxScroll = this.tableScrollLeft = 0;
+      return changed;
+    }
+
+    const viewport = el.clientWidth;
+    const content = el.scrollWidth;
+    const maxScroll = Math.max(0, content - viewport);
+    // Full-width track.
+    const trackWidth = Math.max(0, viewport - this.SCROLL_TRACK_INSET * 2);
+    // Fixed half-width button.
+    const thumbWidth = trackWidth * this.SCROLL_THUMB_WIDTH_RATIO;
+    const travel = Math.max(0, trackWidth - thumbWidth);
+
+    const thumbLeft = maxScroll > 0 && travel > 0
+      ? (el.scrollLeft / maxScroll) * travel
+      : 0;
+
+    const changed =
+      this.tableViewportWidth !== viewport ||
+      this.scrollThumbWidth !== thumbWidth ||
+      this.scrollThumbLeft !== thumbLeft ||
+      this.tableMaxScroll !== maxScroll ||
+      this.tableScrollLeft !== el.scrollLeft;
+
+    if (!changed) return false;
+
+    this.tableViewportWidth = viewport;
+    this.scrollThumbWidth = thumbWidth;
+    this.scrollThumbLeft = thumbLeft;
+    this.tableMaxScroll = maxScroll;
+    this.tableScrollLeft = el.scrollLeft;
+    return true;
+  }
+
+  // =================== Horizontal scroll helpers ===================
+  onTableScroll(): void {
+    this.updateScrollbarMetrics();
+  }
+
+  /**
+   * Wheel over the orders table scrolls the table horizontally.
+   * Once the table hits either edge the event is released so the page scrolls
+   * vertically as usual (native scroll-chaining behaviour).
+   */
+  onTableWheel(event: WheelEvent): void {
+    const el = this.tableScrollEl?.nativeElement;
+    if (!el || !this.hasHorizontalScroll) return;
+
+    const maxScroll = el.scrollWidth - el.clientWidth;
+    if (maxScroll <= 0) return;
+
+    const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+    if (!delta) return;
+
+    const atStart = el.scrollLeft <= 0;
+    const atEnd = el.scrollLeft >= maxScroll - 1;
+    if ((delta < 0 && atStart) || (delta > 0 && atEnd)) return; // let the page scroll
+
+    event.preventDefault();
+    el.scrollLeft = Math.max(0, Math.min(maxScroll, el.scrollLeft + delta));
+    this.updateScrollbarMetrics();
+  }
+
+  onScrollbarPointerDown(event: PointerEvent): void {
+    const el = this.tableScrollEl?.nativeElement;
+    if (!el || !this.hasHorizontalScroll || event.button !== 0) return;
+
+    const track = event.currentTarget as HTMLElement;
+    const trackRect = track.getBoundingClientRect();
+    const maxScroll = Math.max(0, el.scrollWidth - el.clientWidth);
+    const travel = Math.max(0, trackRect.width - this.scrollThumbWidth);
+    if (travel <= 0 || maxScroll <= 0) return;
+
+    event.preventDefault();
+
+    const onThumb = (event.target as HTMLElement).classList.contains('row-scrollbar-thumb');
+    if (onThumb) {
+      this.dragGrabOffset = event.clientX - trackRect.left - this.scrollThumbLeft;
+    } else {
+      // Click on the empty track → centre the thumb on the cursor, then keep dragging.
+      this.dragGrabOffset = this.scrollThumbWidth / 2;
+      const targetLeft = Math.max(0, Math.min(travel, event.clientX - trackRect.left - this.dragGrabOffset));
+      el.scrollLeft = (targetLeft / travel) * maxScroll;
+      this.updateScrollbarMetrics();
+    }
+
+    this.draggingScrollbar = true;
+    this.dragTrackLeft = trackRect.left;
+    this.dragTravel = travel;
+    this.dragMaxScroll = maxScroll;
+
+    document.addEventListener('pointermove', this.onScrollbarPointerMove);
+    document.addEventListener('pointerup', this.onScrollbarPointerUp);
+    document.addEventListener('pointercancel', this.onScrollbarPointerUp);
+  }
+
+  private readonly onScrollbarPointerMove = (event: PointerEvent): void => {
+    if (!this.draggingScrollbar) return;
+    const el = this.tableScrollEl?.nativeElement;
+    if (!el || this.dragTravel <= 0) return;
+
+    const thumbLeft = Math.max(0, Math.min(this.dragTravel, event.clientX - this.dragTrackLeft - this.dragGrabOffset));
+    el.scrollLeft = (thumbLeft / this.dragTravel) * this.dragMaxScroll;
+    this.updateScrollbarMetrics();
+  };
+
+  private readonly onScrollbarPointerUp = (): void => {
+    this.draggingScrollbar = false;
+    document.removeEventListener('pointermove', this.onScrollbarPointerMove);
+    document.removeEventListener('pointerup', this.onScrollbarPointerUp);
+    document.removeEventListener('pointercancel', this.onScrollbarPointerUp);
+  };
 
   @HostListener('window:resize')
   onWindowResize(): void { this.updateHorizontalScrollState(); }
@@ -1190,8 +1377,6 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: Event): void {
     if (!(event.target as HTMLElement).closest('[data-assignment-status]')) this.assignmentStatusOrder = null;
-    if (!(event.target as HTMLElement).closest('[data-user-assignment]') && !this.assignmentSaving)
-      this.assignmentOrderId = null;
     const target = event.target as HTMLElement;
     if (this.showDeleteModal || this.showImageModal || this.showChatModal || this.showAddOrderModal || this.showAssignModal || this.showEditOrderModal) return;
 

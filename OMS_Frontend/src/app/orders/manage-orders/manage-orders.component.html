@@ -379,7 +379,12 @@
         Loading orders...
       </div>
 
-      <div #tableScroll *ngIf="!loading" class="overflow-x-auto">
+      <!-- ============================================================= -->
+      <!-- Table wrapper — wheel + scroll now bound for horizontal UX    -->
+      <!-- ============================================================= -->
+      <div #tableScroll *ngIf="!loading" class="overflow-x-auto"
+           (scroll)="onTableScroll()"
+           (wheel)="onTableWheel($event)">
 
         <table class="min-w-[1400px] w-full divide-y divide-gray-200 text-sm">
 
@@ -475,20 +480,21 @@
 
             <ng-container *ngIf="loading">
               <tr *ngFor="let row of [1,2,3,4,5]">
-                <td [attr.colspan]="((isCustomer || assignedOnly) ? 6 : 7) + visibleColumnCount() + (canAssignUsers ? 1 : 0)" class="px-4 py-4">
+                <td [attr.colspan]="tableColspan" class="px-4 py-4">
                   <div class="h-5 w-full animate-pulse rounded bg-gray-100"></div>
                 </td>
               </tr>
             </ng-container>
 
             <tr *ngIf="!loading && orders.length === 0">
-              <td [attr.colspan]="((isCustomer || assignedOnly) ? 6 : 7) + visibleColumnCount() + (canAssignUsers ? 1 : 0)"
+              <td [attr.colspan]="tableColspan"
                 class="px-6 py-10 text-center text-sm text-gray-400">
                 No orders found.
               </td>
             </tr>
 
-            <tr *ngFor="let order of orders; let i = index" (click)="viewOrder(order)"
+            <ng-container *ngFor="let order of orders; let i = index">
+            <tr (click)="viewOrder(order)"
               class="cursor-pointer"
               [ngClass]="rowColorClass(i)">
 
@@ -562,14 +568,9 @@
               </td>
 
               <td *ngIf="canAssignUsers" class="px-4 py-4 whitespace-nowrap" data-user-assignment (click)="$event.stopPropagation()">
-                <button type="button" (click)="openUserAssignments(order, $event)" [attr.aria-expanded]="assignmentOrderId === order.id"
-                  aria-controls="manufacturing-assignment-menu"
-                  class="flex items-center gap-2 rounded-lg border border-teal-200 bg-teal-50 px-3 py-2 text-xs font-semibold text-teal-800 transition hover:bg-teal-100 hover:shadow-sm focus-visible:ring-2 focus-visible:ring-teal-500 cursor-pointer">
-                  Assign to Manufacturing Team <span *ngIf="order.assignedUserIds?.length" class="rounded-full bg-white px-1.5">{{ order.assignedUserIds?.length }}</span>
-                  <svg class="h-3.5 w-3.5 transition-transform" [class.rotate-180]="assignmentOrderId === order.id" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6" /></svg>
-                </button>
+
                 <button type="button" (click)="openManufacturing(order, $event)"
-                  class="mt-2 flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-100 hover:text-teal-800 focus-visible:ring-2 focus-visible:ring-teal-500 cursor-pointer">
+                  [disabled]="assignmentSaving" class="inline-flex items-center justify-center gap-2 rounded-lg border border-teal-700 bg-teal-700 px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:border-teal-800 hover:bg-teal-800 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2 cursor-pointer disabled:opacity-50 disabled:cursor-wait">
                   <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 19V5m0 14h16M8 15v-4m5 4V7m5 8v-6" /></svg>
                   Manufacturing progress
                 </button>
@@ -707,6 +708,81 @@
               </td>
 
             </tr>
+            <tr *ngIf="canAssignUsers" data-user-assignment [ngClass]="rowColorClass(i)">
+              <td [attr.colspan]="tableColspan" class="px-4 pb-4 pt-0">
+                <div class="overflow-hidden rounded-xl border border-gray-200" [ngClass]="rowColorClass(i)">
+                <button type="button" (click)="openUserAssignments(order, $event)" [attr.aria-expanded]="assignmentOrderId === order.id"
+                  [attr.aria-controls]="'manufacturing-assignment-' + order.id" [id]="'manufacturing-toggle-' + order.id" [disabled]="assignmentSaving"
+                  class="flex w-full items-center gap-3 bg-transparent px-4 py-3 text-left text-sm font-semibold text-teal-900 transition hover:bg-gray-200/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-teal-600 cursor-pointer disabled:opacity-50 disabled:cursor-wait">
+                  Assign to Manufacturing Team <span *ngIf="order.assignedUserIds?.length" class="rounded-full bg-white px-1.5">{{ order.assignedUserIds?.length }}</span>
+                  <svg class="ml-auto h-4 w-4 transition-transform" [class.rotate-180]="assignmentOrderId === order.id" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6" /></svg>
+                </button>
+                  <section *ngIf="assignmentOrderId === order.id" [id]="'manufacturing-assignment-' + order.id"
+                    [attr.aria-labelledby]="'manufacturing-toggle-' + order.id" role="region"
+                    class="manufacturing-menu border-t border-teal-100 bg-white">
+                    <div class="bg-slate-900 px-4 py-3 text-white">
+                      <h3 class="text-sm font-semibold">Assign to Manufacturing Team</h3>
+                      <p class="mt-1 text-xs text-slate-300">Choose team members from each role.</p>
+                    </div>
+                    <div class="px-3 pt-3"><input [(ngModel)]="assignmentSearch" type="search" aria-label="Search manufacturing team" placeholder="Search roles or team members..."
+                      class="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100" /></div>
+                    <p *ngIf="assignmentLoading" class="px-4 py-6 text-sm text-gray-500 animate-pulse">Loading team members...</p>
+                    <div *ngIf="!assignmentLoading" class="grid grid-cols-1 items-start gap-3 p-4 md:grid-cols-2 xl:grid-cols-3">
+                      <div *ngFor="let role of filteredAssignmentRoles; trackBy: trackAssignmentRole" class="overflow-hidden rounded-xl border border-gray-200">
+                        <button type="button" (click)="toggleAssignmentRole(role.id)" [attr.aria-expanded]="expandedAssignmentRoles.has(role.id) || !!assignmentSearch"
+                          class="flex w-full items-center gap-2 bg-gray-50 px-3 py-2.5 text-left text-sm font-semibold text-slate-700 transition hover:bg-teal-50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-teal-500 cursor-pointer">
+                          <span class="flex-1">{{ role.name }}</span><span class="rounded-full bg-teal-100 px-2 py-0.5 text-xs text-teal-800">{{ selectedRoleCount(role) }}/{{ role.users.length }}</span>
+                          <svg class="h-4 w-4 transition-transform" [class.rotate-180]="expandedAssignmentRoles.has(role.id) || !!assignmentSearch" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6" /></svg>
+                        </button>
+                        <div *ngIf="expandedAssignmentRoles.has(role.id) || assignmentSearch" class="manufacturing-menu border-t border-gray-100 p-1">
+                          <label *ngFor="let user of role.users" [class.bg-teal-50]="assignmentDraft.has(user.id)" class="flex items-center gap-3 rounded-lg px-2 py-2.5 text-sm transition hover:bg-teal-50 cursor-pointer">
+                            <input type="checkbox" [checked]="assignmentDraft.has(user.id)" (change)="toggleAssignee(user.id)"
+                              [disabled]="assignmentSaving" class="h-4 w-4 rounded accent-teal-700 cursor-pointer disabled:cursor-wait" />
+                            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-600">{{ user.name.charAt(0) }}</span>
+                            <span class="min-w-0 font-medium text-slate-800">{{ user.name }}<span class="block truncate text-xs font-normal text-gray-500">{{ user.email }}</span></span>
+                          </label>
+                          <p *ngIf="!role.users.length" class="px-3 py-3 text-xs text-gray-500">No active users</p>
+                        </div>
+                      </div>
+                      <p *ngIf="!filteredAssignmentRoles.length" class="py-4 text-center text-sm text-gray-500">No matching team members</p>
+                    </div>
+                    <p *ngIf="assignmentError" role="alert" class="px-3 pb-2 text-xs text-red-600">{{ assignmentError }}</p>
+                    <div class="flex items-center justify-between gap-2 border-t border-gray-100 bg-gray-50 p-3">
+                      <span class="text-xs text-gray-500">{{ assignmentDraft.size }} selected</span>
+                      <button type="button" (click)="assignmentOrderId = null" [disabled]="assignmentSaving" class="rounded-lg px-3 py-2 text-sm text-gray-600 transition hover:bg-gray-200 focus-visible:ring-2 focus-visible:ring-teal-500 cursor-pointer disabled:cursor-wait">Cancel</button>
+                      <button type="button" (click)="saveUserAssignments()" [disabled]="assignmentSaving || !assignmentOptionsLoaded"
+                        class="rounded-lg bg-teal-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-teal-800 hover:shadow-md focus-visible:ring-2 focus-visible:ring-teal-500 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">{{ assignmentSaving ? 'Saving...' : 'Save team' }}</button>
+                    </div>
+                  </section>
+                </div>
+              </td>
+            </tr>
+
+            <!-- ================================================================ -->
+            <!-- Per-row horizontal grab bar — sticks to the left edge of the    -->
+            <!-- viewport while the wide table scrolls horizontally.              -->
+            <!-- Only rendered when the table actually overflows its container.   -->
+            <!-- ================================================================ -->
+            <tr *ngIf="hasHorizontalScroll" class="row-scrollbar-row" [ngClass]="rowColorClass(i)">
+              <td [attr.colspan]="tableColspan" class="p-0">
+                <div class="row-scrollbar-sticky" [style.width.px]="tableViewportWidth">
+                  <div class="row-scrollbar-track"
+                       role="scrollbar"
+                       aria-orientation="horizontal"
+                       [attr.aria-label]="'Horizontal scroll for order ' + order.manufacturerOrderNumber"
+                       [attr.aria-valuemin]="0"
+                       [attr.aria-valuemax]="tableMaxScroll"
+                       [attr.aria-valuenow]="tableScrollLeft"
+                       (pointerdown)="onScrollbarPointerDown($event)">
+                    <div class="row-scrollbar-thumb"
+                         [style.width.px]="scrollThumbWidth"
+                         [style.transform]="'translateX(' + scrollThumbLeft + 'px)'"></div>
+                  </div>
+                </div>
+              </td>
+            </tr>
+
+            </ng-container>
 
           </tbody>
 
@@ -896,48 +972,6 @@
     </div>
   </div>
 </div>
-
-<!-- Order Details Modal — backdrop click handled inside OrderDetailsComponent -->
-<section *ngIf="assignmentOrderId !== null" data-user-assignment id="manufacturing-assignment-menu"
-  [style.top.px]="assignmentTop" [style.left.px]="assignmentLeft"
-  [style.max-height.px]="assignmentMaxHeight"
-  (click)="$event.stopPropagation()" (keydown.escape)="!assignmentSaving && (assignmentOrderId = null)"
-  aria-label="Assign to Manufacturing Team"
-  class="manufacturing-menu fixed z-[80] w-[368px] max-w-[calc(100vw-16px)] overflow-y-auto rounded-2xl border border-gray-200 bg-white shadow-2xl">
-  <div class="bg-slate-900 px-4 py-3 text-white">
-    <h3 class="text-sm font-semibold">Assign to Manufacturing Team</h3>
-    <p class="mt-1 text-xs text-slate-300">Choose team members from each role.</p>
-  </div>
-  <div class="px-3 pt-3"><input [(ngModel)]="assignmentSearch" type="search" aria-label="Search manufacturing team" placeholder="Search roles or team members..."
-    class="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100" /></div>
-  <p *ngIf="assignmentLoading" class="px-4 py-6 text-sm text-gray-500 animate-pulse">Loading team members...</p>
-  <div *ngIf="!assignmentLoading" class="min-h-0 max-h-64 overflow-y-auto space-y-2 p-3">
-    <div *ngFor="let role of filteredAssignmentRoles; trackBy: trackAssignmentRole" class="overflow-hidden rounded-xl border border-gray-200">
-      <button type="button" (click)="toggleAssignmentRole(role.id)" [attr.aria-expanded]="expandedAssignmentRoles.has(role.id) || !!assignmentSearch"
-        class="flex w-full items-center gap-2 bg-gray-50 px-3 py-2.5 text-left text-sm font-semibold text-slate-700 transition hover:bg-teal-50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-teal-500 cursor-pointer">
-        <span class="flex-1">{{ role.name }}</span><span class="rounded-full bg-teal-100 px-2 py-0.5 text-xs text-teal-800">{{ selectedRoleCount(role) }}/{{ role.users.length }}</span>
-        <svg class="h-4 w-4 transition-transform" [class.rotate-180]="expandedAssignmentRoles.has(role.id) || !!assignmentSearch" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6" /></svg>
-      </button>
-      <div *ngIf="expandedAssignmentRoles.has(role.id) || assignmentSearch" class="manufacturing-menu border-t border-gray-100 p-1">
-        <label *ngFor="let user of role.users" [class.bg-teal-50]="assignmentDraft.has(user.id)" class="flex items-center gap-3 rounded-lg px-2 py-2.5 text-sm transition hover:bg-teal-50 cursor-pointer">
-          <input type="checkbox" [checked]="assignmentDraft.has(user.id)" (change)="toggleAssignee(user.id)"
-            [disabled]="assignmentSaving" class="h-4 w-4 rounded accent-teal-700 cursor-pointer disabled:cursor-wait" />
-          <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-600">{{ user.name.charAt(0) }}</span>
-          <span class="min-w-0 font-medium text-slate-800">{{ user.name }}<span class="block truncate text-xs font-normal text-gray-500">{{ user.email }}</span></span>
-        </label>
-        <p *ngIf="!role.users.length" class="px-3 py-3 text-xs text-gray-500">No active users</p>
-      </div>
-    </div>
-    <p *ngIf="!filteredAssignmentRoles.length" class="py-4 text-center text-sm text-gray-500">No matching team members</p>
-  </div>
-  <p *ngIf="assignmentError" role="alert" class="px-3 pb-2 text-xs text-red-600">{{ assignmentError }}</p>
-  <div class="flex items-center justify-between gap-2 border-t border-gray-100 bg-gray-50 p-3">
-    <span class="text-xs text-gray-500">{{ assignmentDraft.size }} selected</span>
-    <button type="button" (click)="assignmentOrderId = null" [disabled]="assignmentSaving" class="rounded-lg px-3 py-2 text-sm text-gray-600 transition hover:bg-gray-200 focus-visible:ring-2 focus-visible:ring-teal-500 cursor-pointer disabled:cursor-wait">Cancel</button>
-    <button type="button" (click)="saveUserAssignments()" [disabled]="assignmentSaving || !assignmentOptionsLoaded"
-      class="rounded-lg bg-teal-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-teal-800 hover:shadow-md focus-visible:ring-2 focus-visible:ring-teal-500 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">{{ assignmentSaving ? 'Saving...' : 'Save team' }}</button>
-  </div>
-</section>
 
 <div *ngIf="assignmentStatusOrder as order" data-assignment-status id="manufacturing-status-menu"
   [style.top.px]="statusMenuTop" [style.left.px]="statusMenuLeft" (click)="$event.stopPropagation()"

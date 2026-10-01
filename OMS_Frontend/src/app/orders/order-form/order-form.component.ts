@@ -32,6 +32,8 @@ export class OrderFormComponent implements OnInit, OnDestroy {
 
   @Input() asModal = false;
   @Input() orderId: number | null = null;
+  /** Hides Amount / Customer Order # / Tracking Number inputs. */
+  @Input() hideSensitiveData = false;
   @Output() closed = new EventEmitter<void>();
   @Output() saved = new EventEmitter<void>();
 
@@ -152,6 +154,13 @@ export class OrderFormComponent implements OnInit, OnDestroy {
     if (!this.canEditTracking) this.form.controls.trackingNumber.disable({ emitEvent: false });
     if (!this.canEditAmount) this.form.controls.amount.disable({ emitEvent: false });
     if (!this.canEditDeadline) this.form.controls.deadline.disable({ emitEvent: false });
+
+    // Hide + disable sensitive fields for restricted roles.
+    if (this.hideSensitiveData) {
+      this.form.controls.customerOrderNumber.disable({ emitEvent: false });
+      this.form.controls.amount.disable({ emitEvent: false });
+      this.form.controls.trackingNumber.disable({ emitEvent: false });
+    }
 
     if (this.isCustomer) {
       for (const name of ['customerId', 'manufacturerOrderNumber', 'manufacturerProductTitle', 'manufacturerMaterialId', 'statusId', 'notesByManufacturer', 'courier']) {
@@ -566,10 +575,14 @@ export class OrderFormComponent implements OnInit, OnDestroy {
     const payload: any = {
       customerProductTitle: raw.customerProductTitle?.trim() ?? '',
       manufacturerProductTitle: this.isCustomer ? null : this.nullIfBlank(raw.manufacturerProductTitle),
-      customerOrderNumber: this.nullIfBlank(raw.customerOrderNumber),
+      customerOrderNumber: this.hideSensitiveData
+        ? (this.order?.customerOrderNumber ?? null)
+        : this.nullIfBlank(raw.customerOrderNumber),
       manufacturerOrderNumber: this.isCustomer ? undefined : this.nullIfBlank(raw.manufacturerOrderNumber),
       customerId: raw.customerId,
-      amount: this.canEditAmount ? (raw.amount === null ? null : Number(raw.amount)) : (this.order?.amount ?? null),
+      amount: this.hideSensitiveData
+        ? (this.order?.amount ?? null)
+        : (this.canEditAmount ? (raw.amount === null ? null : Number(raw.amount)) : (this.order?.amount ?? null)),
       genderId: raw.genderId,
       customerMaterialId: raw.customerMaterialId,
       manufacturerMaterialId: this.isCustomer ? (this.order?.manufacturerMaterialId ?? null) : raw.manufacturerMaterialId,
@@ -583,7 +596,9 @@ export class OrderFormComponent implements OnInit, OnDestroy {
       shippingContact: this.nullIfBlank(raw.shippingContact),
       consigneeAddress: raw.consigneeAddress?.trim() ?? '',
       courier: this.isCustomer ? (this.order?.courier ?? null) : this.nullIfBlank(raw.courier),
-      trackingNumber: this.canEditTracking ? this.nullIfBlank(raw.trackingNumber) : (this.order?.trackingNumber ?? null),
+      trackingNumber: this.hideSensitiveData
+        ? (this.order?.trackingNumber ?? null)
+        : (this.canEditTracking ? this.nullIfBlank(raw.trackingNumber) : (this.order?.trackingNumber ?? null)),
       deadline: this.canEditDeadline ? this.nullIfBlank(raw.deadline) : (this.order?.deadline ?? null),
       notesByCustomer: this.isCustomer ? this.nullIfBlank(raw.notesByCustomer) : (this.order?.notesByCustomer ?? null),
       notesByManufacturer: this.isCustomer ? null : this.nullIfBlank(raw.notesByManufacturer)

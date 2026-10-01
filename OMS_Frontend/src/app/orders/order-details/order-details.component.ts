@@ -29,6 +29,8 @@ import { PollingService } from '../../core/polling/polling.service';
 export class OrderDetailsComponent implements OnInit, OnDestroy {
   @Input() asModal = false;
   @Input() selectedOrderId: number | null = null;
+  /** Hides Amount / Customer Order # / Tracking / customer-sensitive blocks. */
+  @Input() hideSensitiveData = false;
   @Output() closed = new EventEmitter<void>();
   @Output() deleted = new EventEmitter<void>();
   @Output() updated = new EventEmitter<void>();
@@ -84,9 +86,6 @@ export class OrderDetailsComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  // =================== Backdrop click (modal only) ===================
-  // Called when clicking directly on the outer fullscreen overlay.
-  // The inner card uses (click)="$event.stopPropagation()" so clicks inside won't reach here.
   onBackdropClick(event: MouseEvent): void {
     if (!this.asModal) return;
     if (this.deletingOrder || this.showDeleteModal || this.showEditOrderModal) return;

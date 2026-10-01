@@ -541,8 +541,28 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   showPageSizeMenu = false;
   showColumnMenu = false;
 
+  // =================== Sensitive-data visibility ===================
+  /** Fields hidden from manufacturing team + custom roles. */
+  private readonly SENSITIVE_COLUMNS = ['amount', 'customerOrderNumber', 'trackingNumber'];
+
+  /**
+   * True when the current user may see Amount / Customer Order # / Tracking
+   * and the customer-sensitive fields on the details page.
+   * - Admin & Super Admin: always see them.
+   * - Customers: see their own order's fields.
+   * - Manufacturing team (adminAssignedOnly): hidden.
+   * - Any other role (custom roles from Roles & Permissions): hidden.
+   */
+  get canSeeSensitiveOrderData(): boolean {
+    if (this.assignedOnly) return false;
+    if (this.isCustomer) return true;
+    return ['Admin', 'Super Admin'].includes(this.authService.currentRole() ?? '');
+  }
+
   get columnOptions(): ColumnOption[] {
-    return this.allColumnOptions.filter(c => !this.assignedOnly || !['amount', 'customerOrderNumber', 'trackingNumber'].includes(c.key));
+    return this.allColumnOptions.filter(
+      c => this.canSeeSensitiveOrderData || !this.SENSITIVE_COLUMNS.includes(c.key)
+    );
   }
   set columnOptions(value: ColumnOption[]) { this.allColumnOptions = value; }
   private allColumnOptions: ColumnOption[] = [
@@ -1238,7 +1258,9 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   toggleColumnMenu(): void { this.showColumnMenu = !this.showColumnMenu; }
 
   isColumnVisible(key: string): boolean {
-    return !(this.assignedOnly && ['amount', 'customerOrderNumber', 'trackingNumber'].includes(key)) && !(this.isCustomer && key === 'priority') && !this.hiddenColumns.has(key);
+    if (!this.canSeeSensitiveOrderData && this.SENSITIVE_COLUMNS.includes(key)) return false;
+    if (this.isCustomer && key === 'priority') return false;
+    return !this.hiddenColumns.has(key);
   }
 
   toggleColumn(key: string): void {

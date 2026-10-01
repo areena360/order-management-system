@@ -116,12 +116,12 @@
               <p class="mt-1 text-sm font-semibold text-gray-900 truncate">{{ order.manufacturerOrderNumber }}</p>
             </div>
 
-            <div *ngIf="!assignedOnly" class="min-w-0">
+            <div *ngIf="!assignedOnly && !hideSensitiveData" class="min-w-0">
               <p class="text-xs font-medium uppercase tracking-wide text-gray-400">Customer Order #</p>
               <p class="mt-1 text-sm text-gray-700">{{ order.customerOrderNumber || '—' }}</p>
             </div>
 
-            <div *ngIf="!assignedOnly" class="min-w-0">
+            <div *ngIf="!assignedOnly && !hideSensitiveData" class="min-w-0">
               <p class="text-xs font-medium uppercase tracking-wide text-gray-400">Customer</p>
               <p class="mt-1 text-sm font-medium text-gray-900">{{ order.customerName }}</p>
             </div>
@@ -131,7 +131,7 @@
               <p class="mt-1 text-sm text-gray-700">{{ order.gender || '—' }}</p>
             </div>
 
-            <div *ngIf="!assignedOnly" class="min-w-0">
+            <div *ngIf="!assignedOnly && !hideSensitiveData" class="min-w-0">
               <p class="text-xs font-medium uppercase tracking-wide text-gray-400">Amount</p>
               <p *ngIf="order.amount != null" class="mt-1 inline-flex items-center gap-2 text-sm font-semibold text-gray-900">
                 <span class="text-xs font-medium text-gray-500">PKR</span>
@@ -222,17 +222,17 @@
               </p>
             </div>
 
-            <div *ngIf="!assignedOnly" class="min-w-0">
+            <div *ngIf="!assignedOnly && !hideSensitiveData" class="min-w-0">
               <p class="text-xs font-medium uppercase tracking-wide text-gray-400">Tracking Number</p>
               <p class="mt-1 text-sm text-gray-700 break-all">{{ order.trackingNumber || '—' }}</p>
             </div>
 
-            <div *ngIf="!assignedOnly" class="min-w-0">
+            <div *ngIf="!assignedOnly && !hideSensitiveData" class="min-w-0">
               <p class="text-xs font-medium uppercase tracking-wide text-gray-400">Receiver Name</p>
               <p class="mt-1 text-sm text-gray-700">{{ order.consigneeName }}</p>
             </div>
 
-            <div *ngIf="!assignedOnly" class="min-w-0 sm:col-span-2 md:col-span-3 lg:col-span-2">
+            <div *ngIf="!assignedOnly && !hideSensitiveData" class="min-w-0 sm:col-span-2 md:col-span-3 lg:col-span-2">
               <p class="text-xs font-medium uppercase tracking-wide text-gray-400">Shipping Address</p>
               <p class="mt-1 text-sm text-gray-700 whitespace-pre-wrap">{{ order.consigneeAddress }}</p>
             </div>
@@ -268,10 +268,9 @@
       </div>
 
       <!-- Status History -->
-      <div *ngIf="!assignedOnly" class="bg-white rounded-xl shadow-sm ring-1 ring-gray-200 overflow-hidden">
+      <div *ngIf="!assignedOnly && !hideSensitiveData" class="bg-white rounded-xl shadow-sm ring-1 ring-gray-200 overflow-hidden">
         <div class="px-4 py-3 bg-gray-800 border-b border-gray-700">
           <h2 class="text-base font-semibold text-white">Status History</h2>
-
         </div>
 
         <div class="p-4">
@@ -310,7 +309,6 @@
       <div class="bg-white rounded-xl shadow-sm ring-1 ring-gray-200 overflow-hidden">
         <div class="px-4 py-3 bg-gray-800 border-b border-gray-700">
           <h2 class="text-base font-semibold text-white">Order Images</h2>
-
         </div>
 
         <div class="p-4">
@@ -336,10 +334,9 @@
       </div>
 
       <!-- Inventory Bills -->
-      <div *ngIf="!assignedOnly" class="bg-white rounded-xl shadow-sm ring-1 ring-gray-200 overflow-hidden">
+      <div *ngIf="!assignedOnly && !hideSensitiveData" class="bg-white rounded-xl shadow-sm ring-1 ring-gray-200 overflow-hidden">
         <div class="px-4 py-3 bg-gray-800 border-b border-gray-700">
           <h2 class="text-base font-semibold text-white">Inventory Bills</h2>
-
         </div>
 
         <div class="p-4">
@@ -387,6 +384,7 @@
   </div>
 
   <app-order-form *ngIf="showEditOrderModal && order" [asModal]="true" [orderId]="order.id"
+    [hideSensitiveData]="hideSensitiveData"
     (closed)="closeEditOrderModal()" (saved)="onOrderSaved()">
   </app-order-form>
 

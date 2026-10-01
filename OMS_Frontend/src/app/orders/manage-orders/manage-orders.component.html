@@ -407,7 +407,7 @@
                 <span class="ml-1">{{ sortIcon('ManufacturerOrderNumber') }}</span>
               </th>
 
-              <th *ngIf="!isCustomer && !assignedOnly" (click)="sort('Customer')"
+              <th *ngIf="!isCustomer && !assignedOnly && canSeeSensitiveOrderData" (click)="sort('Customer')"
                 class="px-4 py-3 text-left text-xs font-semibold text-gray-100 uppercase tracking-wider cursor-pointer select-none hover:text-white">
                 Customer
                 <span class="ml-1">{{ sortIcon('Customer') }}</span>
@@ -533,7 +533,7 @@
                 <span *ngIf="!assignedOnly && (order.source === 'WooCommerce' || order.source === 'Shopify')" class="block text-xs text-purple-700">{{order.source}}</span>
               </td>
 
-              <td *ngIf="!isCustomer && !assignedOnly" class="px-4 py-4 align-top font-medium text-gray-900 break-words">
+              <td *ngIf="!isCustomer && !assignedOnly && canSeeSensitiveOrderData" class="px-4 py-4 align-top font-medium text-gray-900 break-words">
                 {{ order.customerName }}
               </td>
 
@@ -993,6 +993,7 @@
   #detailsView
   [asModal]="true"
   [selectedOrderId]="detailsOrderId"
+  [hideSensitiveData]="!canSeeSensitiveOrderData"
   (closed)="closeOrderDetails()"
   (updated)="onOrderSaved()"
   (deleted)="onDetailsDeleted()">
@@ -1000,11 +1001,13 @@
 
 <!-- Add Order Modal -->
 <app-order-form *ngIf="showAddOrderModal" [asModal]="true"
+  [hideSensitiveData]="!canSeeSensitiveOrderData"
   (closed)="closeAddOrderModal()" (saved)="onOrderSaved()">
 </app-order-form>
 
 <!-- Edit Order Modal -->
 <app-order-form *ngIf="showEditOrderModal" [asModal]="true" [orderId]="editOrderId"
+  [hideSensitiveData]="!canSeeSensitiveOrderData"
   (closed)="closeEditOrderModal()" (saved)="onOrderSaved()">
 </app-order-form>
 

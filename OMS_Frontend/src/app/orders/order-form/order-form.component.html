@@ -183,7 +183,7 @@
               </div>
 
               <!-- Customer Order # -->
-              <div>
+              <div *ngIf="!hideSensitiveData">
                 <label class="mb-1.5 block text-sm font-medium text-gray-700">Customer Order # <span class="text-red-500">*</span></label>
                 <input type="text" formControlName="customerOrderNumber" maxlength="100" placeholder="Enter Customer Order Number"
                   class="w-full min-w-0 truncate rounded-lg border bg-white px-3 py-2 text-sm text-gray-700 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-gray-500"
@@ -452,7 +452,7 @@
                 </select>
                 <p *ngIf="isInvalid('courier')" class="mt-1.5 text-xs text-red-600">{{ getError('courier') }}</p>
               </div>
-              <div>
+              <div *ngIf="!hideSensitiveData">
                 <label class="mb-1.5 block text-sm font-medium text-gray-700">Tracking Number <span *ngIf="!isCustomer" class="text-red-500">*</span><span *ngIf="isCustomer"> (Optional)</span></label>
                 <input type="text" formControlName="trackingNumber" maxlength="200" placeholder="Tracking Number"
                   class="w-full min-w-0 truncate rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-gray-500" />

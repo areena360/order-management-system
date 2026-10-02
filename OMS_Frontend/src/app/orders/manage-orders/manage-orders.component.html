@@ -526,6 +526,10 @@
 
               <td class="px-4 py-4 align-top font-medium text-gray-900 break-words">
                 {{ order.manufacturerOrderNumber }}
+                  <button *ngIf="order.hasAssignmentMessage" type="button" (click)="openAssignmentMessage(order, $event)"
+                    class="ml-2 inline-flex items-center gap-1 rounded-lg border border-teal-200 bg-teal-50 px-2 py-1 text-xs font-medium text-teal-800 hover:bg-teal-100">
+                    Message <span *ngIf="order.assignmentMessageUnread" class="rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">Unread</span>
+                  </button>
                 <span *ngIf="showAssignedBadge(order)"
                   class="ml-1 inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-600/20">
                   ASSIGNED
@@ -723,17 +727,20 @@
                     <div class="px-2 pt-2"><input [(ngModel)]="assignmentSearch" type="search" aria-label="Search manufacturing team" placeholder="Search roles or team members..."
                       class="w-full rounded-lg border border-gray-200 bg-gray-50 px-2 py-1.5 text-xs outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100" /></div>
                     <p *ngIf="assignmentLoading" class="px-4 py-6 text-sm text-gray-500 animate-pulse">Loading team members...</p>
-                    <div *ngIf="!assignmentLoading" class="grid grid-cols-1 items-start gap-2 p-2 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                    <div *ngIf="!assignmentLoading" class="grid grid-cols-1 items-start gap-2 p-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
                       <div *ngFor="let role of filteredAssignmentRoles; trackBy: trackAssignmentRole" class="min-w-0 overflow-hidden rounded-lg border border-gray-200">
                         <h4 class="flex w-full items-center gap-2 bg-gray-50 px-2 py-1.5 text-left text-xs font-semibold text-slate-700">
                           <span class="flex-1">{{ role.name }}</span><span class="rounded-full bg-teal-100 px-2 py-0.5 text-xs text-teal-800">{{ selectedRoleCount(role) }}/{{ role.users.length }}</span>
                         </h4>
                         <div class="border-t border-gray-100 p-1">
-                          <label *ngFor="let user of role.users" [class.bg-teal-50]="assignmentDraft.has(user.id)" [title]="user.name + ' — ' + user.email" class="flex min-h-8 items-center gap-2 rounded px-2 py-1 text-xs transition hover:bg-teal-50 cursor-pointer">
-                            <input type="checkbox" [checked]="assignmentDraft.has(user.id)" (change)="toggleAssignee(user.id)"
+                          <div *ngFor="let user of role.users" [class.bg-teal-50]="assignmentDraft.has(user.id)" [title]="user.name + ' — ' + user.email" class="flex min-h-8 items-center gap-2 rounded px-2 py-1 text-xs transition hover:bg-teal-50 cursor-pointer">
+                            <input type="checkbox" [id]="'assignee-' + user.id" [attr.aria-label]="'Assign ' + user.name" [checked]="assignmentDraft.has(user.id)" (change)="toggleAssignee(user.id)"
                               [disabled]="assignmentSaving" class="h-4 w-4 shrink-0 rounded accent-teal-700 cursor-pointer disabled:cursor-wait" />
-                            <span class="min-w-0 flex-1 truncate font-medium text-slate-800">{{ user.name }}</span><span class="max-w-[45%] truncate text-[11px] font-normal text-gray-500">{{ user.email }}</span>
-                          </label>
+                            <label class="min-w-0 flex-1 cursor-pointer" [for]="'assignee-' + user.id"><span class="block truncate font-medium text-slate-800">{{ user.name }}</span><span class="block truncate text-[11px] text-gray-500">{{ user.email }}</span></label>
+                            <textarea [(ngModel)]="assignmentMessages[user.id]" [disabled]="assignmentSaving || !assignmentDraft.has(user.id)"
+                              [attr.aria-label]="'Message for ' + user.name" maxlength="4000" rows="2" placeholder="Optional message"
+                              class="w-1/2 min-w-0 resize-y rounded border border-gray-300 bg-white p-2 text-xs focus:border-teal-500 focus:outline-none disabled:bg-gray-100"></textarea>
+                          </div>
                           <p *ngIf="!role.users.length" class="px-2 py-2 text-xs text-gray-500">No active users</p>
                         </div>
                       </div>
@@ -1011,3 +1018,17 @@
   [groupUnread]="getGroupUnreadCount(chatOrderId)" (channelRead)="markChatRead($event)">
 </app-chat-modal>
 <app-footer></app-footer>
+<dialog #assignmentMessageDialog *ngIf="messageOrder as order" aria-modal="true" aria-labelledby="assignment-message-title"
+  class="fixed inset-0 z-[100] m-0 flex h-full max-h-none w-full max-w-none items-center justify-center bg-black/40 p-4"
+  (click)="closeAssignmentMessage()" (cancel)="$event.preventDefault(); closeAssignmentMessage()">
+  <div class="w-full max-w-md rounded-xl bg-white p-5 shadow-xl" (click)="$event.stopPropagation()">
+    <div class="mb-4 flex items-center justify-between gap-3">
+      <h2 id="assignment-message-title" class="text-base font-semibold text-slate-900">Message · {{ order.manufacturerOrderNumber }}</h2>
+      <button type="button" autofocus (click)="closeAssignmentMessage()" [attr.aria-disabled]="messageLoading"
+        aria-label="Close message" class="rounded p-2 text-gray-500 hover:bg-gray-100">✕</button>
+    </div>
+    <p *ngIf="messageLoading" role="status" class="text-sm text-gray-500">Loading message...</p>
+    <p *ngIf="messageError" role="alert" class="text-sm text-red-600">{{ messageError }}</p>
+    <p *ngIf="!messageLoading && !messageError" class="max-h-80 overflow-y-auto whitespace-pre-wrap break-words text-sm text-slate-700">{{ messageText }}</p>
+  </div>
+</dialog>

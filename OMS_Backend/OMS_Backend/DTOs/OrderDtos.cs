@@ -30,6 +30,8 @@ namespace OMS_Backend.DTOs
 
     public class OrderListDto
     {
+        public bool HasAssignmentMessage { get; set; }
+        public bool AssignmentMessageUnread { get; set; }
         public List<int> AssignedUserIds { get; set; } = new();
         public string? AssignmentStatus { get; set; }
         public string Source { get; set; } = "Manual";

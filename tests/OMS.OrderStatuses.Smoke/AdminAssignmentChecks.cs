@@ -19,7 +19,7 @@ static class AdminAssignmentChecks
     public static async Task Run(OMSDbContext db, IConfiguration config, bool apply)
     {
         var pending = (await db.Database.GetPendingMigrationsAsync()).ToArray();
-        if (pending.Any(id => !id.EndsWith("_AdminOrderAssignments") && !id.EndsWith("_ManufacturingTimeline")))
+        if (pending.Any(id => !id.EndsWith("_AdminOrderAssignments") && !id.EndsWith("_ManufacturingTimeline") && !id.EndsWith("_AssignmentMessages")))
             throw new Exception("Apply prior migrations before this assignment test.");
         await using (var tx = await db.Database.BeginTransactionAsync())
         {
@@ -79,6 +79,17 @@ static class AdminAssignmentChecks
             var adminApi = Controller(admin.Id);
             Check(await adminApi.Save(order.Id, new() { UserIds = [first.Id, second.Id] }) is OkObjectResult, "Admin assigns multiple users");
             Check(await db.ManufacturingEvents.CountAsync(e => e.OrderId == order.Id && e.Status == "assigned") == 2, "Timeline records each assigned member");
+            Check(await adminApi.Save(order.Id, new() { UserIds = [first.Id, second.Id], Messages = new() { [first.Id] = "Cut carefully" } }) is OkObjectResult, "Save personal message");
+            Check((await service.GetOrdersAsync(query, first.Id, false)).Items.Single().AssignmentMessageUnread, "New message is unread");
+            Check(!(await service.GetOrdersAsync(query, second.Id, false)).Items.Single().HasAssignmentMessage, "Message is private to recipient");
+            Check(await Controller(second.Id).ReadMessage(order.Id) is NotFoundResult, "Other assignee cannot read message");
+            Check(await Controller(first.Id).ReadMessage(order.Id) is OkObjectResult, "Recipient opens message");
+            db.ChangeTracker.Clear();
+            Check(!(await service.GetOrdersAsync(query, first.Id, false)).Items.Single().AssignmentMessageUnread, "Read state persists");
+            await adminApi.Save(order.Id, new() { UserIds = [first.Id, second.Id], Messages = new() { [first.Id] = "Cut carefully" } });
+            Check(!(await service.GetOrdersAsync(query, first.Id, false)).Items.Single().AssignmentMessageUnread, "Unchanged message stays read");
+            await adminApi.Save(order.Id, new() { UserIds = [first.Id, second.Id], Messages = new() { [first.Id] = "Updated instructions" } });
+            Check((await service.GetOrdersAsync(query, first.Id, false)).Items.Single().AssignmentMessageUnread, "Edited message becomes unread");
             Check(await adminApi.Manufacturing(order.Id) is OkObjectResult, "Admin can read manufacturing history");
             Check(await Controller(first.Id).Manufacturing(order.Id) is ForbidResult, "Team history is admin-only");
             foreach (var user in new[] { first, second })

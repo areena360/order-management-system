@@ -90,6 +90,10 @@ namespace OMS_Backend.Services
                 .Select(o => new OrderListDto
                 {
                     Id = o.Id,
+                    HasAssignmentMessage = _db.AdminOrderAssignments.Any(a => a.OrderId == o.Id && a.UserId == userId
+                        && a.User.RoleId == a.RoleId && a.User.IsActive && !a.User.IsDeleted && a.User.Role!.IsActive && a.Message != null),
+                    AssignmentMessageUnread = _db.AdminOrderAssignments.Any(a => a.OrderId == o.Id && a.UserId == userId
+                        && a.User.RoleId == a.RoleId && a.User.IsActive && !a.User.IsDeleted && a.User.Role!.IsActive && a.Message != null && a.MessageReadAt == null),
                     AssignedUserIds = _db.AdminOrderAssignments.Where(a => a.OrderId == o.Id
                         && a.User.RoleId == a.RoleId && a.User.IsActive && !a.User.IsDeleted)
                         .Select(a => a.UserId).ToList(),

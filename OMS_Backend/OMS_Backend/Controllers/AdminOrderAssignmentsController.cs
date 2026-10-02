@@ -34,7 +34,10 @@ public class AdminOrderAssignmentsController(OMSDbContext db) : ControllerBase
         return Ok(roles);
     }
 
-    public class SaveAssignmentsRequest { public List<int> UserIds { get; set; } = new(); }
+    public class SaveAssignmentsRequest {
+        public List<int> UserIds { get; set; } = new();
+        public Dictionary<int, string?> Messages { get; set; } = new();
+    }
 
     private async Task RecordEvent(AdminOrderAssignment assignment, string status)
     {
@@ -68,6 +71,8 @@ public class AdminOrderAssignmentsController(OMSDbContext db) : ControllerBase
             return NotFound();
         if (request.UserIds == null || request.UserIds.Count > 1000) return BadRequest(new { message = "Invalid assignees." });
         var ids = request.UserIds.Distinct().ToArray();
+        if (request.Messages == null || request.Messages.Any(m => m.Value?.Length > 4000 || !ids.Contains(m.Key)))
+            return BadRequest(new { message = "Messages must belong to selected users and contain at most 4000 characters." });
         var users = await db.Users.Where(u => ids.Contains(u.Id) && u.IsActive && !u.IsDeleted
             && u.Role != null && u.Role.IsActive && u.Role.Name != "Customer").ToListAsync();
         if (users.Count != ids.Length)
@@ -80,6 +85,15 @@ public class AdminOrderAssignmentsController(OMSDbContext db) : ControllerBase
         foreach (var user in users)
         {
             var assignment = existing.SingleOrDefault(a => a.UserId == user.Id);
+            if (assignment != null && request.Messages.TryGetValue(user.Id, out var updatedMessage))
+            {
+                updatedMessage = string.IsNullOrWhiteSpace(updatedMessage) ? null : updatedMessage.Trim();
+                if (assignment.Message != updatedMessage)
+                {
+                    assignment.Message = updatedMessage;
+                    assignment.MessageReadAt = null;
+                }
+            }
             if (assignment != null && assignment.RoleId == user.RoleId) continue;
             if (assignment != null) await RecordEvent(assignment, "unassigned");
             if (assignment == null)
@@ -88,6 +102,9 @@ public class AdminOrderAssignmentsController(OMSDbContext db) : ControllerBase
                 db.AdminOrderAssignments.Add(assignment);
             }
             assignment.RoleId = user.RoleId!.Value;
+            if (request.Messages.TryGetValue(user.Id, out var message))
+                assignment.Message = string.IsNullOrWhiteSpace(message) ? null : message.Trim();
+            assignment.MessageReadAt = null;
             assignment.AssignedByUserId = UserId;
             assignment.AssignedAt = DateTime.UtcNow;
             assignment.Status = "assigned";
@@ -95,6 +112,28 @@ public class AdminOrderAssignmentsController(OMSDbContext db) : ControllerBase
         }
         await db.SaveChangesAsync();
         return Ok(new { assignedUserIds = ids });
+    }
+
+    [HttpGet("{orderId:int}/assignment-messages")]
+    public async Task<IActionResult> Messages(int orderId)
+    {
+        if (!await CanAssign()) return Forbid();
+        if (!await db.Orders.Where(OrderVisibility.ForUser(db, UserId, false)).AnyAsync(o => o.Id == orderId)) return NotFound();
+        return Ok(await db.AdminOrderAssignments.Where(a => a.OrderId == orderId)
+            .ToDictionaryAsync(a => a.UserId, a => a.Message));
+    }
+
+    [HttpPost("{orderId:int}/assignment-message/read")]
+    public async Task<IActionResult> ReadMessage(int orderId)
+    {
+        if (!await db.Orders.Where(OrderVisibility.ForUser(db, UserId, false)).AnyAsync(o => o.Id == orderId)) return NotFound();
+        var assignment = await db.AdminOrderAssignments.AsNoTracking().SingleOrDefaultAsync(a =>
+            a.OrderId == orderId && a.UserId == UserId && a.User.RoleId == a.RoleId
+            && a.User.IsActive && !a.User.IsDeleted && a.User.Role != null && a.User.Role.IsActive);
+        if (assignment?.Message == null) return NotFound();
+        await db.AdminOrderAssignments.Where(a => a.OrderId == orderId && a.UserId == UserId && a.Message == assignment.Message)
+            .ExecuteUpdateAsync(s => s.SetProperty(a => a.MessageReadAt, DateTime.UtcNow));
+        return Ok(new { message = assignment.Message });
     }
 
     public class UpdateAssignmentStatusRequest { public string Status { get; set; } = ""; }

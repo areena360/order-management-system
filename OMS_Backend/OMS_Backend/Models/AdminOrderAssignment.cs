@@ -11,4 +11,7 @@ public class AdminOrderAssignment
     public int AssignedByUserId { get; set; }
     public DateTime AssignedAt { get; set; }
     public string Status { get; set; } = "assigned";
+    [System.ComponentModel.DataAnnotations.MaxLength(4000)]
+    public string? Message { get; set; }
+    public DateTime? MessageReadAt { get; set; }
 }

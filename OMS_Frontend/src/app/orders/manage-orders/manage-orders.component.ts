@@ -5,7 +5,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { catchError, debounceTime, distinctUntilChanged, finalize, from, map, mergeMap, of, Subject, takeUntil, toArray } from 'rxjs';
+import { catchError, debounceTime, distinctUntilChanged, finalize, forkJoin, from, map, mergeMap, of, Subject, takeUntil, toArray } from 'rxjs';
 
 import { FooterComponent } from '../../footer/footer.component';
 import { PermissionService } from '../../auth/permission.service';
@@ -106,6 +106,36 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   assignmentRoles: AssignmentRole[] = [];
   assignmentOrderId: number | null = null;
   assignmentDraft = new Set<number>();
+  private assignmentLoadVersion = 0;
+  assignmentMessages: Record<number, string> = {};
+  messageOrder: OrderListItem | null = null;
+  messageText = '';
+  messageLoading = false;
+  messageError = '';
+  @ViewChild('assignmentMessageDialog') set assignmentMessageDialog(element: ElementRef<HTMLDialogElement> | undefined) {
+    if (element && !element.nativeElement.open) element.nativeElement.showModal();
+  }
+  private messageTrigger: HTMLElement | null = null;
+
+  openAssignmentMessage(order: OrderListItem, event: MouseEvent): void {
+    event.stopPropagation();
+    this.messageTrigger = event.currentTarget as HTMLElement;
+    this.messageOrder = order;
+    this.messageText = '';
+    this.messageError = '';
+    this.messageLoading = true;
+    this.ordersService.readAssignmentMessage(order.id).pipe(takeUntil(this.destroy$),
+      finalize(() => this.messageLoading = false)).subscribe({
+      next: result => { this.messageText = result.message; order.assignmentMessageUnread = false; },
+      error: () => this.messageError = 'Unable to load the message. Close and try again.'
+    });
+  }
+
+  closeAssignmentMessage(): void {
+    if (this.messageLoading) return;
+    this.messageOrder = null;
+    this.messageTrigger?.focus();
+  }
   assignmentLoading = false;
   assignmentOptionsLoaded = false;
   assignmentSaving = false;
@@ -170,15 +200,17 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
     if (!this.canAssignUsers || this.assignmentSaving) return;
     if (this.assignmentOrderId === order.id) { this.assignmentOrderId = null; return; }
     this.assignmentOrderId = order.id;
+    const loadVersion = ++this.assignmentLoadVersion;
+    this.assignmentMessages = {};
     this.assignmentSearch = '';
     this.assignmentDraft = new Set(order.assignedUserIds ?? []);
     this.assignmentError = '';
     this.assignmentLoading = true;
     this.assignmentOptionsLoaded = false;
-    this.ordersService.getAssignmentOptions().pipe(takeUntil(this.destroy$),
-      finalize(() => this.assignmentLoading = false)).subscribe({
-      next: roles => { this.assignmentRoles = roles; this.assignmentOptionsLoaded = true; },
-      error: () => this.assignmentError = 'Unable to load users. Close and retry.'
+    forkJoin({ roles: this.ordersService.getAssignmentOptions(), messages: this.ordersService.getAssignmentMessages(order.id) }).pipe(takeUntil(this.destroy$),
+      finalize(() => { if (loadVersion === this.assignmentLoadVersion) this.assignmentLoading = false; })).subscribe({
+      next: ({ roles, messages }) => { if (loadVersion !== this.assignmentLoadVersion) return; this.assignmentRoles = roles; this.assignmentMessages = messages; this.assignmentOptionsLoaded = true; },
+      error: () => { if (loadVersion === this.assignmentLoadVersion) this.assignmentError = 'Unable to load users and messages. Close and retry.'; }
     });
   }
 
@@ -193,7 +225,7 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
     const orderId = this.assignmentOrderId;
     this.assignmentSaving = true;
     this.assignmentError = '';
-    this.ordersService.saveAdminAssignments(orderId, [...this.assignmentDraft])
+    this.ordersService.saveAdminAssignments(orderId, [...this.assignmentDraft], Object.fromEntries([...this.assignmentDraft].map(id => [id, this.assignmentMessages[id] ?? ''])))
       .pipe(takeUntil(this.destroy$), finalize(() => this.assignmentSaving = false)).subscribe({
         next: result => {
           const order = this.orders.find(o => o.id === orderId);
@@ -1043,7 +1075,7 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   }
 
   private silentRefresh(): void {
-    if (this.assignmentOrderId !== null || this.assignmentStatusSavingId !== null || this.assignmentStatusOrder || this.manufacturingOrder) return;
+    if (this.messageOrder || this.assignmentOrderId !== null || this.assignmentStatusSavingId !== null || this.assignmentStatusOrder || this.manufacturingOrder) return;
     if (this.silentRefreshBusy || this.bulkBusy || this.selectedOrderIds.size > 0) return;
     if (this.showDeleteModal || this.showImageModal || this.showChatModal || this.showAddOrderModal || this.showAssignModal || this.showEditOrderModal) return;
     if (this.loading) return;

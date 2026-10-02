@@ -8,7 +8,8 @@ import { AuthService } from '../auth/auth.service';
 import { LookupService } from '../orders/lookup.service';
 import { WooSelectComponent } from './woo-select.component';
 
-@Component({selector: 'app-shopify', standalone:true,imports:[CommonModule,FormsModule,WooSelectComponent],template:`
+@Component({
+  host: { '[class.integration-busy]': 'busy()' },selector: 'app-shopify', standalone:true,imports:[CommonModule,FormsModule,WooSelectComponent],template:`
 <div class="min-h-screen bg-gray-50 p-4 sm:p-6"><div class="max-w-2xl mx-auto space-y-4">
  <header><p class="text-sm text-gray-500">Settings / Integrations</p><h1 class="text-2xl font-bold text-gray-900">Shopify</h1><p class="mt-2 text-gray-600">Connect your store to bring orders into OMS automatically.</p></header>
  <p *ngIf="busy()" role="status">Please wait…</p>
@@ -31,7 +32,7 @@ import { WooSelectComponent } from './woo-select.component';
  <button *ngIf="s.isActive" class="mt-4" (click)="disconnectId=s.id" [disabled]="busy()">Disconnect</button>
  <button *ngIf="!s.isActive" class="mt-4" (click)="shop=s.shop" [disabled]="busy()">Use this store address</button>
  <div *ngIf="disconnectId===s.id" class="mt-3 rounded-lg bg-gray-50 p-3 text-sm"><p class="mb-3">Disconnect this store? Existing orders will stay in OMS. Uninstall the app in Shopify to revoke access.</p><button (click)="disconnect(s)" [disabled]="busy()">Disconnect store</button> <button (click)="disconnectId=null">Cancel</button></div></section>
-</div></div>`,styles:[`section{background:white;border-radius:12px;box-shadow:0 1px 2px #0000000d;outline:1px solid #e5e7eb;padding:24px}h2{font-size:16px;font-weight:600;color:#111827}label{display:block;font-size:14px;font-weight:500;color:#374151}input:not([type=checkbox]){display:block;margin-top:6px;width:100%;padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:14px}button{padding:8px 14px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;cursor:pointer;background:white}button:hover{background:#f9fafb}button:disabled{opacity:.5;cursor:wait}.primary{background:#1f2937;color:white}.primary:hover{background:#111827}td,th{padding:10px}button:focus-visible,input:focus-visible{outline:2px solid #6b7280;outline-offset:2px}`]})
+</div></div>`,styles:[`section{background:white;border-radius:12px;box-shadow:0 1px 2px #0000000d;outline:1px solid #e5e7eb;padding:24px}h2{font-size:16px;font-weight:600;color:#111827}label{display:block;font-size:14px;font-weight:500;color:#374151}input:not([type=checkbox]){display:block;margin-top:6px;width:100%;padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:14px}button{padding:8px 14px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;cursor:pointer;background:white}button:hover{background:#f9fafb}button:disabled{opacity:.5;cursor:not-allowed}:host(.integration-busy) button:disabled{cursor:wait}.primary{background:#1f2937;color:white}.primary:hover{background:#111827}td,th{padding:10px}button:focus-visible,input:focus-visible{outline:2px solid #6b7280;outline-offset:2px}`]})
 export class ShopifyComponent {
  private http=inject(HttpClient);private lookup=inject(LookupService);private auth=inject(AuthService);private base=environment.apiUrl+'/integrations/shopify';
  busy=signal(false);error=signal('');message=signal('');stores=signal<any[]>([]);

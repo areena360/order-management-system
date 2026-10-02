@@ -41,8 +41,16 @@ export class OrdersService {
     return this.http.get<AssignmentRole[]>(`${this.apiUrl}/assignment-options`);
   }
 
-  saveAdminAssignments(id: number, userIds: number[]): Observable<{ assignedUserIds: number[] }> {
-    return this.http.put<{ assignedUserIds: number[] }>(`${this.apiUrl}/${id}/admin-assignments`, { userIds });
+  saveAdminAssignments(id: number, userIds: number[], messages: Record<number, string> = {}): Observable<{ assignedUserIds: number[] }> {
+    return this.http.put<{ assignedUserIds: number[] }>(`${this.apiUrl}/${id}/admin-assignments`, { userIds, messages });
+  }
+
+  getAssignmentMessages(id: number): Observable<Record<number, string>> {
+    return this.http.get<Record<number, string>>(this.apiUrl + '/' + id + '/assignment-messages');
+  }
+
+  readAssignmentMessage(id: number): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(this.apiUrl + '/' + id + '/assignment-message/read', {});
   }
 
   updateAssignmentStatus(id: number, status: string): Observable<{ assignmentStatus: string }> {

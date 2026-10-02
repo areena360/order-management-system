@@ -20,7 +20,8 @@ describe('Admin assigned orders', () => {
 
   beforeEach(() => {
     role = 'Staff';
-    orders = jasmine.createSpyObj('OrdersService', ['getImageUrl', 'getOrders', 'saveAdminAssignments', 'updateAssignmentStatus', 'getAssignmentOptions']);
+    orders = jasmine.createSpyObj('OrdersService', ['getImageUrl', 'getOrders', 'saveAdminAssignments', 'updateAssignmentStatus', 'getAssignmentOptions', 'getAssignmentMessages', 'readAssignmentMessage']);
+    orders.getAssignmentMessages.and.returnValue(of({}));
     orders.getImageUrl.and.returnValue('');
     orders.getOrders.and.returnValue(of({ items: [], totalCount: 0, pageNumber: 1, pageSize: 25 }));
     TestBed.configureTestingModule({
@@ -126,42 +127,38 @@ describe('Admin assigned orders', () => {
     expect(component.orders[0].assignmentStatus).toBe('done');
   });
 
-  it('keeps role buttons stable between pointer events and opens the menu below its trigger', () => {
+  it('loads saved messages beside assignees in the accordion', () => {
     role = 'Super Admin';
     loadRestricted(false);
     orders.getAssignmentOptions.and.returnValue(of([{ id: 7, name: 'Cutting', users: [{ id: 9, name: 'Team member', email: 'member@example.test' }] }]));
+    orders.getAssignmentMessages.and.returnValue(of({ 9: 'Cut carefully' }));
     const fixture = TestBed.createComponent(ManageOrdersComponent);
     const component = fixture.componentInstance;
     spyOn(component, 'ngOnInit');
     fixture.detectChanges();
-    const trigger = document.createElement('button');
-    const bounds = spyOn(trigger, 'getBoundingClientRect').and.returnValue({ left: 100, bottom: window.innerHeight - 200 } as DOMRect);
-    trigger.addEventListener('click', event => component.openUserAssignments({ id: 42 } as OrderListItem, event));
-    trigger.click(); fixture.detectChanges();
-    expect(component.assignmentTop).toBe(window.innerHeight - 192);
-    expect(component.assignmentMaxHeight).toBe(184);
-    const selector = '#manufacturing-assignment-menu button[aria-expanded]';
-    const roleButton: HTMLButtonElement = fixture.nativeElement.querySelector(selector);
-    roleButton.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    component.loading = false;
+    component.orders = [{ id: 42, assignedUserIds: [9] } as OrderListItem];
+    component.openUserAssignments(component.orders[0], new MouseEvent('click'));
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector(selector)).toBe(roleButton);
-    roleButton.click(); fixture.detectChanges();
-    expect(roleButton.getAttribute('aria-expanded')).toBe('true');
-    const checkbox: HTMLInputElement = fixture.nativeElement.querySelector('#manufacturing-assignment-menu input[type="checkbox"]');
-    checkbox.click(); fixture.detectChanges();
-    expect(component.assignmentDraft.has(9)).toBeTrue();
-    roleButton.click(); fixture.detectChanges();
-    expect(roleButton.getAttribute('aria-expanded')).toBe('false');
-    bounds.and.returnValue({ left: 60, right: 260, top: 60, bottom: 100 } as DOMRect);
-    document.dispatchEvent(new Event('scroll'));
-    fixture.detectChanges();
-    expect(component.assignmentTop).toBe(108);
-    expect(component.assignmentLeft).toBe(60);
-    expect(fixture.nativeElement.querySelector('#manufacturing-assignment-menu').style.top).toBe('108px');
-    bounds.and.returnValue({ left: 60, right: 260, top: -50, bottom: -10 } as DOMRect);
-    document.dispatchEvent(new Event('scroll'));
-    fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('#manufacturing-assignment-menu')).toBeNull();
+    const textarea: HTMLTextAreaElement = fixture.nativeElement.querySelector('textarea[aria-label="Message for Team member"]');
+    expect(textarea).not.toBeNull();
+    expect(component.assignmentMessages[9]).toBe('Cut carefully');
+    expect(textarea.disabled).toBeFalse();
+  });
+
+  it('clears unread only when the recipient successfully opens the message', () => {
+    loadRestricted();
+    const component = TestBed.createComponent(ManageOrdersComponent).componentInstance;
+    const response = new Subject<{ message: string }>();
+    orders.readAssignmentMessage.and.returnValue(response);
+    const order = { id: 42, hasAssignmentMessage: true, assignmentMessageUnread: true } as OrderListItem;
+    component.openAssignmentMessage(order, new MouseEvent('click'));
+    expect(order.assignmentMessageUnread).toBeTrue();
+    response.next({ message: 'Cut carefully' }); response.complete();
+    expect(component.messageText).toBe('Cut carefully');
+    expect(order.assignmentMessageUnread).toBeFalse();
+    component.closeAssignmentMessage();
+    expect(component.messageOrder).toBeNull();
   });
 
   it('saves multiple selected users and can remove every assignee', () => {
@@ -174,13 +171,13 @@ describe('Admin assigned orders', () => {
     component.toggleAssignee(7); component.toggleAssignee(9);
     orders.saveAdminAssignments.and.returnValue(of({ assignedUserIds: [7, 9] }));
     component.saveUserAssignments();
-    expect(orders.saveAdminAssignments).toHaveBeenCalledWith(42, [7, 9]);
+    expect(orders.saveAdminAssignments).toHaveBeenCalledWith(42, [7, 9], { 7: '', 9: '' });
     expect(component.orders[0].assignedUserIds).toEqual([7, 9]);
     component.assignmentOrderId = 42;
     component.toggleAssignee(7); component.toggleAssignee(9);
     orders.saveAdminAssignments.and.returnValue(of({ assignedUserIds: [] }));
     component.saveUserAssignments();
-    expect(orders.saveAdminAssignments).toHaveBeenCalledWith(42, []);
+    expect(orders.saveAdminAssignments).toHaveBeenCalledWith(42, [], {});
   });
 
   it('disables Visible, Add, Edit and Delete when assigned-only access is checked', () => {

@@ -10,6 +10,8 @@ export interface CustomerOption {
 }
 
 export interface OrderListItem {
+  hasAssignmentMessage?: boolean;
+  assignmentMessageUnread?: boolean;
   assignedUserIds?: number[];
   assignmentStatus?: string | null;
   source?: string;

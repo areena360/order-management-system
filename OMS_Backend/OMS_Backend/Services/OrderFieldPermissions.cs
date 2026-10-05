@@ -5,6 +5,10 @@ namespace OMS_Backend.Services;
 
 public static class OrderFieldPermissions
 {
+    public static Task<bool> CanEditDeadlineAsync(OMSDbContext db, int userId) =>
+        db.Users.AnyAsync(u => u.Id == userId && u.IsActive && !u.IsDeleted &&
+            u.Role != null && u.Role.IsActive && (u.Role.Name == "Super Admin" || u.Role.Name == "Admin"));
+
     public static readonly string[] Keys = { "Order Amount", "Order Tracking" };
     public static bool DefaultEdit(string? role, string key) => role == "Super Admin" ||
         (key == "Order Amount" && (role is "Admin" or "Finance")) ||

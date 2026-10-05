@@ -63,12 +63,9 @@ interface ColumnOption { key: string; label: string; }
       .chat-modal-enter { animation: none; will-change: auto; }
     }
 
-    /* line-clamp fallback (Tailwind ≥3.3 includes this natively) */
-    .line-clamp-2 {
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
+    .long-order-value {
+      white-space: normal;
+      overflow-wrap: anywhere;
     }
   `]
 })
@@ -101,7 +98,7 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
     this.ordersService.readAssignmentMessage(order.id).pipe(takeUntil(this.destroy$),
       finalize(() => this.messageLoading = false)).subscribe({
         next: result => { this.messageText = result.message; order.assignmentMessageUnread = false; },
-        error: () => this.messageError = 'Unable to load the message. Close and try again.'
+        error: () => this.messageError = 'Unable to load the note. Close and try again.'
       });
   }
 
@@ -186,7 +183,7 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
     forkJoin({ roles: this.ordersService.getAssignmentOptions(), messages: this.ordersService.getAssignmentMessages(order.id) }).pipe(takeUntil(this.destroy$),
       finalize(() => { if (loadVersion === this.assignmentLoadVersion) this.assignmentLoading = false; })).subscribe({
         next: ({ roles, messages }) => { if (loadVersion !== this.assignmentLoadVersion) return; this.assignmentRoles = roles; this.assignmentMessages = messages; this.assignmentOptionsLoaded = true; },
-        error: () => { if (loadVersion === this.assignmentLoadVersion) this.assignmentError = 'Unable to load users and messages. Close and retry.'; }
+        error: () => { if (loadVersion === this.assignmentLoadVersion) this.assignmentError = 'Unable to load users and notes. Close and retry.'; }
       });
   }
 
@@ -240,9 +237,7 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   hasHorizontalScroll = false;
 
   get tableColspan(): number {
-    return ((this.isCustomer || this.assignedOnly) ? 6 : 7)
-      + this.visibleColumnCount()
-      + (this.canAssignUsers ? 1 : 0);
+    return Math.max(1, this.visibleColumnCount());
   }
 
   orders: OrderListItem[] = [];
@@ -342,11 +337,11 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
   }
 
   get canEditTracking(): boolean {
-    return this.permissionService.canEdit('Order Tracking');
+    return this.permissionService.canEdit('Orders') && this.permissionService.canEdit('Order Tracking');
   }
 
   get canEditAmount(): boolean {
-    return this.permissionService.canEdit('Order Amount');
+    return this.permissionService.canEdit('Orders') && this.permissionService.canEdit('Order Amount');
   }
 
   isAssigned(order: OrderListItem): boolean {
@@ -545,19 +540,28 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
 
   get columnOptions(): ColumnOption[] {
     return this.allColumnOptions.filter(
-      c => this.canSeeSensitiveOrderData || !this.SENSITIVE_COLUMNS.includes(c.key)
+      c => this.isColumnAvailable(c.key)
     );
   }
   set columnOptions(value: ColumnOption[]) { this.allColumnOptions = value; }
   private allColumnOptions: ColumnOption[] = [
+    { key: 'selection', label: 'Select Orders' },
+    { key: 'image', label: 'Image' },
+    { key: 'manufacturerOrderNumber', label: 'Manufacturer Order #' },
+    { key: 'customer', label: 'Customer' },
+    { key: 'product', label: 'Product' },
     { key: 'amount', label: 'Amount' },
     { key: 'customerOrderNumber', label: 'Customer Order #' },
     { key: 'manufacturerProductTitle', label: 'Manufacturer Product' },
+    { key: 'manufacturing', label: 'Manufacturing' },
+    { key: 'assignmentStatus', label: 'Assignment Status' },
+    { key: 'status', label: 'Status' },
     { key: 'priority', label: 'Priority' },
     { key: 'daysForMaking', label: 'Days Passed' },
     { key: 'deadline', label: 'Deadline' },
     { key: 'trackingNumber', label: 'Tracking Number' },
-    { key: 'assignedDate', label: 'Assign Date' }
+    { key: 'assignedDate', label: 'Assign Date' },
+    { key: 'actions', label: 'Actions' }
   ];
 
   hiddenColumns = new Set<string>([
@@ -629,10 +633,6 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
     this.currentUserId = this.readUserIdFromToken();
 
     if (this.isCustomer) {
-      this.columnOptions = this.columnOptions.filter(c =>
-        c.key !== 'manufacturerProductTitle' &&
-        c.key !== 'priority'
-      );
       this.hiddenColumns = new Set<string>(['manufacturerProductTitle']);
     }
 
@@ -1125,10 +1125,18 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
 
   toggleColumnMenu(): void { this.showColumnMenu = !this.showColumnMenu; }
 
-  isColumnVisible(key: string): boolean {
+  private isColumnAvailable(key: string): boolean {
     if (!this.canSeeSensitiveOrderData && this.SENSITIVE_COLUMNS.includes(key)) return false;
-    if (this.isCustomer && key === 'priority') return false;
-    return !this.hiddenColumns.has(key);
+    if (this.isCustomer && ['priority', 'manufacturerProductTitle'].includes(key)) return false;
+    if (key === 'customer') return !this.isCustomer && !this.assignedOnly && this.canSeeSensitiveOrderData;
+    if (key === 'manufacturing') return this.canAssignUsers;
+    if (key === 'assignmentStatus') return this.assignedOnly;
+    if (key === 'status') return !this.assignedOnly;
+    return true;
+  }
+
+  isColumnVisible(key: string): boolean {
+    return this.isColumnAvailable(key) && !this.hiddenColumns.has(key);
   }
 
   toggleColumn(key: string): void {
@@ -1142,13 +1150,19 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
     setTimeout(() => this.updateHorizontalScrollState(), 0);
   }
 
-  hideAllOptionalColumns(): void {
+  hideAllColumns(): void {
     this.hiddenColumns = new Set(this.columnOptions.map(c => c.key));
     setTimeout(() => this.updateHorizontalScrollState(), 0);
   }
 
   visibleColumnCount(): number {
     return this.columnOptions.filter(column => this.isColumnVisible(column.key)).length;
+  }
+
+  onOrderRowClick(order: OrderListItem, event: MouseEvent): void {
+    const target = event.target;
+    if (target instanceof Element && target.closest('button, input, textarea, select, a, label, [role="button"]')) return;
+    this.viewOrder(order);
   }
 
   viewOrder(order: OrderListItem): void {

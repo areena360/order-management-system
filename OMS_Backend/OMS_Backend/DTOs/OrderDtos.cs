@@ -46,6 +46,7 @@ namespace OMS_Backend.DTOs
         public int OrderStatusId { get; set; }
         public string? Priority { get; set; }
         public int DaysForMaking { get; set; }
+        public DateTime? Deadline { get; set; }
         public string? TrackingNumber { get; set; }
 
         public List<OrderImageDto> Images { get; set; } = new();
@@ -58,6 +59,7 @@ namespace OMS_Backend.DTOs
 
     public class OrderDetailsDto
     {
+        public string? CreationAttachmentToken { get; set; }
         public string? AssignmentStatus { get; set; }
         public string Source { get; set; } = "Manual";
         public int Id { get; set; }
@@ -87,6 +89,7 @@ namespace OMS_Backend.DTOs
         public string? SizeDetails { get; set; }
 
         public int DaysForMaking { get; set; }
+        public DateTime? Deadline { get; set; }
 
         public string ConsigneeName { get; set; } = default!;
         public string? ShippingEmail { get; set; }
@@ -135,6 +138,7 @@ namespace OMS_Backend.DTOs
         // Days is now optional � auto-computed after assignment.
         // Kept for backward compatibility with old clients.
         [Range(0, 3650)] public int? DaysForMaking { get; set; }
+        public DateTime? Deadline { get; set; }
 
         public int? PriorityId { get; set; }
 
@@ -171,6 +175,7 @@ namespace OMS_Backend.DTOs
         public string? SizeDetails { get; set; }
 
         [Range(0, 3650)] public int? DaysForMaking { get; set; }
+        public DateTime? Deadline { get; set; }
         public int? PriorityId { get; set; }
 
         public string? ConsigneeName { get; set; }

@@ -17,7 +17,7 @@ public class AdminOrderAssignmentsController(OMSDbContext db) : ControllerBase
     private async Task<bool> CanAssign() => await db.Users.AnyAsync(u => u.Id == UserId
         && u.IsActive && !u.IsDeleted && u.Role != null && u.Role.IsActive
         && (u.Role.Name == "Admin" || u.Role.Name == "Super Admin"))
-        && !await OrderVisibility.IsRestrictedAsync(db, UserId);
+        && (await OrderAccess.LoadAsync(db, UserId)) is { CanView: true, AssignedOnly: false };
 
     [HttpGet("assignment-options")]
     public async Task<IActionResult> Options()
@@ -67,6 +67,7 @@ public class AdminOrderAssignmentsController(OMSDbContext db) : ControllerBase
     public async Task<IActionResult> Save(int orderId, SaveAssignmentsRequest request)
     {
         if (!await CanAssign()) return Forbid();
+        if (!(await OrderAccess.LoadAsync(db, UserId)).CanEdit) return Forbid();
         if (!await db.Orders.Where(OrderVisibility.ForUser(db, UserId, false)).AnyAsync(o => o.Id == orderId))
             return NotFound();
         if (request.UserIds == null || request.UserIds.Count > 1000) return BadRequest(new { message = "Invalid assignees." });

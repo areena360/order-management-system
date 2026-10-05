@@ -23,6 +23,7 @@ public class Order : BaseEntity
     public string? NotesByCustomer { get; set; }
     public string? NotesByManufacturer { get; set; }
     public int DaysForMaking { get; set; }
+    public DateTime? Deadline { get; set; }
     public int? PriorityId { get; set; }
 
     // ===== Assignment (NEW) =====

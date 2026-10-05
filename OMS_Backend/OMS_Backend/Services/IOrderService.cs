@@ -13,11 +13,11 @@ namespace OMS_Backend.Services
         Task<OrderDetailsDto> UpdateOrderStatusAsync(int id, UpdateOrderStatusDto dto, int userId, bool isCustomer);
         Task DeleteOrderAsync(int id, int userId, bool isCustomer);
 
-        Task<List<OrderImageDto>> AddOrderImagesAsync(int orderId, List<IFormFile> files, int userId, bool isCustomer);
+        Task<List<OrderImageDto>> AddOrderImagesAsync(int orderId, List<IFormFile> files, int userId, bool isCustomer, string? creationToken = null);
         Task DeleteOrderImageAsync(int orderId, int imageId, int userId, bool isCustomer);
 
         Task<List<InventoryBillDto>> GetInventoryBillsAsync(int orderId, int userId, bool isCustomer);
-        Task<InventoryBillDto> AddInventoryBillAsync(int orderId, SaveInventoryBillDto dto, int userId, bool isCustomer);
+        Task<InventoryBillDto> AddInventoryBillAsync(int orderId, SaveInventoryBillDto dto, int userId, bool isCustomer, string? creationToken = null);
         Task<InventoryBillDto> UpdateInventoryBillAsync(int orderId, int billId, SaveInventoryBillDto dto, int userId, bool isCustomer);
 
         // ===== NEW: Bulk assign orders (customer marks orders as assigned) =====

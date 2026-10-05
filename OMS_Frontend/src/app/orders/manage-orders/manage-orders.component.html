@@ -18,8 +18,8 @@
         </p>
       </div>
 
-      <button *ngIf="canAdd" (click)="addOrder()"
-        class="mt-4 sm:mt-0 inline-flex items-center gap-2 rounded-lg bg-gray-800 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-gray-900 transition-colors cursor-pointer">
+      <button *ngIf="!assignedOnly" [disabled]="!canAdd" (click)="addOrder()"
+        class="mt-4 sm:mt-0 inline-flex items-center gap-2 rounded-lg bg-gray-800 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-gray-900 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2"
           stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -265,11 +265,11 @@
             <div *ngIf="showColumnMenu"
               class="absolute left-0 z-30 mt-2 w-64 rounded-lg bg-white shadow-lg ring-1 ring-gray-200 p-3">
               <div class="flex items-center justify-between mb-2 pb-2 border-b border-gray-100">
-                <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Show Columns</span>
+                <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Show/Hide Columns</span>
                 <div class="flex gap-2">
                   <button type="button" (click)="resetColumns()"
                     class="text-xs text-blue-600 hover:text-blue-800 cursor-pointer">All</button>
-                  <button type="button" (click)="hideAllOptionalColumns()"
+                  <button type="button" (click)="hideAllColumns()"
                     class="text-xs text-gray-500 hover:text-gray-700 cursor-pointer">None</button>
                 </div>
               </div>
@@ -388,30 +388,30 @@
 
           <thead class="bg-gray-800">
             <tr>
-              <th class="w-12 px-3 py-3 text-left">
+              <th *ngIf="isColumnVisible('selection')" class="w-12 px-3 py-3 text-left">
                 <input type="checkbox" aria-label="Select all orders on this page" title="Select all orders on this page"
                   [checked]="allPageOrdersSelected" [indeterminate]="somePageOrdersSelected"
                   [disabled]="(!isCustomer && !canEdit && !canDelete) || !orders.length || bulkBusy || statusSavingId !== null"
                   (change)="togglePageSelection()" class="h-4 w-4 rounded accent-gray-600 cursor-pointer disabled:cursor-not-allowed" />
               </th>
 
-              <th class="px-3 py-3 text-left text-xs font-semibold text-gray-100 uppercase tracking-wider">
+              <th *ngIf="isColumnVisible('image')" class="px-3 py-3 text-left text-xs font-semibold text-gray-100 uppercase tracking-wider">
                 Image
               </th>
 
-              <th (click)="sort('ManufacturerOrderNumber')"
+              <th *ngIf="isColumnVisible('manufacturerOrderNumber')" (click)="sort('ManufacturerOrderNumber')"
                 class="px-3 py-3 text-left text-xs font-semibold text-gray-100 uppercase tracking-wider cursor-pointer select-none hover:text-white">
                 Manufacturer Order #
                 <span class="ml-1">{{ sortIcon('ManufacturerOrderNumber') }}</span>
               </th>
 
-              <th *ngIf="!isCustomer && !assignedOnly && canSeeSensitiveOrderData" (click)="sort('Customer')"
+              <th *ngIf="isColumnVisible('customer')" (click)="sort('Customer')"
                 class="px-3 py-3 text-left text-xs font-semibold text-gray-100 uppercase tracking-wider cursor-pointer select-none hover:text-white">
                 Customer
                 <span class="ml-1">{{ sortIcon('Customer') }}</span>
               </th>
 
-              <th class="px-3 py-3 text-left text-xs font-semibold text-gray-100 uppercase tracking-wider">
+              <th *ngIf="isColumnVisible('product')" class="px-3 py-3 text-left text-xs font-semibold text-gray-100 uppercase tracking-wider">
                 Product
               </th>
 
@@ -431,13 +431,13 @@
                 Manufacturer Product
               </th>
 
-              <th *ngIf="canAssignUsers" class="px-3 py-3 text-left text-xs font-semibold text-gray-100 uppercase tracking-wider">
+              <th *ngIf="isColumnVisible('manufacturing')" class="px-3 py-3 text-left text-xs font-semibold text-gray-100 uppercase tracking-wider">
                 Manufacturing
               </th>
-              <th *ngIf="assignedOnly" class="px-3 py-3 text-left text-xs font-semibold text-gray-100 uppercase tracking-wider">
+              <th *ngIf="isColumnVisible('assignmentStatus')" class="px-3 py-3 text-left text-xs font-semibold text-gray-100 uppercase tracking-wider">
                 Assignment Status
               </th>
-              <th *ngIf="!assignedOnly" (click)="sort('Status')"
+              <th *ngIf="isColumnVisible('status')" (click)="sort('Status')"
                 class="px-3 py-3 text-left text-xs font-semibold text-gray-100 uppercase tracking-wider cursor-pointer select-none hover:text-white">
                 Status
                 <span class="ml-1">{{ sortIcon('Status') }}</span>
@@ -472,7 +472,7 @@
                 <span class="ml-1">{{ sortIcon('AssignedDate') }}</span>
               </th>
 
-              <th class="px-3 py-3 text-right text-xs font-semibold text-gray-100 uppercase tracking-wider">
+              <th *ngIf="isColumnVisible('actions')" class="px-3 py-3 text-right text-xs font-semibold text-gray-100 uppercase tracking-wider">
                 Actions
               </th>
             </tr>
@@ -496,11 +496,11 @@
             </tr>
 
             <ng-container *ngFor="let order of orders; let i = index">
-            <tr (click)="viewOrder(order)"
+            <tr (click)="onOrderRowClick(order, $event)"
               class="cursor-pointer"
               [ngClass]="rowColorClass(i)">
 
-              <td class="px-3 py-3" (click)="$event.stopPropagation()">
+              <td *ngIf="isColumnVisible('selection')" class="px-3 py-3">
                 <input type="checkbox" [attr.aria-label]="'Select order ' + order.manufacturerOrderNumber"
                   [checked]="selectedOrderIds.has(order.id)"
                   [disabled]="(!isCustomer && !canEdit && !canDelete) || bulkBusy || statusSavingId !== null"
@@ -508,7 +508,7 @@
                   class="h-4 w-4 rounded accent-gray-800 cursor-pointer disabled:cursor-not-allowed" />
               </td>
 
-              <td class="px-3 py-3 whitespace-nowrap" (click)="$event.stopPropagation()">
+              <td *ngIf="isColumnVisible('image')" class="px-3 py-3 whitespace-nowrap">
                 <button *ngIf="order.images?.length" type="button" (click)="openImageModal(order, $event)"
                   class="group relative h-16 w-16 overflow-hidden rounded-lg ring-1 ring-gray-200 cursor-pointer">
                   <img [src]="getImageUrl(order.images?.[0]?.imageURL)" [alt]="order.customerProductTitle"
@@ -528,11 +528,11 @@
                 </div>
               </td>
 
-              <td class="px-3 py-3 align-top font-medium text-gray-900 break-words">
+              <td *ngIf="isColumnVisible('manufacturerOrderNumber')" class="long-order-value px-3 py-3 align-top font-medium text-gray-900 break-words">
                 {{ order.manufacturerOrderNumber }}
                   <button *ngIf="order.hasAssignmentMessage" type="button" (click)="openAssignmentMessage(order, $event)"
                     class="ml-2 inline-flex items-center gap-1 rounded-lg border border-teal-200 bg-teal-50 px-2 py-0.5 text-xs font-medium text-teal-800 hover:bg-teal-100">
-                    Message <span *ngIf="order.assignmentMessageUnread" class="rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">Unread</span>
+                    Notes <span *ngIf="order.assignmentMessageUnread" class="rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">Unread</span>
                   </button>
                 <span *ngIf="showAssignedBadge(order)"
                   class="ml-1 inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-600/20">
@@ -541,18 +541,18 @@
                 <span *ngIf="!assignedOnly && (order.source === 'WooCommerce' || order.source === 'Shopify')" class="block text-xs text-purple-700">{{order.source}}</span>
               </td>
 
-              <td *ngIf="!isCustomer && !assignedOnly && canSeeSensitiveOrderData" class="px-3 py-3 align-top font-medium text-gray-900 break-words w-[130px] max-w-[130px]">
+              <td *ngIf="isColumnVisible('customer')" class="long-order-value px-3 py-3 align-top font-medium text-gray-900 break-words w-[130px] max-w-[130px]">
                 {{ order.customerName }}
               </td>
 
-              <td class="px-3 py-3 align-top w-[200px] max-w-[200px]">
-                <div class="font-medium text-gray-900 line-clamp-2" [title]="order.customerProductTitle">
+              <td *ngIf="isColumnVisible('product')" class="px-3 py-3 align-top w-[200px] max-w-[200px]">
+                <div class="long-order-value font-medium text-gray-900" [title]="order.customerProductTitle">
                   {{ order.customerProductTitle }}
                 </div>
               </td>
 
               <!-- Amount — inline editable -->
-              <td *ngIf="isColumnVisible('amount')" class="px-3 py-3" (click)="$event.stopPropagation()">
+              <td *ngIf="isColumnVisible('amount')" class="px-3 py-3">
                 <div class="flex items-center justify-end gap-1.5">
                   <span class="shrink-0 text-[10px] font-medium text-gray-500">PKR</span>
                   <input #amountInput type="number" min="0" step="1" [disabled]="!canEditAmount"
@@ -564,17 +564,17 @@
                 </div>
               </td>
 
-              <td *ngIf="isColumnVisible('customerOrderNumber')" class="px-3 py-3 align-top text-gray-600 break-words w-[130px] max-w-[130px]">
+              <td *ngIf="isColumnVisible('customerOrderNumber')" class="long-order-value px-3 py-3 align-top text-gray-600 break-words w-[130px] max-w-[130px]">
                 {{ order.customerOrderNumber || '—' }}
               </td>
 
               <td *ngIf="isColumnVisible('manufacturerProductTitle')" class="px-3 py-3 align-top w-[180px] max-w-[180px]">
-                <span class="block text-gray-600 line-clamp-2" [title]="order.manufacturerProductTitle || ''">
+                <span class="long-order-value block text-gray-600" [title]="order.manufacturerProductTitle || ''">
                   {{ order.manufacturerProductTitle || '—' }}
                 </span>
               </td>
 
-              <td *ngIf="canAssignUsers" class="px-3 py-3 whitespace-nowrap" data-user-assignment (click)="$event.stopPropagation()">
+              <td *ngIf="isColumnVisible('manufacturing')" class="px-3 py-3 whitespace-nowrap" data-user-assignment>
                 <button type="button" (click)="openManufacturing(order, $event)" [disabled]="assignmentSaving"
                   title="Manufacturing progress" aria-label="Manufacturing progress"
                   class="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-teal-700 bg-teal-700 text-xs font-semibold text-white shadow-sm transition hover:border-teal-800 hover:bg-teal-800 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 cursor-pointer disabled:opacity-50 disabled:cursor-wait">
@@ -583,7 +583,7 @@
                 </button>
               </td>
 
-              <td *ngIf="assignedOnly" class="px-3 py-3 whitespace-nowrap" data-assignment-status (click)="$event.stopPropagation()">
+              <td *ngIf="isColumnVisible('assignmentStatus')" class="px-3 py-3 whitespace-nowrap" data-assignment-status>
                 <button type="button" (click)="openAssignmentStatus(order, $event)" [attr.aria-expanded]="assignmentStatusOrder?.id === order.id"
                   aria-controls="manufacturing-status-menu" [disabled]="assignmentStatusSavingId !== null" aria-label="Assignment status"
                   [ngClass]="manufacturingStatusClass(order.assignmentStatus || 'assigned')"
@@ -594,7 +594,7 @@
                 </button>
               </td>
 
-              <td *ngIf="!assignedOnly" class="px-3 py-3 whitespace-nowrap" (click)="$event.stopPropagation()">
+              <td *ngIf="isColumnVisible('status')" class="px-3 py-3 whitespace-nowrap">
                 <div class="relative inline-block" data-order-status-menu>
                   <button type="button" (click)="toggleStatusMenu(order.id)"
                     [disabled]="!canEdit || bulkBusy || statusSavingId !== null"
@@ -647,7 +647,7 @@
                 {{ order.deadline ? (order.deadline | date:'MMM d, y') : '—' }}
               </td>
 
-              <td *ngIf="isColumnVisible('trackingNumber')" class="px-3 py-3" (click)="$event.stopPropagation()">
+              <td *ngIf="isColumnVisible('trackingNumber')" class="px-3 py-3">
                 <input #trackingInput type="text" [disabled]="!canEditTracking"
                   [value]="order.trackingNumber || ''"
                   (keydown.enter)="$event.preventDefault(); trackingInput.blur()"
@@ -661,7 +661,7 @@
                 {{ order.assignedDate ? (order.assignedDate | date:'MMM d, y') : '—' }}
               </td>
 
-              <td class="px-3 py-3 whitespace-nowrap text-right" (click)="$event.stopPropagation()">
+              <td *ngIf="isColumnVisible('actions')" class="px-3 py-3 whitespace-nowrap text-right">
                 <div class="flex items-center justify-end gap-1.5">
 
                   <button *ngIf="canViewCustomerChat" type="button" (click)="openChatForOrder(order, $event)"
@@ -706,17 +706,17 @@
                     {{ isAssigned(order) ? 'Assigned' : 'Assign' }}
                   </button>
 
-                  <button *ngIf="canEdit" type="button" (click)="editOrder(order, $event)" title="Edit" aria-label="Edit order"
-                    class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:border-blue-300 transition-colors cursor-pointer">
+                  <button *ngIf="!assignedOnly" [disabled]="!canEdit" type="button" (click)="editOrder(order, $event)" title="Edit" aria-label="Edit order"
+                    class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:border-blue-300 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
                     <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                       <path stroke-linecap="round" stroke-linejoin="round"
                         d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" />
                     </svg>
                   </button>
 
-                  <button *ngIf="canDelete" type="button" [disabled]="deletingOrderId === order.id"
+                  <button *ngIf="!assignedOnly" type="button" [disabled]="!canDelete || deletingOrderId === order.id"
                     (click)="openDeleteModal(order, $event)" title="Delete" aria-label="Delete order"
-                    class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:border-red-300 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
+                    class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:border-red-300 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:opacity-50 disabled:cursor-not-allowed">
                     <svg *ngIf="deletingOrderId !== order.id" class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                       <path stroke-linecap="round" stroke-linejoin="round"
                         d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
@@ -732,7 +732,7 @@
 
             </tr>
 
-            <!-- Manufacturing accordion (compact, name + message-below) -->
+            <!-- Manufacturing accordion (compact, name + notes below) -->
             <tr *ngIf="canAssignUsers" data-user-assignment [ngClass]="rowColorClass(i)">
               <td [attr.colspan]="tableColspan" class="px-3 pb-3 pt-0">
                 <div class="overflow-hidden rounded-lg border border-gray-200" [ngClass]="rowColorClass(i)">
@@ -787,12 +787,15 @@
                                 class="block truncate text-xs font-medium leading-tight text-slate-800 cursor-pointer">
                                 {{ user.name }}
                               </label>
-                              <input *ngIf="assignmentDraft.has(user.id)"
+                              <label *ngIf="assignmentDraft.has(user.id)" [for]="'assignment-note-' + user.id"
+                                class="mt-2 block text-[11px] font-medium text-gray-600">Notes / Comments</label>
+                              <textarea *ngIf="assignmentDraft.has(user.id)"
+                                [id]="'assignment-note-' + user.id"
                                 [(ngModel)]="assignmentMessages[user.id]"
                                 [disabled]="assignmentSaving"
-                                [attr.aria-label]="'Message for ' + user.name"
-                                maxlength="4000" type="text" placeholder="Message…"
-                                class="mt-1 w-full rounded border border-gray-300 bg-white px-2 py-1 text-[11px] focus:border-teal-500 focus:outline-none disabled:bg-gray-100" />
+                                [attr.aria-label]="'Notes / Comments for ' + user.name"
+                                maxlength="4000" rows="3" placeholder="Add notes or comments…"
+                                class="mt-1 w-full resize-y rounded border border-gray-300 bg-white px-2 py-1 text-[11px] focus:border-teal-500 focus:outline-none disabled:bg-gray-100"></textarea>
                             </div>
                           </div>
                           <p *ngIf="!role.users.length" class="px-2 py-1.5 text-[11px] italic text-gray-400">No active users</p>
@@ -1066,11 +1069,11 @@
   (click)="closeAssignmentMessage()" (cancel)="$event.preventDefault(); closeAssignmentMessage()">
   <div class="w-full max-w-md rounded-xl bg-white p-5 shadow-xl" (click)="$event.stopPropagation()">
     <div class="mb-4 flex items-center justify-between gap-3">
-      <h2 id="assignment-message-title" class="text-base font-semibold text-slate-900">Message · {{ order.manufacturerOrderNumber }}</h2>
+      <h2 id="assignment-message-title" class="text-base font-semibold text-slate-900">Notes · {{ order.manufacturerOrderNumber }}</h2>
       <button type="button" autofocus (click)="closeAssignmentMessage()" [attr.aria-disabled]="messageLoading"
-        aria-label="Close message" class="rounded p-2 text-gray-500 hover:bg-gray-100">✕</button>
+        aria-label="Close notes" class="rounded p-2 text-gray-500 hover:bg-gray-100">✕</button>
     </div>
-    <p *ngIf="messageLoading" role="status" class="text-sm text-gray-500">Loading message...</p>
+    <p *ngIf="messageLoading" role="status" class="text-sm text-gray-500">Loading notes...</p>
     <p *ngIf="messageError" role="alert" class="text-sm text-red-600">{{ messageError }}</p>
     <p *ngIf="!messageLoading && !messageError" class="max-h-80 overflow-y-auto whitespace-pre-wrap break-words text-sm text-slate-700">{{ messageText }}</p>
   </div>

@@ -439,7 +439,7 @@ export class OrderFormComponent implements OnInit, OnDestroy {
       consigneeAddress: order.consigneeAddress,
       courier: order.courier ?? '',
       trackingNumber: order.trackingNumber,
-      deadline: order.deadline,
+      deadline: order.deadline?.slice(0, 10) ?? null,
       notesByCustomer: order.notesByCustomer,
       notesByManufacturer: order.notesByManufacturer
     }, { emitEvent: false });
@@ -509,7 +509,7 @@ export class OrderFormComponent implements OnInit, OnDestroy {
     this.openDropdown = this.openDropdown === key ? null : key;
   }
 
-  selectDropdown(controlName: string, value: number | null): void {
+  selectDropdown(controlName: string, value: number | string | null): void {
     const control = this.form.get(controlName);
     if (!control || control.disabled) return;
     control.setValue(value);

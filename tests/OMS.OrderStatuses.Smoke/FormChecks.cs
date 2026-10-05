@@ -55,10 +55,14 @@ static class FormChecks
                 wrongType.SizeId = Lookup(3);
                 await Reject(() => service.CreateOrderAsync(wrongType, actor, isCustomer), "Cross-type lookup IDs are rejected");
                 var input = Input(isCustomer);
+                input.Deadline = new DateTime(2026, 12, 15);
                 if (isCustomer) { input.Courier = "UPS"; input.ManufacturerOrderNumber = "injected-number"; }
                 else { input.ManufacturerOrderNumber = tag; input.NotesByCustomer = "injected notes"; }
                 var created = await service.CreateOrderAsync(input, actor, isCustomer);
                 ids.Add(created.Id);
+                Check(created.Deadline == (isCustomer ? null : input.Deadline), "Deadline create permission and response");
+                var listed = await service.GetOrdersAsync(new OrderQueryDto { Search = tag, SortBy = "Deadline" }, actor, isCustomer);
+                Check(listed.Items.Single(o => o.Id == created.Id).Deadline == created.Deadline, "List returns persisted deadline");
                 Check(created.Status == (isCustomer ? "new" : "assign"), "Correct default status on create");
                 Check(created.CustomerMaterialId == null, "Optional customer material persists blank");
                 Check(isCustomer ? created.Courier == null && created.ManufacturerOrderNumber != "injected-number"
@@ -81,17 +85,24 @@ static class FormChecks
                 };
                 var update = Update();
                 update.Courier = null;
+                update.Deadline = new DateTime(2027, 1, 1);
                 update.TrackingNumber = "injected tracking";
                 update.NotesByManufacturer = "injected notes";
                 update.ManufacturerOrderNumber = "injected-number";
                 var saved = await service.UpdateOrderAsync(order.Id, update, customer.Id, true);
+                Check(saved.Deadline == new DateTime(2026, 12, 15), "Customer cannot overwrite deadline");
                 Check(saved.Courier == "DHL" && saved.TrackingNumber == "TRACK-TEST" && saved.NotesByManufacturer == "Original manufacturer notes"
                     && saved.ManufacturerOrderNumber == tag, "Customer update preserves disabled shipping and manufacturer fields");
                 order.NotesByCustomer = "Preserve this";
                 await db.SaveChangesAsync();
                 update = Update(); update.NotesByCustomer = "injected notes";
+                update.Deadline = new DateTime(2026, 12, 20);
                 saved = await service.UpdateOrderAsync(order.Id, update, admin.Id, false);
                 Check(saved.NotesByCustomer == "Preserve this", "Admin update preserves disabled customer notes");
+                Check(saved.Deadline == update.Deadline, "Admin can update deadline");
+                update.Deadline = null;
+                saved = await service.UpdateOrderAsync(order.Id, update, admin.Id, false);
+                Check(saved.Deadline == null, "Admin can clear deadline");
 
                 foreach (var fileName in new[] { "bill.xlsx", "bill.docx", "bill.zip", "bill.html", "bill" })
                 {

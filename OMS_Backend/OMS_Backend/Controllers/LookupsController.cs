@@ -48,7 +48,11 @@ namespace OMS_Backend.Controllers
         [HttpGet("customers")]
         public async Task<IActionResult> GetCustomers([FromQuery] string? search)
         {
+            var userId = int.TryParse(User.FindFirst("userId")?.Value, out var id) ? id : 0;
+            var access = await OrderAccess.RequireAsync(_db, userId, OrderAction.View);
+            if (!access.CanSeeSensitiveData && !access.CanAdd) return Forbid();
             var query = _db.Users.Where(u => !u.IsDeleted && u.IsActive);
+            if (access.IsCustomer) query = query.Where(u => u.Id == userId);
 
             if (!string.IsNullOrWhiteSpace(search))
                 query = query.Where(u => u.FirstName.Contains(search) || u.LastName.Contains(search) || u.Email.Contains(search));

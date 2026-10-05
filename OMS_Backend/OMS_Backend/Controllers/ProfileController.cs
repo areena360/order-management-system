@@ -104,7 +104,7 @@ namespace OMS_Backend.Controllers
         {
             if (!int.TryParse(User.FindFirst("userId")?.Value, out var userId)) return Unauthorized();
             var actor = await _db.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.Id == userId && !u.IsDeleted);
-            if (actor == null || !actor.IsActive) return Ok(Array.Empty<object>());
+            if (actor == null || !actor.IsActive || actor.Role == null || !actor.Role.IsActive || actor.Role.IsDeleted) return Ok(Array.Empty<object>());
             var roleName = actor.Role?.Name;
             var screens = new[]
             {
@@ -150,8 +150,8 @@ namespace OMS_Backend.Controllers
                     adminAssignedOnly = false,
                     canView = s == "Order Group Chat" && roleName == "Customer" ? false : (match == null ? false : !match.IsDeleted && match.IsActive && match.CanView),
                     canAdd = s == "Order Group Chat" && roleName == "Customer" ? false : (match == null ? false : !match.IsDeleted && match.IsActive && match.CanView && match.CanAdd),
-                    canEdit = match?.CanEdit ?? false,
-                    canDelete = match?.CanDelete ?? false
+                    canEdit = match != null && !match.IsDeleted && match.IsActive && match.CanView && match.CanEdit,
+                    canDelete = match != null && !match.IsDeleted && match.IsActive && match.CanView && match.CanDelete
                 };
             });
 

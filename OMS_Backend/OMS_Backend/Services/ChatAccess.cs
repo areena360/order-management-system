@@ -11,13 +11,11 @@ public static class ChatAccess
     public static IQueryable<User> AllowedUsers(OMSDbContext db, bool group, bool send = false)
     {
         var screen = group ? GroupScreen : CustomerScreen;
-        return db.Users.Where(u => !u.IsDeleted && u.IsActive && u.Role != null
+        return OrderAccess.Viewers(db).Where(u => !u.IsDeleted && u.IsActive && u.Role != null
             && (!group || u.Role.Name != "Customer")
             && (u.Role.Name == "Super Admin"
                 || db.RolePermissions.Any(p => p.RoleId == u.RoleId && p.ScreenKey == screen
-                    && !p.IsDeleted && p.IsActive && p.CanView && (!send || p.CanAdd))
-                // Existing customer conversations stay enabled until explicitly configured.
-                || (!group && !db.RolePermissions.Any(p => p.RoleId == u.RoleId && p.ScreenKey == screen))));
+                    && !p.IsDeleted && p.IsActive && p.CanView && (!send || p.CanAdd))));
     }
 
     public static Task<bool> CanAccess(OMSDbContext db, int userId, bool group, bool send = false)

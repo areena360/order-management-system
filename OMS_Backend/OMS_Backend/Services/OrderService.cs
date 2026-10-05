@@ -11,9 +11,11 @@ namespace OMS_Backend.Services
         private readonly OMSDbContext _db;
         private readonly IWebHostEnvironment _env;
         private readonly bool _wooEnabled;
+        private readonly OrderTokens? _tokens;
 
-        public OrderService(OMSDbContext db, IWebHostEnvironment env, IConfiguration configuration)
+        public OrderService(OMSDbContext db, IWebHostEnvironment env, IConfiguration configuration, OrderTokens? tokens = null)
         {
+            _tokens = tokens;
             _db = db;
             _env = env;
             _wooEnabled = WooCommerceSecurity.Enabled(configuration) || configuration.GetValue<bool>("Shopify:Enabled");
@@ -31,7 +33,14 @@ namespace OMS_Backend.Services
         // =====================================================================
         public async Task<PagedResult<OrderListDto>> GetOrdersAsync(OrderQueryDto q, int userId, bool isCustomer)
         {
-            var restricted = await OrderVisibility.IsRestrictedAsync(_db, userId);
+            var access = await OrderAccess.RequireAsync(_db, userId, OrderAction.View);
+            isCustomer = access.IsCustomer;
+            var restricted = access.AssignedOnly;
+            if (!access.CanSeeSensitiveData)
+            {
+                q.CustomerId = null;
+                if (new[] { "amount", "customer" }.Contains(q.SortBy?.ToLowerInvariant())) q.SortBy = "AssignedDate";
+            }
             if (restricted)
             {
                 q.Source = null;
@@ -57,11 +66,11 @@ namespace OMS_Backend.Services
                 var s = q.Search.Trim();
                 query = query.Where(o =>
                     o.ManufacturerOrderNumber.Contains(s) ||
-                    (!restricted && o.CustomerOrderNumber != null && o.CustomerOrderNumber.Contains(s)) ||
+                    (access.CanSeeSensitiveData && o.CustomerOrderNumber != null && o.CustomerOrderNumber.Contains(s)) ||
                     o.CustomerProductTitle.Contains(s) ||
                     (o.ManufacturerProductTitle != null && o.ManufacturerProductTitle.Contains(s)) ||
-                    (!restricted && o.TrackingNumber != null && o.TrackingNumber.Contains(s)) ||
-                    (!restricted && (o.ConsigneeName.Contains(s) ||
+                    (access.CanSeeSensitiveData && o.TrackingNumber != null && o.TrackingNumber.Contains(s)) ||
+                    (access.CanSeeSensitiveData && (o.ConsigneeName.Contains(s) ||
                     o.Customer.FirstName.Contains(s) ||
                     o.Customer.LastName.Contains(s))));
             }
@@ -114,6 +123,7 @@ namespace OMS_Backend.Services
                         ? _db.LookupItems.Where(li => li.Id == o.PriorityId).Select(li => li.Name).FirstOrDefault()
                         : null,
                     DaysForMaking = o.DaysForMaking,
+                    Deadline = o.Deadline,
                     TrackingNumber = o.TrackingNumber,
 
                     // Assignment
@@ -160,18 +170,24 @@ namespace OMS_Backend.Services
                 }
             }
 
-            if (restricted)
+            if (!access.CanSeeSensitiveData)
                 foreach (var item in items)
                 {
                     item.Amount = null;
                     item.CustomerName = "";
                     item.CustomerOrderNumber = null;
                     item.TrackingNumber = null;
-                    item.Source = "";
-                    item.Status = "";
-                    item.OrderStatusId = 0;
                     item.AssignedUserIds.Clear();
+                    if (restricted)
+                    {
+                        item.Source = "";
+                        item.Status = "";
+                        item.OrderStatusId = 0;
+                    }
                 }
+
+            foreach (var item in items)
+                foreach (var image in item.Images) image.ImageURL = FileUrl(image.ImageURL, userId)!;
 
             return new PagedResult<OrderListDto>
             {
@@ -204,6 +220,9 @@ namespace OMS_Backend.Services
                     "priority" => q => desc
                         ? q.OrderByDescending(o => o.PriorityId)
                         : q.OrderBy(o => o.PriorityId),
+                    "deadline" => q => desc
+                        ? q.OrderByDescending(o => o.Deadline)
+                        : q.OrderBy(o => o.Deadline),
                     "daysformaking" => q => desc
                         ? q.OrderByDescending(o => o.IsAssigned).ThenBy(o => o.AssignedDate)
                         : q.OrderBy(o => o.IsAssigned).ThenByDescending(o => o.AssignedDate),
@@ -220,6 +239,8 @@ namespace OMS_Backend.Services
         // =====================================================================
         public async Task<OrderDetailsDto> GetOrderByIdAsync(int id, int userId, bool isCustomer)
         {
+            var access = await OrderAccess.RequireAsync(_db, userId, OrderAction.View);
+            isCustomer = access.IsCustomer;
             var order = await _db.Orders
                 .Include(o => o.Customer)
                 .Include(o => o.OrderImages)
@@ -231,7 +252,7 @@ namespace OMS_Backend.Services
             await EnsureOwnership(order, userId, isCustomer);
 
             var details = await MapDetailsAsync(order);
-            if (await OrderVisibility.IsRestrictedAsync(_db, userId))
+            if (!access.CanSeeSensitiveData)
             {
                 details.AssignmentStatus = await _db.AdminOrderAssignments
                     .Where(a => a.OrderId == id && a.UserId == userId).Select(a => a.Status).SingleOrDefaultAsync();
@@ -245,12 +266,17 @@ namespace OMS_Backend.Services
                 details.ShippingContact = null;
                 details.Courier = null;
                 details.TrackingNumber = null;
-                details.Source = "";
-                details.Status = "";
-                details.OrderStatusId = 0;
+                if (access.AssignedOnly)
+                {
+                    details.Source = "";
+                    details.Status = "";
+                    details.OrderStatusId = 0;
+                }
                 details.StatusHistory.Clear();
                 details.InventoryBills.Clear();
             }
+            foreach (var image in details.Images) image.ImageURL = FileUrl(image.ImageURL, userId)!;
+            foreach (var bill in details.InventoryBills) bill.BillImage = FileUrl(bill.BillImage, userId);
             return details;
         }
 
@@ -322,6 +348,7 @@ namespace OMS_Backend.Services
                 SizeChart = Name(o.SizeChartId),
                 SizeDetails = o.SizeDetails,
                 DaysForMaking = liveDays,
+                Deadline = o.Deadline,
                 ConsigneeName = o.ConsigneeName,
                 ShippingEmail = o.ShippingEmail,
                 ShippingContact = o.ShippingContact,
@@ -382,10 +409,13 @@ namespace OMS_Backend.Services
         // =====================================================================
         public async Task<OrderDetailsDto> CreateOrderAsync(CreateOrderDto dto, int userId, bool isCustomer)
         {
+            var access = await OrderAccess.RequireAsync(_db, userId, OrderAction.Add);
+            isCustomer = access.IsCustomer;
             if (await OrderVisibility.IsRestrictedAsync(_db, userId))
                 throw new ForbiddenAppException("Assigned-orders access does not allow changing orders.");
             if (!await OrderFieldPermissions.CanEditAsync(_db, userId, "Order Amount")) dto.Amount = null;
             if (!await OrderFieldPermissions.CanEditAsync(_db, userId, "Order Tracking")) dto.TrackingNumber = null;
+            if (!await OrderFieldPermissions.CanEditDeadlineAsync(_db, userId)) dto.Deadline = null;
 
             if (isCustomer)
             {
@@ -456,6 +486,7 @@ namespace OMS_Backend.Services
 
                 // Days start at 0; will be computed live after assignment
                 DaysForMaking = dto.DaysForMaking ?? 0,
+                Deadline = dto.Deadline?.Date,
                 PriorityId = dto.PriorityId,
 
                 IsAssigned = false,
@@ -481,7 +512,9 @@ namespace OMS_Backend.Services
 
             await tx.CommitAsync();
 
-            return await GetOrderByIdAsync(order.Id, userId, isCustomer);
+            var created = await GetOrderByIdAsync(order.Id, userId, isCustomer);
+            created.CreationAttachmentToken = _tokens?.IssueCreation(userId, order.Id);
+            return created;
         }
 
         private async Task<string> GenerateOrderNumberAsync()
@@ -508,6 +541,8 @@ namespace OMS_Backend.Services
         // =====================================================================
         public async Task<OrderDetailsDto> UpdateOrderAsync(int id, UpdateOrderDto dto, int userId, bool isCustomer)
         {
+            var access = await OrderAccess.RequireAsync(_db, userId, OrderAction.Edit);
+            isCustomer = access.IsCustomer;
             if (await OrderVisibility.IsRestrictedAsync(_db, userId))
                 throw new ForbiddenAppException("Assigned-orders access does not allow changing orders.");
             var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == id && !o.IsDeleted)
@@ -515,9 +550,24 @@ namespace OMS_Backend.Services
 
             await EnsureOwnership(order, userId, isCustomer);
 
+            // Hidden values must neither leak nor be overwritten by redacted form payloads.
+            if (!access.CanSeeSensitiveData)
+            {
+                dto.CustomerId = order.CustomerId;
+                dto.CustomerOrderNumber = order.CustomerOrderNumber;
+                dto.Amount = order.Amount;
+                dto.TrackingNumber = order.TrackingNumber;
+                dto.ConsigneeName = order.ConsigneeName;
+                dto.ConsigneeAddress = order.ConsigneeAddress;
+                dto.ShippingEmail = order.ShippingEmail;
+                dto.ShippingContact = order.ShippingContact;
+                dto.Courier = order.Courier;
+            }
+
             // Preserve restricted fields even when a client submits modified values.
             if (!await OrderFieldPermissions.CanEditAsync(_db, userId, "Order Amount")) dto.Amount = order.Amount;
             if (!await OrderFieldPermissions.CanEditAsync(_db, userId, "Order Tracking")) dto.TrackingNumber = order.TrackingNumber;
+            if (!await OrderFieldPermissions.CanEditDeadlineAsync(_db, userId)) dto.Deadline = order.Deadline;
 
             if (_wooEnabled && dto.CustomerId != order.CustomerId &&
                 await _db.Set<WooCommerceOrder>().AnyAsync(x => x.OrderId == id))
@@ -585,6 +635,7 @@ namespace OMS_Backend.Services
                 order.DaysForMaking = dto.DaysForMaking.Value;
 
             order.PriorityId = dto.PriorityId;
+            order.Deadline = dto.Deadline?.Date;
             order.UpdatedBy = userId;
 
             await _db.SaveChangesAsync();
@@ -596,6 +647,8 @@ namespace OMS_Backend.Services
         // =====================================================================
         public async Task<OrderDetailsDto> UpdateOrderStatusAsync(int id, UpdateOrderStatusDto dto, int userId, bool isCustomer)
         {
+            var access = await OrderAccess.RequireAsync(_db, userId, OrderAction.Edit);
+            isCustomer = access.IsCustomer;
             if (await OrderVisibility.IsRestrictedAsync(_db, userId))
                 throw new ForbiddenAppException("Assigned-orders access does not allow changing orders.");
             var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == id && !o.IsDeleted)
@@ -633,6 +686,8 @@ namespace OMS_Backend.Services
         // =====================================================================
         public async Task<AssignOrdersResultDto> AssignOrdersAsync(AssignOrdersDto dto, int userId, bool isCustomer)
         {
+            var access = await OrderAccess.RequireAsync(_db, userId, OrderAction.View);
+            isCustomer = access.IsCustomer;
             if (await OrderVisibility.IsRestrictedAsync(_db, userId))
                 throw new ForbiddenAppException("Assigned-orders access does not allow changing orders.");
             if (dto?.OrderIds == null || dto.OrderIds.Count == 0)
@@ -665,8 +720,10 @@ namespace OMS_Backend.Services
         // =====================================================================
         // IMAGES
         // =====================================================================
-        public async Task<List<OrderImageDto>> AddOrderImagesAsync(int orderId, List<IFormFile> files, int userId, bool isCustomer)
+        public async Task<List<OrderImageDto>> AddOrderImagesAsync(int orderId, List<IFormFile> files, int userId, bool isCustomer, string? creationToken = null)
         {
+            var access = await RequireAttachmentAccessAsync(orderId, userId, creationToken);
+            isCustomer = access.IsCustomer;
             if (await OrderVisibility.IsRestrictedAsync(_db, userId))
                 throw new ForbiddenAppException("Assigned-orders access does not allow changing orders.");
             var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == orderId && !o.IsDeleted)
@@ -708,7 +765,7 @@ namespace OMS_Backend.Services
                 _db.OrderImages.Add(image);
                 await _db.SaveChangesAsync();
 
-                result.Add(new OrderImageDto { Id = image.Id, ImageURL = image.ImageURL });
+                result.Add(new OrderImageDto { Id = image.Id, ImageURL = FileUrl(image.ImageURL, userId)! });
             }
 
             return result;
@@ -716,6 +773,8 @@ namespace OMS_Backend.Services
 
         public async Task DeleteOrderImageAsync(int orderId, int imageId, int userId, bool isCustomer)
         {
+            var access = await OrderAccess.RequireAsync(_db, userId, OrderAction.Edit);
+            isCustomer = access.IsCustomer;
             if (await OrderVisibility.IsRestrictedAsync(_db, userId))
                 throw new ForbiddenAppException("Assigned-orders access does not allow changing orders.");
             var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == orderId && !o.IsDeleted)
@@ -738,6 +797,8 @@ namespace OMS_Backend.Services
         // =====================================================================
         public async Task DeleteOrderAsync(int id, int userId, bool isCustomer)
         {
+            var access = await OrderAccess.RequireAsync(_db, userId, OrderAction.Delete);
+            isCustomer = access.IsCustomer;
             if (await OrderVisibility.IsRestrictedAsync(_db, userId))
                 throw new ForbiddenAppException("Assigned-orders access does not allow changing orders.");
             var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == id && !o.IsDeleted);
@@ -758,14 +819,16 @@ namespace OMS_Backend.Services
         // =====================================================================
         public async Task<List<InventoryBillDto>> GetInventoryBillsAsync(int orderId, int userId, bool isCustomer)
         {
+            var access = await OrderAccess.RequireAsync(_db, userId, OrderAction.View);
+            isCustomer = access.IsCustomer;
             var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == orderId && !o.IsDeleted)
                 ?? throw new NotFoundException(nameof(Order), orderId);
 
             await EnsureOwnership(order, userId, isCustomer);
 
-            if (await OrderVisibility.IsRestrictedAsync(_db, userId)) return new();
+            if (!access.CanSeeSensitiveData) return new();
 
-            return await _db.InventoryBills
+            var bills = await _db.InventoryBills
                 .Where(b => b.OrderId == orderId && !b.IsDeleted)
                 .OrderByDescending(b => b.CreatedDate)
                 .Select(b => new InventoryBillDto
@@ -776,13 +839,17 @@ namespace OMS_Backend.Services
                     BillImage = b.BillImage,
                     CreatedDate = b.CreatedDate
                 }).ToListAsync();
+            foreach (var bill in bills) bill.BillImage = FileUrl(bill.BillImage, userId);
+            return bills;
         }
 
-        public async Task<InventoryBillDto> AddInventoryBillAsync(int orderId, SaveInventoryBillDto dto, int userId, bool isCustomer)
+        public async Task<InventoryBillDto> AddInventoryBillAsync(int orderId, SaveInventoryBillDto dto, int userId, bool isCustomer, string? creationToken = null)
         {
+            var access = await RequireAttachmentAccessAsync(orderId, userId, creationToken);
+            isCustomer = access.IsCustomer;
             if (await OrderVisibility.IsRestrictedAsync(_db, userId))
                 throw new ForbiddenAppException("Assigned-orders access does not allow changing orders.");
-            if (isCustomer) throw new ForbiddenAppException("Only staff can manage inventory bills.");
+            if (isCustomer || !access.CanSeeSensitiveData) throw new ForbiddenAppException("You cannot manage inventory bills.");
             var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == orderId && !o.IsDeleted)
                 ?? throw new NotFoundException(nameof(Order), orderId);
 
@@ -807,16 +874,18 @@ namespace OMS_Backend.Services
                 Id = bill.Id,
                 BillNumber = bill.BillNumber,
                 BillDetails = bill.BillDetails,
-                BillImage = bill.BillImage,
+                BillImage = FileUrl(bill.BillImage, userId),
                 CreatedDate = bill.CreatedDate
             };
         }
 
         public async Task DeleteInventoryBillAsync(int orderId, int billId, int userId, bool isCustomer)
         {
+            var access = await OrderAccess.RequireAsync(_db, userId, OrderAction.Edit);
+            isCustomer = access.IsCustomer;
             if (await OrderVisibility.IsRestrictedAsync(_db, userId))
                 throw new ForbiddenAppException("Assigned-orders access does not allow changing orders.");
-            if (isCustomer) throw new ForbiddenAppException("Only staff can manage inventory bills.");
+            if (isCustomer || !access.CanSeeSensitiveData) throw new ForbiddenAppException("You cannot manage inventory bills.");
             var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == orderId && !o.IsDeleted)
                 ?? throw new NotFoundException(nameof(Order), orderId);
 
@@ -834,9 +903,11 @@ namespace OMS_Backend.Services
 
         public async Task<InventoryBillDto> UpdateInventoryBillAsync(int orderId, int billId, SaveInventoryBillDto dto, int userId, bool isCustomer)
         {
+            var access = await OrderAccess.RequireAsync(_db, userId, OrderAction.Edit);
+            isCustomer = access.IsCustomer;
             if (await OrderVisibility.IsRestrictedAsync(_db, userId))
                 throw new ForbiddenAppException("Assigned-orders access does not allow changing orders.");
-            if (isCustomer) throw new ForbiddenAppException("Only staff can manage inventory bills.");
+            if (isCustomer || !access.CanSeeSensitiveData) throw new ForbiddenAppException("You cannot manage inventory bills.");
             var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == orderId && !o.IsDeleted)
                 ?? throw new NotFoundException(nameof(Order), orderId);
             await EnsureOwnership(order, userId, isCustomer);
@@ -849,7 +920,23 @@ namespace OMS_Backend.Services
             bill.UpdatedBy = userId;
             await _db.SaveChangesAsync();
             return new InventoryBillDto { Id = bill.Id, BillNumber = bill.BillNumber, BillDetails = bill.BillDetails,
-                BillImage = bill.BillImage, CreatedDate = bill.CreatedDate };
+                BillImage = FileUrl(bill.BillImage, userId), CreatedDate = bill.CreatedDate };
+        }
+
+
+        private string? FileUrl(string? value, int userId) => _tokens == null ? value : _tokens.FileUrl(value, userId);
+
+        private async Task<OrderAccess> RequireAttachmentAccessAsync(int orderId, int userId, string? creationToken)
+        {
+            var access = await OrderAccess.RequireAsync(_db, userId, OrderAction.View);
+            if (access.CanEdit) return access;
+            // Add-only users can finish attachments for the exact order just created,
+            // but cannot use Add to modify existing orders or delete files.
+            if (access.CanAdd && _tokens?.AllowsCreation(creationToken, userId, orderId) == true
+                && await _db.Orders.AnyAsync(o => o.Id == orderId && o.CreatedBy == userId && !o.IsDeleted))
+                return access;
+            access.Require(OrderAction.Edit);
+            return access;
         }
 
         private async Task<string?> SaveBillFileAsync(int orderId, IFormFile? file)

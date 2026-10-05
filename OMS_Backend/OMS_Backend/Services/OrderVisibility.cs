@@ -17,7 +17,9 @@ public static class OrderVisibility
     public static Expression<Func<Order, bool>> ForUser(OMSDbContext db, int userId, bool isCustomer)
     {
         var restrictedUsers = RestrictedUsers(db);
-        return order => !order.IsDeleted && (isCustomer ? order.CustomerId == userId
+        var viewers = OrderAccess.Viewers(db);
+        var customers = viewers.Where(u => u.Role!.Name == "Customer");
+        return order => viewers.Any(u => u.Id == userId) && !order.IsDeleted && (customers.Any(u => u.Id == userId) ? order.CustomerId == userId
             : (!order.RequiresCustomerAssignment || order.IsAssigned)
               && (!restrictedUsers.Any(u => u.Id == userId)
                   || db.AdminOrderAssignments.Any(a => a.OrderId == order.Id && a.UserId == userId

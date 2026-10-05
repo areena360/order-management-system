@@ -87,7 +87,7 @@ namespace OMS_Backend.Controllers
             if (files == null || files.Count == 0)
                 return BadRequest(new { message = "No files provided." });
 
-            var images = await _orderService.AddOrderImagesAsync(id, files, CurrentUserId, IsCustomer());
+            var images = await _orderService.AddOrderImagesAsync(id, files, CurrentUserId, IsCustomer(), Request.Headers["X-Order-Creation-Token"]);
             return Ok(images);
         }
 
@@ -108,7 +108,7 @@ namespace OMS_Backend.Controllers
         [HttpPost("{id}/inventory-bill")]
         public async Task<IActionResult> AddInventoryBill(int id, [FromForm] SaveInventoryBillDto dto)
         {
-            var bill = await _orderService.AddInventoryBillAsync(id, dto, CurrentUserId, IsCustomer());
+            var bill = await _orderService.AddInventoryBillAsync(id, dto, CurrentUserId, IsCustomer(), Request.Headers["X-Order-Creation-Token"]);
             return Ok(bill);
         }
 

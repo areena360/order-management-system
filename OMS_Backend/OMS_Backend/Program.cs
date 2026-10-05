@@ -25,6 +25,7 @@ builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<WooCommerceIntegrationService>();
 builder.Services.AddDataProtection();
+builder.Services.AddSingleton<OrderTokens>();
 builder.Services.AddHttpClient("shopify", c => c.Timeout = TimeSpan.FromSeconds(25))
     .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
 builder.Services.AddScoped<ShopifyApi>();
@@ -131,6 +132,22 @@ app.UseExceptionHandler();
 // Explicit loopback-only development exception; production still redirects to HTTPS.
 app.UseWhen(context => !WooCommerceSecurity.TransportAllowed(context.Request, app.Configuration, app.Environment), branch => branch.UseHttpsRedirection());
 var fileTypes = new Microsoft.AspNetCore.StaticFiles.FileExtensionContentTypeProvider();
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.StartsWithSegments("/uploads/orders") || context.Request.Path.StartsWithSegments("/uploads/inventory-bills"))
+    {
+        context.Response.Headers.CacheControl = "no-store";
+        context.Response.Headers["Referrer-Policy"] = "no-referrer";
+        var tokens = context.RequestServices.GetRequiredService<OrderTokens>();
+        var db = context.RequestServices.GetRequiredService<OMSDbContext>();
+        if (!await tokens.CanDownloadAsync(db, context.Request.Path.Value!, context.Request.Query["grant"]))
+        {
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            return;
+        }
+    }
+    await next(context);
+});
 fileTypes.Mappings[".download"] = "application/octet-stream";
 app.UseStaticFiles(new StaticFileOptions
 {

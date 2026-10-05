@@ -61,9 +61,20 @@ describe('Order field permissions and shared bulk selection', () => {
       expect(fixture.componentInstance.form.controls.amount.enabled).toBe(allowed);
       expect(fixture.componentInstance.form.controls.trackingNumber.enabled).toBe(allowed);
       const list = TestBed.createComponent(ManageOrdersComponent).componentInstance;
-      expect(list.canEditAmount).toBe(allowed);
-      expect(list.canEditTracking).toBe(allowed);
+      expect(list.canEditAmount).toBeFalse();
+      expect(list.canEditTracking).toBeFalse();
     });
+  }
+
+  for (const orderEdit of [false, true]) {
+    for (const fieldEdit of [false, true]) {
+      it(`requires order edit (${orderEdit}) and field edit (${fieldEdit}) for inline fields`, () => {
+        spyOn(TestBed.inject(PermissionService), 'canEdit').and.callFake(key => key === 'Orders' ? orderEdit : fieldEdit);
+        const component = TestBed.createComponent(ManageOrdersComponent).componentInstance;
+        expect(component.canEditAmount).toBe(orderEdit && fieldEdit);
+        expect(component.canEditTracking).toBe(orderEdit && fieldEdit);
+      });
+    }
   }
 
   for (const [name, tracking, amount] of [

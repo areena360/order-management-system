@@ -18,7 +18,7 @@ namespace OMS_Backend.Controllers
         private static readonly string[] Screens =
         {
             "Dashboard", "Manage Users", "Manage Roles", "Orders",
-            "Order Customer Chat", "Order Group Chat"
+            "Order Customer Chat", "Order Group Chat", "Order Amount", "Order Tracking"
         };
 
         private readonly OMSDbContext _db;
@@ -61,11 +61,11 @@ namespace OMS_Backend.Controllers
                 {
                     ScreenKey = s,
                     AdminAssignedOnly = s == "Orders" && match != null && match.IsActive && !match.IsDeleted && match.AdminAssignedOnly,
-                    CanView = match == null ? false
+                    CanView = match == null ? OrderFieldPermissions.Keys.Contains(s)
                                             : !match.IsDeleted && match.IsActive && match.CanView,
                     CanAdd = match == null ? false
                                            : !match.IsDeleted && match.IsActive && match.CanView && match.CanAdd,
-                    CanEdit = match?.CanEdit ?? false,
+                    CanEdit = OrderFieldPermissions.Keys.Contains(s) ? OrderFieldPermissions.CanEdit(roleName, s, match) : match?.CanEdit ?? false,
                     CanDelete = match?.CanDelete ?? false
                 };
             });
@@ -93,6 +93,13 @@ namespace OMS_Backend.Controllers
                     && targetRole.Name != "Customer" && permission.AdminAssignedOnly;
                 if (permission.AdminAssignedOnly)
                     permission.CanView = permission.CanAdd = permission.CanEdit = permission.CanDelete = false;
+                if (!permission.CanView)
+                    permission.CanAdd = permission.CanEdit = permission.CanDelete = false;
+                if (OrderFieldPermissions.Keys.Contains(permission.ScreenKey))
+                {
+                    permission.CanAdd = permission.CanDelete = false;
+                    if (targetRole.Name == "Customer") permission.CanEdit = false;
+                }
             }
 
             // Chat screens: Send Messages maps to CanAdd; Edit/Delete are never allowed.

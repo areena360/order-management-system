@@ -12,9 +12,18 @@ final class OMS_Woo_Sync {
         foreach (array('woocommerce_new_order', 'woocommerce_update_order', 'woocommerce_checkout_order_processed', 'woocommerce_store_api_checkout_order_processed') as $hook) {
             add_action($hook, array(__CLASS__, 'queue'), 20, 1);
         }
-        add_action('oms_woo_send', array(__CLASS__, 'send'), 10, 2);
-        add_action('oms_woo_scan', array(__CLASS__, 'scan'));
-        add_action('oms_woo_tick', array(__CLASS__, 'tick'));
+        add_action('oms_woo_send', self::guard('send'), 10, 2);
+        add_action('oms_woo_scan', self::guard('scan'));
+        add_action('oms_woo_tick', self::guard('tick'));
+    }
+    private static function guard(string $method): callable {
+        return static function (...$args) use ($method) {
+            try { self::$method(...$args); }
+            catch (Throwable $error) {
+                OMS_Woo_API::log(0, 'exception', 'Connector operation ' . $method . ' failed (' . get_class($error) . ').');
+                throw $error; // Keep Action Scheduler's existing failure semantics.
+            }
+        };
     }
     public static function queue($order, int $attempt = 0): void {
         $id = $order instanceof WC_Order ? $order->get_id() : absint($order);
@@ -124,6 +133,7 @@ final class OMS_Woo_Sync {
     }
     public static function tick(): void {
         if (!OMS_Woo_API::connected()) { return; }
+        OMS_Woo_API::flush_errors();
         if (get_option('oms_woo_scan_state') && !as_has_scheduled_action('oms_woo_scan', array(), 'oms-woo')) {
             as_schedule_single_action(time() + 1, 'oms_woo_scan', array(), 'oms-woo');
         }

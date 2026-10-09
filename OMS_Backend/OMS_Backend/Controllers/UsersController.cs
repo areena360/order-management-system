@@ -6,6 +6,7 @@ using OMS_Backend.Common.Exceptions;
 using OMS_Backend.Data;
 using OMS_Backend.Services;
 using OMS_Backend.DTOs;
+using OMS_Backend.Common.ExceptionHandling;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -195,11 +196,8 @@ public class UsersController : ControllerBase
             {
                 // Account is already activated.
                 // Email failure should not undo activation.
-                // Intentional swallow — logging via ILogger recommended here
-                // instead of Console.WriteLine, but scope kept out of this
-                // controller since it's not part of global handling.
-                Console.WriteLine(
-                    $"Activation email failed for {user.Email}: {ex.Message}");
+                await HttpContext.RequestServices.GetRequiredService<IExceptionRecorder>()
+                    .RecordAsync(ex, "Email", HttpContext, "SendAccountActivationEmail");
             }
         }
 

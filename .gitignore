@@ -171,3 +171,5 @@ docker-compose.override.yml
 
 **/azureCredentials.json
 **/local.settings.json
+# Runtime diagnostic queues can contain operational metadata; never commit them.
+**/App_Data/exception-spool/

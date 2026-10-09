@@ -1,11 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using OMS_Backend.Data;
 using OMS_Backend.Models;
+using OMS_Backend.Common.ExceptionHandling;
 namespace OMS_Backend.Services;
-public class ShopifyWorker(IServiceScopeFactory scopes,IConfiguration config,ILogger<ShopifyWorker> logger):BackgroundService {
+public class ShopifyWorker(IServiceScopeFactory scopes,IConfiguration config,ILogger<ShopifyWorker> logger,IExceptionRecorder recorder):BackgroundService {
     protected override async Task ExecuteAsync(CancellationToken stop) {
         while(!stop.IsCancellationRequested) {
-            if(config.GetValue<bool>("Shopify:Enabled")) try {await Tick();} catch(Exception ex){logger.LogWarning("Shopify worker paused: {Type}. Check configuration/migration and store logs.",ex.GetType().Name);}
+            if(config.GetValue<bool>("Shopify:Enabled")) try {await Tick();} catch(Exception ex){await recorder.RecordAsync(ex,"ShopifyWorker",operation:"Tick");logger.LogWarning("Shopify worker paused: {Type}. Check configuration/migration and store logs.",ex.GetType().Name);}
             try{await Task.Delay(TimeSpan.FromSeconds(15),stop);}catch(OperationCanceledException){break;}
         }
     }
@@ -22,6 +23,7 @@ public class ShopifyWorker(IServiceScopeFactory scopes,IConfiguration config,ILo
                     db.ChangeTracker.Clear();
                     var job=await db.Set<ShopifyJob>().Include(x=>x.Store).ThenInclude(x=>x.Connection).SingleAsync(x=>x.Id==id);
                     try {await sync.Process(job);job.CompletedAt=DateTime.UtcNow;job.Error="";}catch(Exception ex){
+                        await recorder.RecordAsync(ex,"ShopifyWorker",operation:$"ProcessJob:{job.Id}");
                         // Never persist entities left dirty by a rolled-back import.
                         db.ChangeTracker.Clear();job=await db.Set<ShopifyJob>().SingleAsync(x=>x.Id==id);
                         job.Attempts++;job.Error=SafeError(ex);job.DueAt=DateTime.UtcNow.AddSeconds(Math.Min(3600,30*Math.Pow(2,Math.Min(job.Attempts,7))));}
@@ -30,7 +32,7 @@ public class ShopifyWorker(IServiceScopeFactory scopes,IConfiguration config,ILo
                 var storeIds=await db.Set<ShopifyStore>().Where(x=>x.Connection.IsActive&&x.NextPollAt<=DateTime.UtcNow).Select(x=>x.Id).ToListAsync();
                 foreach(var id in storeIds) {
                     db.ChangeTracker.Clear();var store=await db.Set<ShopifyStore>().Include(x=>x.Connection).SingleAsync(x=>x.Id==id);
-                    try{await sync.Scan(store);await sync.Fulfill(store);store.LastError="";}catch(Exception ex){db.ChangeTracker.Clear();store=await db.Set<ShopifyStore>().SingleAsync(x=>x.Id==id);store.LastError=SafeError(ex);store.NextPollAt=DateTime.UtcNow.AddMinutes(2);}
+                    try{await sync.Scan(store);await sync.Fulfill(store);store.LastError="";}catch(Exception ex){await recorder.RecordAsync(ex,"ShopifyWorker",operation:$"ScanAndFulfillStore:{id}");db.ChangeTracker.Clear();store=await db.Set<ShopifyStore>().SingleAsync(x=>x.Id==id);store.LastError=SafeError(ex);store.NextPollAt=DateTime.UtcNow.AddMinutes(2);}
                     await db.SaveChangesAsync();
                 }
             } finally {await db.Database.ExecuteSqlRawAsync("EXEC sp_releaseapplock @Resource='oms-shopify-worker',@LockOwner='Session'");}

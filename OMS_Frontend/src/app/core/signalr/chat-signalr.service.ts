@@ -5,6 +5,7 @@ import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../../auth/auth.service';
 import { PermissionService } from '../../auth/permission.service';
 import { environment } from '../../../environments/environment';
+import { reportClientError } from '../client-error-reporter';
 
 export interface IncomingChatMessage {
   id: number;
@@ -81,6 +82,7 @@ export class ChatSignalrService {
       await this.connection.start();
       console.log('[Chat] Connected');
     } catch (err) {
+      reportClientError(err, 'SignalR');
       console.error('[Chat] Connection failed', err);
       this.connection = null;
     } finally {
@@ -90,7 +92,7 @@ export class ChatSignalrService {
 
   async stop(): Promise<void> {
     if (!this.connection) return;
-    try { await this.connection.stop(); } catch { /* ignore */ }
+    try { await this.connection.stop(); } catch (err) { reportClientError(err, 'SignalR'); }
     this.connection = null;
   }
 
@@ -108,6 +110,7 @@ export class ChatSignalrService {
       await this.connection.invoke('JoinOrderChat', orderId);
     } catch (err) {
       console.error('[Chat] Join failed', err);
+      reportClientError(err, 'SignalR');
     }
   }
 
@@ -115,7 +118,7 @@ export class ChatSignalrService {
     if (!this.connection) return;
     try {
       await this.connection.invoke('LeaveOrderChat', orderId);
-    } catch { /* ignore */ }
+    } catch (err) { reportClientError(err, 'SignalR'); }
   }
 
   async sendMessage(orderId: number, message: string): Promise<void> {

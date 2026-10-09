@@ -5,6 +5,7 @@ using Microsoft.Data.SqlClient;
 using OMS_Backend.Data;
 using OMS_Backend.DTOs;
 using OMS_Backend.Models;
+using OMS_Backend.Common.ExceptionHandling;
 
 namespace OMS_Backend.Controllers;
 
@@ -121,6 +122,9 @@ public class RolesController : ControllerBase
         }
         catch (DbUpdateException ex) when (ex.InnerException is SqlException { Number: 547 })
         {
+            await HttpContext.RequestServices.GetRequiredService<IExceptionRecorder>()
+                .RecordAsync(ex, "Api", HttpContext, "DeleteRole", 409);
+            HttpContext.Items["ExceptionRecorded"] = true;
             return Conflict(new { message = "This role is in use and cannot be deleted. Refresh and try again." });
         }
         return NoContent();

@@ -1,0 +1,4 @@
+{
+  "extends": "./tsconfig.spec.json",
+  "include": ["src/app/core/client-error-reporter.spec.ts", "src/**/*.d.ts"]
+}

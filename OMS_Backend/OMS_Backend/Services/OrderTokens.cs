@@ -3,11 +3,12 @@ using System.Text.Json;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using OMS_Backend.Data;
+using OMS_Backend.Common.ExceptionHandling;
 
 namespace OMS_Backend.Services;
 
 // Short-lived, purpose-bound grants. Every use still checks current database permissions.
-public sealed class OrderTokens(IDataProtectionProvider protection)
+public sealed class OrderTokens(IDataProtectionProvider protection, IExceptionRecorder recorder)
 {
     private readonly IDataProtector files = protection.CreateProtector("OMS.OrderFiles.v1");
     private readonly IDataProtector creation = protection.CreateProtector("OMS.OrderCreationAttachments.v1");
@@ -16,7 +17,7 @@ public sealed class OrderTokens(IDataProtectionProvider protection)
     private static string Issue(IDataProtector protector, int userId, string resource) =>
         protector.Protect(JsonSerializer.Serialize(new Grant(userId, resource, DateTimeOffset.UtcNow.AddMinutes(15))));
 
-    private static int? Read(IDataProtector protector, string? token, string resource)
+    private async Task<int?> ReadAsync(IDataProtector protector, string? token, string resource)
     {
         if (string.IsNullOrEmpty(token)) return null;
         try
@@ -24,11 +25,15 @@ public sealed class OrderTokens(IDataProtectionProvider protection)
             var grant = JsonSerializer.Deserialize<Grant>(protector.Unprotect(token));
             return grant != null && grant.Expires > DateTimeOffset.UtcNow && grant.Resource == resource ? grant.UserId : null;
         }
-        catch (Exception ex) when (ex is CryptographicException or JsonException or FormatException) { return null; }
+        catch (Exception ex) when (ex is CryptographicException or JsonException or FormatException)
+        {
+            await recorder.RecordAsync(ex, "FileGrant", operation: "ValidateGrant", statusCode: 403);
+            return null;
+        }
     }
 
     public string IssueCreation(int userId, int orderId) => Issue(creation, userId, orderId.ToString());
-    public bool AllowsCreation(string? token, int userId, int orderId) => Read(creation, token, orderId.ToString()) == userId;
+    public async Task<bool> AllowsCreationAsync(string? token, int userId, int orderId) => await ReadAsync(creation, token, orderId.ToString()) == userId;
     public string? FileUrl(string? url, int userId)
     {
         if (url == null || !(url.StartsWith("/uploads/orders/", StringComparison.OrdinalIgnoreCase)
@@ -40,7 +45,7 @@ public sealed class OrderTokens(IDataProtectionProvider protection)
     public async Task<bool> CanDownloadAsync(OMSDbContext db, string requestPath, string? token)
     {
         var canonical = Uri.UnescapeDataString(requestPath);
-        var userId = Read(files, token, canonical);
+        var userId = await ReadAsync(files, token, canonical);
         var parts = canonical.Split('/', StringSplitOptions.RemoveEmptyEntries);
         if (!userId.HasValue || parts.Length != 4 || !int.TryParse(parts[2], out var orderId)) return false;
         var access = await OrderAccess.LoadAsync(db, userId.Value);

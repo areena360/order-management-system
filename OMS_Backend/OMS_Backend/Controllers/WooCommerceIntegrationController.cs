@@ -10,6 +10,10 @@ using OMS_Backend.Data;
 using OMS_Backend.DTOs;
 using OMS_Backend.Models;
 using OMS_Backend.Services;
+using OMS_Backend.Common.ExceptionHandling;
+using System.ComponentModel.DataAnnotations;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace OMS_Backend.Controllers;
 
@@ -216,6 +220,33 @@ public class WooCommerceIntegrationController(OMSDbContext db, WooCommerceIntegr
 
     [Authorize(AuthenticationSchemes = WooCommerceSecurity.Scheme), HttpPost("orders")]
     public async Task<IActionResult> Import(WooOrderDto dto) => Ok(await service.Import(ConnectionId, dto));
+
+    public sealed class PluginError
+    {
+        public Guid EventId { get; set; }
+        [RegularExpression("^(failed|poll-failed|exception)$"), Required]
+        public string Kind { get; set; } = "failed";
+        [Range(0, long.MaxValue)] public long OrderId { get; set; }
+    }
+
+    [Authorize(AuthenticationSchemes = WooCommerceSecurity.Scheme), HttpPost("client-errors"), RequestSizeLimit(4096)]
+    public async Task<IActionResult> PluginErrors([FromBody, MaxLength(10)] PluginError[] errors)
+    {
+        var recorder = HttpContext.RequestServices.GetRequiredService<IExceptionRecorder>();
+        foreach (var error in errors)
+        {
+            if (error.EventId == Guid.Empty) return BadRequest();
+            // Bind deduplication IDs to the authenticated store, never a client-supplied owner.
+            var id = new Guid(SHA256.HashData(Encoding.UTF8.GetBytes($"woo:{ConnectionId}:{error.EventId}"))[..16]);
+            if (!await recorder.StoreAsync(new ExceptionLog
+            {
+                Id = id, Source = "WooCommercePlugin", ErrorCode = "PLUGIN_" + error.Kind.ToUpperInvariant(),
+                TraceId = HttpContext.TraceIdentifier, Operation = $"Connection:{ConnectionId}/Order:{error.OrderId}",
+                ExceptionType = "PluginReportedError", Message = "Plugin-reported failure; see WordPress connector logs."
+            })) return StatusCode(503);
+        }
+        return Accepted(new { recorded = true });
+    }
 
     [Authorize(AuthenticationSchemes = WooCommerceSecurity.Scheme), HttpPost("disconnect")]
     public async Task<IActionResult> PluginDisconnect() { await Revoke(ConnectionId); return NoContent(); }

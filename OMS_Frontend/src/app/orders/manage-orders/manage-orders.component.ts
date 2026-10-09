@@ -15,6 +15,7 @@ import { ManufacturingProgressComponent } from '../manufacturing-progress/manufa
 import { manufacturingStatusClass, manufacturingStatusLabel } from '../manufacturing-status.util';
 import { LookupService, LOOKUP_TYPE } from '../lookup.service';
 import { PollingService } from '../../core/polling/polling.service';
+import { reportClientError } from '../../core/client-error-reporter';
 import { ChatService } from '../chat/chat.service';
 import { ChatModalComponent } from '../chat/chat-modal/chat-modal.component';
 import { OrderFormComponent } from '../order-form/order-form.component';
@@ -726,7 +727,7 @@ export class ManageOrdersComponent implements OnInit, OnDestroy {
     const hasOverflow = !!el && el.scrollWidth > el.clientWidth + 2;
     if (hasOverflow !== this.hasHorizontalScroll) {
       this.hasHorizontalScroll = hasOverflow;
-      try { this.cdr.detectChanges(); } catch { /* view already being checked */ }
+      try { this.cdr.detectChanges(); } catch (error) { reportClientError(error); }
     }
   }
 

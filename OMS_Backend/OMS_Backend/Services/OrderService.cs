@@ -932,7 +932,7 @@ namespace OMS_Backend.Services
             if (access.CanEdit) return access;
             // Add-only users can finish attachments for the exact order just created,
             // but cannot use Add to modify existing orders or delete files.
-            if (access.CanAdd && _tokens?.AllowsCreation(creationToken, userId, orderId) == true
+            if (access.CanAdd && _tokens != null && await _tokens.AllowsCreationAsync(creationToken, userId, orderId)
                 && await _db.Orders.AnyAsync(o => o.Id == orderId && o.CreatedBy == userId && !o.IsDeleted))
                 return access;
             access.Require(OrderAction.Edit);

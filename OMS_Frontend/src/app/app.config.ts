@@ -1,5 +1,6 @@
 import {
   ApplicationConfig,
+  ErrorHandler,
   inject,
   provideAppInitializer,
 } from '@angular/core';
@@ -13,9 +14,11 @@ import { errorInterceptor } from './interceptors/error.interceptor';
 
 import { ChatSignalrService } from './core/signalr/chat-signalr.service';
 import { AuthService } from './auth/auth.service';
+import { GlobalClientErrorHandler } from './core/client-error-reporter';
 
 export const appConfig: ApplicationConfig = {
   providers: [
+    { provide: ErrorHandler, useClass: GlobalClientErrorHandler },
     provideRouter(routes),
     provideAnimations(),
     provideHttpClient(withInterceptors([errorInterceptor, jwtInterceptor])),

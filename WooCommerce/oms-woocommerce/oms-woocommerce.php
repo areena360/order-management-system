@@ -2,7 +2,7 @@
 /**
  * Plugin Name: OMS WooCommerce Connector
  * Description: Connect a WooCommerce store to OMS with authorized, queued order synchronization.
- * Version: 1.0.2
+ * Version: 1.0.3
  * Requires at least: 6.5
  * Requires PHP: 8.1
  * Requires Plugins: woocommerce
@@ -11,7 +11,7 @@
  * License: GPL-2.0-or-later
  */
 defined('ABSPATH') || exit;
-define('OMS_WOO_VERSION', '1.0.2');
+define('OMS_WOO_VERSION', '1.0.3');
 require_once __DIR__ . '/includes/class-oms-api.php';
 require_once __DIR__ . '/includes/class-oms-sync.php';
 require_once __DIR__ . '/includes/class-oms-admin.php';

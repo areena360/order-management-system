@@ -12,6 +12,7 @@ import { PermissionService } from '../../../auth/permission.service';
 import { ChatService } from '../chat.service';
 import { ChatMessage, IncomingGroupChatMessage } from '../chat.models';
 import { ChatSignalrService } from '../../../core/signalr/chat-signalr.service';
+import { reportClientError } from '../../../core/client-error-reporter';
 
 type ChatTab = 'customer' | 'group';
 
@@ -222,6 +223,7 @@ export class ChatModalComponent implements OnInit, OnChanges, OnDestroy {
       this.newMessage = '';
       setTimeout(() => this.textarea?.nativeElement.focus(), 10);
     } catch (err: any) {
+      reportClientError(err);
       this.errorMsg = err?.message ?? 'Unable to send message.';
     } finally {
       this.sending = false;
@@ -273,6 +275,7 @@ export class ChatModalComponent implements OnInit, OnChanges, OnDestroy {
       this.groupNewMessage = '';
       setTimeout(() => this.groupTextarea?.nativeElement.focus(), 10);
     } catch (err: any) {
+      reportClientError(err);
       this.groupErrorMsg = err?.message ?? 'Unable to send group message.';
     } finally {
       this.groupSending = false;

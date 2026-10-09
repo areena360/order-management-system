@@ -8,6 +8,7 @@ namespace OMS_Backend.Data
         public OMSDbContext(DbContextOptions<OMSDbContext> options) : base(options) { }
 
         public DbSet<User> Users { get; set; }
+        public DbSet<ExceptionLog> ExceptionLogs { get; set; }
         public DbSet<AuthSession> AuthSessions { get; set; }
         public DbSet<Role> Roles { get; set; }
         public DbSet<Order> Orders { get; set; }
@@ -25,6 +26,8 @@ namespace OMS_Backend.Data
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            modelBuilder.Entity<ExceptionLog>().HasIndex(x => x.OccurredAtUtc);
+            modelBuilder.Entity<ExceptionLog>().HasIndex(x => x.TraceId);
             WooCommerceModel.Configure(modelBuilder);
             ShopifyModel.Configure(modelBuilder);
             modelBuilder.Entity<ManufacturingEvent>().HasOne(e => e.Order).WithMany()

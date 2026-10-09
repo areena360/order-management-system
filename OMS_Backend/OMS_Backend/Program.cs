@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using OMS_Backend.Common.ExceptionHandling;
@@ -13,6 +14,8 @@ var builder = WebApplication.CreateBuilder(args);
 // Private app credentials remain outside tracked appsettings files.
 builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: false).AddEnvironmentVariables();
 
+try
+{
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 
 // DbContext
@@ -46,7 +49,7 @@ builder.Services.AddRateLimiter(options =>
 builder.Services.AddScoped<IChatService, ChatService>();
 
 // SignalR
-builder.Services.AddSignalR();
+builder.Services.AddSignalR(options => options.AddFilter<ExceptionHubFilter>());
 
 // JWT Bearer authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
@@ -110,6 +113,15 @@ builder.Services.AddCors(options =>
 });
 
 // Global exception handling
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddSingleton<ExceptionRecorder>();
+builder.Services.AddSingleton<IExceptionRecorder>(services => services.GetRequiredService<ExceptionRecorder>());
+builder.Services.AddHostedService<ExceptionReplayWorker>();
+builder.Services.AddRateLimiter(options => options.AddPolicy("client-errors", context =>
+    System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
+        { PermitLimit = 20, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 })));
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
@@ -121,13 +133,14 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
+app.UseMiddleware<ErrorResponseMiddleware>();
+app.UseExceptionHandler();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
-app.UseExceptionHandler();
 
 // Explicit loopback-only development exception; production still redirects to HTTPS.
 app.UseWhen(context => !WooCommerceSecurity.TransportAllowed(context.Request, app.Configuration, app.Environment), branch => branch.UseHttpsRedirection());
@@ -172,4 +185,11 @@ app.MapControllers();
 // SignalR hubs
 app.MapHub<ChatHub>("/hubs/chat");
 
-app.Run();
+await app.RunAsync();
+}
+catch (Exception exception) when (exception is not HostAbortedException)
+{
+    await new ExceptionRecorder(builder.Configuration, builder.Environment)
+        .RecordAsync(exception, "Host", operation: "StartupOrRun");
+    throw;
+}

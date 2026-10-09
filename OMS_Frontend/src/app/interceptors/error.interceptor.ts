@@ -3,12 +3,14 @@ import { inject } from '@angular/core';
 import { ToastrService } from 'ngx-toastr';
 import { catchError, throwError } from 'rxjs';
 import { ApiErrorResponse } from '../models/api-error.model';
+import { reportClientError } from '../core/client-error-reporter';
 
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const toastr = inject(ToastrService);
 
   return next(req).pipe(
     catchError((err: HttpErrorResponse) => {
+      if (err.status === 0) reportClientError(err, 'Network');
       // The originating request reports refresh failures after recovery ends.
       if (req.url.endsWith('/auth/refresh') || req.url.endsWith('/auth/logout'))
         return throwError(() => err);

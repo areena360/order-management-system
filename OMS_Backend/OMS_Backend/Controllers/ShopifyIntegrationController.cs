@@ -133,7 +133,11 @@ public class ShopifyIntegrationController(OMSDbContext db,ShopifyApi api,IConfig
         var externalId=topic.StartsWith("customers/")?ShopifyOrderMapper.Id(ShopifyOrderMapper.Text(root.GetProperty("customer"),"id")):ShopifyOrderMapper.Id(ShopifyOrderMapper.Text(root,"id"));
         if(await db.Set<ShopifyJob>().AnyAsync(x=>x.StoreId==store.Id&&x.EventId==eventId))return Ok();
         db.Add(new ShopifyJob{StoreId=store.Id,EventId=eventId,Topic=topic,ExternalId=externalId});
-        try {await db.SaveChangesAsync();} catch(DbUpdateException) {if(!await db.Set<ShopifyJob>().AsNoTracking().AnyAsync(x=>x.StoreId==store.Id&&x.EventId==eventId))throw;}
+        try {await db.SaveChangesAsync();} catch(DbUpdateException ex) {
+            if(!await db.Set<ShopifyJob>().AsNoTracking().AnyAsync(x=>x.StoreId==store.Id&&x.EventId==eventId))throw;
+            await HttpContext.RequestServices.GetRequiredService<OMS_Backend.Common.ExceptionHandling.IExceptionRecorder>()
+                .RecordAsync(ex,"ShopifyWebhook",HttpContext,"DuplicateWebhook",409);
+        }
         return Ok();
     }
 }

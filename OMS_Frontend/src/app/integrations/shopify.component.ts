@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../environments/environment';
+import { reportClientError } from '../core/client-error-reporter';
 import { AuthService } from '../auth/auth.service';
 import { LookupService } from '../orders/lookup.service';
 import { WooSelectComponent } from './woo-select.component';
@@ -40,7 +41,7 @@ export class ShopifyComponent {
  publicUrl='';ready=false;shop='';owner:number|null=null;gender=0;material=0;status=0;genders:any[]=[];materials:any[]=[];statuses:any[]=[];owners:any[]=[];disconnectId:number|null=null;
  get admin(){return ['Super Admin','Admin'].includes(this.auth.currentRole()??'');}
  constructor(){this.load();}
- async run(fn:()=>Promise<void>){if(this.busy())return;this.busy.set(true);this.error.set('');try{await fn();}catch(e:any){this.error.set(e.error?.message??e.error?.title??'Shopify integration unavailable. Check server setup and connection.');}finally{this.busy.set(false);}}
+ async run(fn:()=>Promise<void>){if(this.busy())return;this.busy.set(true);this.error.set('');try{await fn();}catch(e:any){reportClientError(e);this.error.set(e.error?.message??e.error?.title??'Shopify integration unavailable. Check server setup and connection.');}finally{this.busy.set(false);}}
  load(){return this.run(async()=>{const [g,m,s,c,stores]=await Promise.all([firstValueFrom(this.lookup.getByType(3)),firstValueFrom(this.lookup.getByType(4)),firstValueFrom(this.lookup.getByType(1)),firstValueFrom(this.http.get<any>(this.base+'/configuration')),firstValueFrom(this.http.get<any[]>(this.base+'/stores'))]);this.genders=g;this.materials=m;this.statuses=s;this.gender=g[0]?.id??0;this.material=m[0]?.id??0;this.status=s.find(x=>x.name.toLowerCase()==='new')?.id??s.find(x=>x.name.toLowerCase()==='assign')?.id??0;if(!this.gender||!this.material||!this.status)throw {error:{message:'Your administrator needs to configure order defaults before you can connect.'}};this.ready=c.ready;this.publicUrl=c.frontendUrl?.startsWith('https://')?c.frontendUrl+'/dashboard/integrations/shopify':'';this.stores.set(stores);if(this.admin)this.owners=await firstValueFrom(this.http.get<any[]>(this.base+'/owners'));});}
  connect(){return this.run(async()=>{const r=await firstValueFrom(this.http.post<any>(this.base+'/connect',{shop:this.shop.trim().replace(/^https?:\/\//i,'').replace(/\/$/,'').toLowerCase(),ownerUserId:this.owner,genderId:this.gender,materialId:this.material,statusId:this.status}));if(r.url)window.location.assign(r.url);else {this.message.set('Shopify connected. Your orders will sync automatically.');this.stores.set(await firstValueFrom(this.http.get<any[]>(this.base+'/stores')));}});}
  disconnect(s:any){return this.run(async()=>{await firstValueFrom(this.http.post(this.base+`/stores/${s.id}/disconnect`,{}));s.isActive=false;this.disconnectId=null;});}

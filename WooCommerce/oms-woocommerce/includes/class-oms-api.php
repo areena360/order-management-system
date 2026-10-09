@@ -38,11 +38,36 @@ final class OMS_Woo_API {
         return is_array($data) ? $data : new WP_Error('oms_response', 'OMS returned an invalid response.');
     }
     public static function log(int $order_id, string $result, string $message): void {
+        if (in_array($result, array('failed', 'poll-failed', 'exception'), true)) {
+            $queue = (array) get_option('oms_woo_error_queue', array());
+            $queue[] = array('eventId' => wp_generate_uuid4(), 'kind' => $result, 'orderId' => $order_id);
+            update_option('oms_woo_error_queue', array_slice($queue, -100), false);
+        }
         $logs = (array) get_option('oms_woo_logs', array());
         array_unshift($logs, array('at' => gmdate('c'), 'order' => $order_id, 'result' => $result, 'message' => $message));
         update_option('oms_woo_logs', array_slice($logs, 0, 100), false);
         if (function_exists('wc_get_logger')) {
             wc_get_logger()->info($result . ' order ' . $order_id . ': ' . $message, array('source' => 'oms-connector'));
         }
+    }
+
+    public static function flush_errors(): void {
+        // Durable bounded queue in WordPress. Network failure never calls log() here.
+        // Lock prevents overlapping cron runs from replacing each other's snapshots.
+        if (!add_option('oms_woo_error_flush_lock', time(), '', false)) {
+            if ((int) get_option('oms_woo_error_flush_lock') < time() - 120) delete_option('oms_woo_error_flush_lock');
+            return;
+        }
+        try {
+            $queue = (array) get_option('oms_woo_error_queue', array());
+            if (!$queue) return;
+            $batch = array_slice($queue, 0, 10);
+            $result = self::request('client-errors', $batch);
+            if (is_wp_error($result)) return;
+            $ids = array_column($batch, 'eventId');
+            $current = (array) get_option('oms_woo_error_queue', array());
+            update_option('oms_woo_error_queue', array_values(array_filter($current,
+                static fn($entry) => !in_array($entry['eventId'], $ids, true))), false);
+        } finally { delete_option('oms_woo_error_flush_lock'); }
     }
 }

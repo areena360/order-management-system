@@ -5,6 +5,7 @@ import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../environments/environment';
+import { reportClientError } from '../core/client-error-reporter';
 import { AuthService } from '../auth/auth.service';
 import { LookupService } from '../orders/lookup.service';
 import { CustomerOption, LookupItem } from '../orders/order.models';
@@ -66,7 +67,7 @@ export class WooCommerceComponent implements OnInit {
     if (this.busy()) return;
     this.busy.set(true); this.error.set(''); this.message.set('');
     try { await action(); }
-    catch (e: any) { this.error.set(e.status === 404 ? 'Integration unavailable or authorization expired. Ask the administrator to enable WooCommerce after applying its migration.' : e.error?.message ?? e.error?.detail ?? 'Request failed. Check your connection and try again.'); }
+    catch (e: any) { reportClientError(e); this.error.set(e.status === 404 ? 'Integration unavailable or authorization expired. Ask the administrator to enable WooCommerce after applying its migration.' : e.error?.message ?? e.error?.detail ?? 'Request failed. Check your connection and try again.'); }
     finally { this.busy.set(false); }
   }
   private async load() {
